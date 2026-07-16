@@ -25,7 +25,8 @@ beastech-dev-kit/
 │   ├── test-case-pattern.md      # 用例范式 + pass/fail 判定
 │   ├── tsmaster-dotnet-api.md    # .NET Interop API（Interop.TSMasterAPI.dll 反射提取：44 enums/49 structs/62 delegates/TsMasterApi）
 │   ├── capl-reference.md         # CAPL 语言参考（CANoe CAPL 函数索引 + 事件过程 + 语法速查）
-│   └── capl-help/                # CANoe 离线帮助（CANeds.chm / StandaloneManager.chm，5.7MB）
+│   ├── capl-help/                # CANoe 离线帮助（CHM + 5040 HTML 函数详情页 ZIP）
+│   └── tsmaster-docs/            # TSMaster 官方 PDF 文档（SDK/用户手册/功能概览/硬件映射，14MB）
 ├── templates/
 │   ├── miniprogram-skeleton/     # 可复制的完整可编译 SDK 工程（1.9M）
 │   ├── tsmaster-sdk-header.h     # 官方 TSMaster SDK C 头文件（4347 行，从 TSMaster316 安装目录提取）
