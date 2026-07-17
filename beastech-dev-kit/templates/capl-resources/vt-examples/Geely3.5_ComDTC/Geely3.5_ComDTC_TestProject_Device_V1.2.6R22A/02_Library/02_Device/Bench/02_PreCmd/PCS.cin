@@ -1,0 +1,535 @@
+/*@!Encoding:936*/
+
+
+includes
+{
+  #pragma library("dll\capldll.dll")
+}
+
+variables
+{
+  char sharepath[200];
+}
+
+void PCS_InitConfig()
+{
+}
+
+double PCS_ReceiveDataStg(char Src[])
+{
+  char SelFront[100]="<Res scr=\"PCS\" pyid=\"-\"><!\\[CDATA\\[";
+  char SelBack[100]="\\]\\]></Res>";
+  char SubSrc_String[100]="";
+  double SubSrc_Double;
+  str_replace_regex(Src,SelFront,"");
+  testWaitForTimeout(10);
+  str_replace_regex(Src,SelBack,"");
+  testWaitForTimeout(10);
+  strncpy(SubSrc_String,Src,strlen(Src)-3);
+  str_replace_regex(SubSrc_String,"E","e");
+  testWaitForTimeout(10);
+  strtod(SubSrc_String,SubSrc_Double);
+  return(SubSrc_Double);
+}
+
+double PCS_MaxVoltMeasure()
+{
+  double Vmax;
+  OSC_CHAnnel1_Vmax_Meas();
+  TestWaitForTimeout(500);
+  OSC_CHAnnel1_Vmax_Result();
+  TestWaitForTimeout(500);
+  
+  OSC_Prepare_Value(PCS_MaxVolt);
+  testWaitForTimeout(1000);
+  Vmax=OSC_Get_Value(PCS_MaxVolt);
+  
+//  Vmax=PCS_ReceiveDataStg(PCS_RecvData);
+  return(Vmax);
+}
+
+double PCS_MinVoltMeasure()
+{
+  double Vmin;
+  OSC_CHAnnel1_Vmin_Meas(); 
+  TestWaitForTimeout(500);
+  OSC_CHAnnel1_Vmin_Result();
+  TestWaitForTimeout(500);
+  
+  OSC_Prepare_Value(PCS_MinVolt);
+  testWaitForTimeout(1000);
+  Vmin=OSC_Get_Value(PCS_MinVolt);
+  
+ //  Vmin=PCS_ReceiveDataStg(PCS_RecvData); 
+  return(Vmin);
+}
+
+
+PCS_Get_Picture_Address()
+{
+  sysGetVariableString(sysvar::PCS::PCS_Picture_Sharepath,sharepath,200);
+}
+
+
+void PCS_TestVoltage()
+{
+  
+  float V_Ch1_Top=0.0;
+  float V_Ch2_Top=0.0;
+  float V_Math_Top=0.0;
+  float V_Ch1_Base=0.0;
+  float V_Ch2_Base=0.0;
+  float V_Math_Base=0.0;
+  int i,j,res;
+  float Vrange[3]={0,0,0};
+  char picpath[200];
+  char picname[150];
+  int seq;  
+  long t1[9],t2[9];
+  char t3[50]="";
+
+  getlocaltime(t1);
+  for(seq=0;seq<9;seq++)
+  {
+    t2[seq]=t1[seq];
+  }
+  snprintf(t3,50,"%d-%d-%d_%d-%d-%d",t2[5]+1900,t2[4]+1,t2[3],t2[2],t2[1],t2[0]);
+    OSC_CAN_Init();
+    SetBatteryVoltage(VoltageNormal);
+    NetworkRequest(index);
+    testWaitForTimeout(5000);
+  
+    DRB_REFGND(Node_GND);
+    testWaitForTimeout(2000);
+    VNDisconnect();
+    testWaitForTimeout(2000);
+    for(j=0;j<3;j++)
+    {      
+       testStep("","");
+       testStep("step","Test sequence %d at voltage %5.3f V",j+1,Vrange[i]); 
+       testStep("","//***************************Dominant******************************//");
+       
+        //清空测量项
+       OSC_Meas_Clear();
+       testWaitForTimeout(1000);
+        
+      if(index<2)
+      {
+        VNConnect();
+        testWaitForTimeout(5000);
+        
+        VNDisconnect();
+      }
+        testStep("Step4","Step 4: test CANH of dominant bit");
+        testWaitForTimeout(500);
+        OSC_Single_Trigger();
+        //CANH显性位
+        OSC_CHAnnel1_Vtop_Meas();
+        testWaitForTimeout(2000);
+        OSC_CHAnnel1_Vtop_Result();
+        testWaitForTimeout(2000);
+        OSC_Prepare_Value(Ch1_Top);//
+        testWaitForTimeout(1000);//
+        V_Ch1_Top=OSC_Get_Value(Ch1_Top);//strtod(PCS_RecvData, V_Ch1_Top);
+        if(V_Ch1_Top<2.75||V_Ch1_Top>4.5)
+          testStepFail("Fail","Check fail -> Dominant: V_CANH=%f(Expect[2.75,4.5])",V_Ch1_Top);
+        else
+          testStepPass("chk","Dominant: V_CANH=%f(Expect[2.75,4.5])",V_Ch1_Top);
+
+        testStep("Step4","Step 4: test CANL of dominant bit");
+        //CANL显性位 
+        OSC_CHAnnel2_Vbase_Meas();
+        testWaitForTimeout(200);
+        OSC_CHAnnel2_Vbase_Result();
+        testWaitForTimeout(1000);
+        OSC_Prepare_Value(Ch2_Base);//
+        testWaitForTimeout(1000);//
+        V_Ch2_Base=OSC_Get_Value(Ch2_Base);//strtod(PCS_RecvData, V_Ch2_Base);
+        if(V_Ch2_Base<0.5||V_Ch2_Base>2.25)
+          testStepFail("Fail","Check fail -> Dominant: V_CANL=%f(Expect[0.5,2.25])",V_Ch2_Base);
+        else
+          testStepPass("chk","Dominant: V_CANL=%f(Expect[0.5,2.25])",V_Ch2_Base);
+        
+        testStep("Step4","Step 4: test CANdiff of dominant bit");
+        //差分电压显性位
+        OSC_Math_Vtop_Meas();
+        testWaitForTimeout(200);
+        OSC_Math_Vtop_Result();
+        testWaitForTimeout(1000);
+        OSC_Prepare_Value(Math_Top);//
+        testWaitForTimeout(1000);//
+        
+        V_Math_Top=OSC_Get_Value(Math_Top);//strtod(PCS_RecvData, V_Math_Top);
+        if(V_Math_Top<1.5||V_Math_Top>3.0)
+          testStepFail("Fail","Check fail -> Dominant: V_Diff=%f(Expect[1.5,3.0])",V_Math_Top);
+        else
+          testStepPass("chk","Dominant: V_Diff=%f(Expect[1.5,3.0])",V_Math_Top);
+        
+
+  //          //图片名区别
+        
+
+        OSC_Picture_Name_Set(dominant,i);
+        Save_Picture();
+        testWaitForTimeout(5000);
+        OSC_Picture_Convert();//
+        testWaitForTimeout(5000);
+        PCS_Get_Picture_Address();
+        testReportAddImage("",sharepath);
+        testWaitForTimeout(100);
+       
+
+        testStep("","//***************************Recessive******************************//");
+        //清空测量项
+        OSC_Meas_Clear();
+        testWaitForTimeout(200);
+        
+        testStep("Step7","Step 7: test CANH of recessive  bit");
+        //CANH隐性位
+        OSC_CHAnnel1_Vbase_Meas();
+        testWaitForTimeout(200);
+        OSC_CHAnnel1_Vbase_Result();
+        testWaitForTimeout(1000);
+        OSC_Prepare_Value(Ch1_Base);
+        testWaitForTimeout(1000);
+        V_Ch1_Base=OSC_Get_Value(Ch1_Base);//strtod(PCS_RecvData, V_Ch1_Base);
+        if(V_Ch1_Base<2.0||V_Ch1_Base>3.0)
+          testStepFail("Fail","Check fail -> Recessive: V_CANH=%f(Expect[2.0,3.0])",V_Ch1_Base);
+        else
+          testStepPass("chk","Recessive: V_CANH=%f(Expect[2.0,3.0])",V_Ch1_Base);
+        
+        testStep("Step7","Step 7: test CANL of recessive  bit");
+        //CANL隐性位
+        OSC_CHAnnel2_Vtop_Meas();
+        testWaitForTimeout(200);
+        OSC_CHAnnel2_Vtop_Result();
+        testWaitForTimeout(1000);
+        OSC_Prepare_Value(Ch2_Top);//
+        testWaitForTimeout(1000);//
+        V_Ch2_Top=OSC_Get_Value(Ch2_Top);//strtod(PCS_RecvData, V_Ch2_Top);
+        if(V_Ch2_Top<2.0||V_Ch2_Top>3.0)
+          testStepFail("Fail","Check fail -> Recessive: V_CANL=%f(Expect[2.0,3.0])",V_Ch2_Top);
+        else
+          testStepPass("chk","Recessive: V_CANL=%f(Expect[2.0,3.0])",V_Ch2_Top);
+        
+        testStep("Step7","Step 7: test CANdiff of recessive bit");
+        //差分电压隐性位
+        OSC_Math_Vbase_Meas();
+        testWaitForTimeout(200);
+        OSC_Math_Vbase_Result();
+        testWaitForTimeout(1000);
+        OSC_Prepare_Value(Math_Base);
+        testWaitForTimeout(1000);
+        V_Math_Base=OSC_Get_Value(Math_Base);//strtod(PCS_RecvData, V_Math_Base);
+        if(V_Math_Base<-0.5||V_Math_Base>0.05)
+          testStepFail("Fail","Check fail -> Recessive: V_Diff=%f(Expect[-0.5,0.05])",V_Math_Base);
+        else
+          testStepPass("chk","Recessive: V_Diff=%f(Expect[-0.5,0.05])",V_Math_Base);
+
+  //          //保存图片
+        OSC_Picture_Name_Set(recessive,i);
+        Save_Picture();
+        testWaitForTimeout(5000);
+        OSC_Picture_Convert();//
+        testWaitForTimeout(5000);
+        PCS_Get_Picture_Address();
+        testReportAddImage("",sharepath);
+        testWaitForTimeout(100);
+        
+        //清空测量项
+        OSC_Meas_Clear();
+        testWaitForTimeout(200);
+          
+      }
+      //链接VN
+      testWaitForTimeout(1000);
+      VN1630_CAN1_Connect();
+      testWaitForTimeout(1000);
+}
+
+void PCS_TestVoltage_DUT()
+{
+  
+  float V_Ch1_Top=0.0;
+  float V_Ch2_Top=0.0;
+  float V_Math_Top=0.0;
+  float V_Ch1_Base=0.0;
+  float V_Ch2_Base=0.0;
+  float V_Math_Base=0.0;
+  int i,j,res;
+  float Vrange[3]={0,0,0};
+  char picpath[200];
+  char picname[150];
+  int seq;  
+  char id[50],buf[50];
+  long t1[9],t2[9];
+  char t3[50]="";
+  Vrange[0]=VoltageNormal;
+  Vrange[1]=VoltageLow;
+  Vrange[2]=VoltageHigh;
+  getlocaltime(t1);
+  for(seq=0;seq<9;seq++)
+  {
+    t2[seq]=t1[seq];
+  }
+  snprintf(t3,50,"%d-%d-%d_%d-%d-%d",t2[5]+1900,t2[4]+1,t2[3],t2[2],t2[1],t2[0]);
+
+  for(i=0;i<3;i++)
+  {
+    testStep("","");
+    testStep("step1","Step 1: Voltage=%5.3fV",Vrange[i]);
+    SetBatteryVoltage(Vrange[i]);
+    if(testWaitForMessage(3000)>0)
+//    IF(1)
+    {
+        //断开VN
+//      VN1630_CAN_DisConnect();//2.0机柜不能程控断开VN1630，否则将台架上的总线也断开
+      testWaitForTimeout(200);
+      DRB_REFGND(Node_GND);
+      testWaitForTimeout(2000);
+      OSC_ID_Trigger();
+      testWaitForTimeout(1000);
+      OSC_Single_Trigger();
+      testWaitForTimeout(5000);  
+      OSC_STop();
+      testWaitForTimeout(1000); 
+      OSC_ID_VALUE();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Ch1_id);//
+      testWaitForTimeout(1000);//
+      sysGetVariableString(sysvar::PCS::PCS_Ch1_ID_ReValue,buf,10);
+      snprintf(id,10,"%s", buf);
+
+      write("ID:%s",id);
+      testStep("","");
+      testStep("step","Test DUT at voltage %5.3f V",Vrange[i]); 
+
+
+      testStep("","//***************************Dominant******************************//");
+
+      //清空测量项
+      OSC_Meas_Clear();
+      testWaitForTimeout(1000);
+
+      testStep("Step4","Step 4: test CANH of dominant bit");
+
+      //CANH显性位
+      OSC_CHAnnel1_Vtop_Meas();
+      testWaitForTimeout(2000);
+      OSC_CHAnnel1_Vtop_Result();
+      testWaitForTimeout(2000);
+      OSC_Prepare_Value(Ch1_Top);//
+      testWaitForTimeout(1000);//
+      V_Ch1_Top=OSC_Get_Value(Ch1_Top);
+      if(V_Ch1_Top<2.75||V_Ch1_Top>4.5)
+        testStepFail("Fail","Check fail -> Dominant: V_CANH=%f(Expect[2.75,4.5])",V_Ch1_Top);
+      else
+        testStepPass("chk","Dominant: V_CANH=%f(Expect[2.75,4.5])",V_Ch1_Top);
+
+      testStep("Step4","Step 4: test CANL of dominant bit");
+      //CANL显性位 
+      OSC_CHAnnel2_Vbase_Meas();
+      testWaitForTimeout(200);
+      OSC_CHAnnel2_Vbase_Result();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Ch2_Base);//
+      testWaitForTimeout(1000);//
+      V_Ch2_Base=OSC_Get_Value(Ch2_Base);//strtod(PCS_RecvData, V_Ch2_Base);
+      if(V_Ch2_Base<0.5||V_Ch2_Base>2.25)
+        testStepFail("Fail","Check fail -> Dominant: V_CANL=%f(Expect[0.5,2.25])",V_Ch2_Base);
+      else
+        testStepPass("chk","Dominant: V_CANL=%f(Expect[0.5,2.25])",V_Ch2_Base);
+
+      testStep("Step4","Step 4: test CANdiff of dominant bit");
+      //差分电压显性位
+      OSC_Math_Vtop_Meas();
+      testWaitForTimeout(200);
+      OSC_Math_Vtop_Result();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Math_Top);//
+      testWaitForTimeout(1000);//
+
+      V_Math_Top=OSC_Get_Value(Math_Top);//strtod(PCS_RecvData, V_Math_Top);
+      if(V_Math_Top<1.5||V_Math_Top>3.0)
+        testStepFail("Fail","Check fail -> Dominant: V_Diff=%f(Expect[1.5,3.0])",V_Math_Top);
+      else
+        testStepPass("chk","Dominant: V_Diff=%f(Expect[1.5,3.0])",V_Math_Top);
+
+
+     //图片名区别
+
+
+      OSC_Picture_Name_Set(dominant,i);
+      Save_Picture();
+      testWaitForTimeout(5000);
+      OSC_Picture_Convert();//
+      testWaitForTimeout(5000);
+      PCS_Get_Picture_Address();
+      testReportAddImage("",sharepath);
+      testWaitForTimeout(100);
+
+      testStep("","//***************************Recessive******************************//");
+      //清空测量项
+      OSC_Meas_Clear();
+      testWaitForTimeout(200);
+
+      testStep("Step7","Step 7: test CANH of recessive  bit");
+      //CANH隐性位
+      OSC_CHAnnel1_Vbase_Meas();
+      testWaitForTimeout(200);
+      OSC_CHAnnel1_Vbase_Result();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Ch1_Base);
+      testWaitForTimeout(1000);
+      V_Ch1_Base=OSC_Get_Value(Ch1_Base);//strtod(PCS_RecvData, V_Ch1_Base);
+      if(V_Ch1_Base<2.0||V_Ch1_Base>3.0)
+        testStepFail("Fail","Check fail -> Recessive: V_CANH=%f(Expect[2.0,3.0])",V_Ch1_Base);
+      else
+        testStepPass("chk","Recessive: V_CANH=%f(Expect[2.0,3.0])",V_Ch1_Base);
+
+      testStep("Step7","Step 7: test CANL of recessive  bit");
+      //CANL隐性位
+      OSC_CHAnnel2_Vtop_Meas();
+      testWaitForTimeout(200);
+      OSC_CHAnnel2_Vtop_Result();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Ch2_Top);//
+      testWaitForTimeout(1000);//
+      V_Ch2_Top=OSC_Get_Value(Ch2_Top);//strtod(PCS_RecvData, V_Ch2_Top);
+      if(V_Ch2_Top<2.0||V_Ch2_Top>3.0)
+        testStepFail("Fail","Check fail -> Recessive: V_CANL=%f(Expect[2.0,3.0])",V_Ch2_Top);
+      else
+        testStepPass("chk","Recessive: V_CANL=%f(Expect[2.0,3.0])",V_Ch2_Top);
+
+      testStep("Step7","Step 7: test CANdiff of recessive bit");
+      //差分电压隐性位
+      OSC_Math_Vbase_Meas();
+      testWaitForTimeout(200);
+      OSC_Math_Vbase_Result();
+      testWaitForTimeout(1000);
+      OSC_Prepare_Value(Math_Base);
+      testWaitForTimeout(1000);
+      V_Math_Base=OSC_Get_Value(Math_Base);//strtod(PCS_RecvData, V_Math_Base);
+      if(V_Math_Base<-0.5||V_Math_Base>0.05)
+        testStepFail("Fail","Check fail -> Recessive: V_Diff=%f(Expect[-0.5,0.05])",V_Math_Base);
+      else
+        testStepPass("chk","Recessive: V_Diff=%f(Expect[-0.5,0.05])",V_Math_Base);
+
+      //          //保存图片
+      OSC_Picture_Name_Set(recessive,i);
+      Save_Picture();
+      testWaitForTimeout(5000);
+      OSC_Picture_Convert();//
+      testWaitForTimeout(5000);
+      PCS_Get_Picture_Address();
+      testReportAddImage("",sharepath);
+      testWaitForTimeout(100);
+
+      //清空测量项
+      OSC_Meas_Clear();
+      testWaitForTimeout(200);
+      
+
+      //链接VN
+      testWaitForTimeout(1000);
+//      VN1630_CAN_Connect();
+      testWaitForTimeout(1000);
+    }
+      else
+        testStepFail("chk","No message observed on bus when the battery voltage is %f V !",Vrange[i]);    
+  }
+}
+
+/*-----times: test times----*/
+/*-----wakeupIndex: if wakeupIndex is 0, don't need to wakeup DUT, otherwise we should wakeup DUT and then disconnect VN----*/
+void PCS_TestBitTime(int times,int wakeupIndex)
+{
+  char picname[500];
+  int   i;
+  float T_ALL_Bit=0.0;
+  float T_Bit=0.0;
+  float Vrange[4]={12,8,16,12};
+  int Count = 0;
+  
+  if(testWaitForMessage(3000)>0)
+  {
+    DRB_REFGND(Node_GND);
+    testWaitForTimeout(500);
+    for(i=0;i<times;i++)
+    {
+      testStep("Step1","Set the power supply to %5.3fV!",Vrange[i]);
+      SetBatteryVoltage(Vrange[i]);
+      
+       //清空测量项
+      OSC_Meas_Clear();
+      testWaitForTimeout(1000);
+      if(wakeupIndex<2)
+      {
+        VNConnect();
+        testWaitForTimeout(1000);
+      }
+      
+      testStep("Step","Test CAN Bus Signal Bit Time");
+      TIMebase_SCALE();//设置示波器时基
+      testWaitForTimeout(2000);
+      MEASure_PEDGes_CHAnnel1();//设置上升沿计数器
+      testWaitForTimeout(2000);
+      
+      OSC_TRIGger_MODE_SOF();//帧起始触发
+      testWaitForTimeout(2000);
+      if(i==3)
+      {
+        Precondition(0);
+        testStep("Step","Reset the power supply.");
+        NetworkRequest(index);
+        testWaitForTimeout(2000);
+      }
+
+      VNDisconnect();
+      testWaitForTimeout(100);
+      
+      OSC_Single_Trigger();//示波器信号触发
+      testWaitForTimeout(1000);
+      OSC_Cursor_Xdelta();//使用光标跟踪
+      
+      testWaitForTimeout(1000);
+      OSC_BitsTime_Get();
+      testWaitForTimeout(1000);
+      T_ALL_Bit=@sysvar::PCS::PCS_BitsTime;
+      Count = _ceil(T_ALL_Bit);//位时间取大于其最小整数
+      if(Count%2 == 1)
+      {
+        Count--;
+      }
+      if(Count!=0)
+      {
+        T_Bit = T_ALL_Bit/Count*2;//位时间计算
+      }
+      testWaitForTimeout(200);
+      if(T_Bit<1.992||T_Bit>2.008)
+      {
+        testStepFail("Fail","T_Bit_Level=%f(Expect[1.992,2.008]",T_Bit);
+      }
+      else
+      {
+        testStepPass("Pass","T_Bit_Level=%f(Expect[1.992,2.008]",T_Bit);
+      }
+      OSC_Cursor_Xdelta_Meas();
+      testWaitForTimeout(200);
+      //图片命名
+      //保存图片
+      OSC_Picture_Name_Set(bitTime,i);
+      Save_Picture();
+      testWaitForTimeout(5000);
+      OSC_Picture_Convert();//
+      testWaitForTimeout(5000);
+      PCS_Get_Picture_Address();
+      testReportAddImage("",sharepath);
+      testWaitForTimeout(100);
+    }
+  }
+  else
+  {
+    testStepFail("Fail","No message observed on bus when test!");
+  }
+}

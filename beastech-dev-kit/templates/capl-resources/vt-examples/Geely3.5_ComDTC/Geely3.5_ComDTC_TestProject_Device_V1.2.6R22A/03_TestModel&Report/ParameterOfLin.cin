@@ -1,0 +1,333 @@
+
+/*@!Encoding:936*/
+variables
+{
+  struct schTable
+  {
+    char cluster[50];
+    int atribut[50];
+    byte frameID[50];
+    byte length[50];
+  };
+  const int schTable_num=8;
+  struct schTable schTableLin[schTable_num]=
+  {
+      {
+      "CEM_LIN1",
+
+      {1,1,0,0,0,0,0,0,1,1,1,1,0,1,0,0,0,1,1},
+
+      {0x15,0x25,0x27,0x5,0x7,0x17,0x9,0xA,0x2C,0x2,0x15,0x25,0x27,0x10,0x11,0x4,0x1,0x13,0x3},
+
+      {8,4,1,6,7,8,7,7,8,8,8,4,1,4,8,8,8,8,7}
+
+      },
+//	   {
+//      "CEM_LIN2",
+//
+//      {0,1,1,1},
+//
+//      {0x10,0x22,0x30,0x5},
+//
+//      {3,3,3,7}
+//
+//      },
+	  {
+      "CEM_LIN3",
+
+      {1,0,0,1,0,1,1,1,0,1,0,1,0,1,1,0,1,0,0,1},
+
+      {0x20,0x0,0x5,0x6,0x7,0x11,0x14,0x20,0x15,0x16,0x18,0x1C,0x1D,0x20,0x23,0x24,0x8,0x9,0x19,0x1A},
+
+      {7,7,7,7,8,7,1,7,8,2,8,7,7,7,8,8,7,7,8,3}
+
+    },
+	{
+      "CEM_LIN4",
+
+      {1,0,0,1,0},
+
+      {0xC,0xB,0x2,0x20,0xD},
+
+      {8,8,7,5,8}
+
+    },
+	 {
+      "CEM_LIN6",
+
+      {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+
+      {0x2,0x6,0x16,0x18,0x3,0x4,0x9,0x27,0x2,0x6,0x16,0x18,0x8,0x7,0x10,0x20,0x2,0x6,0x16,0x18,0xB,0x14,0xD,0x33,0x2,0x6,0x16,0x18,0x21,0x29,0x2A,0x24,0x2,0x6,0x16,0x18,0x25,0x26,0x28,0x19},
+
+      {8,7,1,1,8,7,7,8,8,7,1,1,8,8,8,7,8,7,1,1,8,8,5,7,8,7,1,1,4,8,8,8,8,7,1,1,8,8,7,8}
+
+    },
+	{
+      "CEM_LIN7",
+
+      {1,1,1,0,0,0,0},
+
+      {0x11,0xA,0xF,0x1A,0x21,0x22,0x10},
+
+      {8,8,8,8,7,8,8}
+
+    },
+	{
+      "ZCUD_LIN1",
+
+      {1,1,1,1,0,0,0,1,0,1},
+
+      {0x3B,0x39,0x1,0x36,0x0,0x3,0x3A,0x36,0x0,0x13},
+
+      {8,4,4,7,8,7,8,7,8,2}
+
+    },
+	 {
+      "ZCUD_LIN2",
+
+      {1,0,1,0,0,0},
+
+      {0x1,0x3,0x2,0x3,0x4,0x3},
+
+      {7,7,7,7,7,7}
+
+    },
+	  {
+      "ZCUD_LIN3",
+
+      {0,0,1,0,1,1,1},
+
+      {0x9,0xB,0x13,0x1B,0x20,0x5,0x27},
+
+      {7,8,7,8,8,7,2}
+
+    } 
+  };
+
+  struct FaultResponse
+  {
+    char cluster[100];
+    char node[100];
+    dword dtc;
+    byte id[100];
+    int testPeriod;
+    int SUValue;
+    int SDValue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+    int CCPPsn[50];
+    byte CCPValue[50];
+  };
+  struct FaultTransmitData
+  {
+    char cluster[100];
+    dword dtc;
+    int testPeriod;
+    int SUValue;
+    int SDValue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+  };
+  struct MissResponse
+  {
+    char cluster[100];
+    char node[100];
+    dword dtc;
+    byte id[100];
+    int testPeriod;
+    int SUValue;
+    int SDValue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+    int agdLmt;
+    int CCPPsn[50];
+    byte CCPValue[50];
+  };
+  struct FaultyPhysical
+  {
+    char cluster[100];
+    dword dtc;
+    int testPeriod;
+    int SUValue;
+    int SDValue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+  };
+  struct slaveSignal
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;
+  };
+  struct SlaveFault
+  {
+    char cluster[100];
+    char node[100];
+    byte id;
+    struct slaveSignal signals;
+    byte passValue;
+    byte failValue;
+    dword dtc;
+    int num;
+    int CCPPsn[50];
+    byte CCPValue[50];
+  };
+   const int FaultResponse_num=16;
+  struct FaultResponse FaultResponseTemp[FaultResponse_num]={
+    {
+      "CEM_LIN1","RLSM",0xD34583,{0x15,0x2C,0x02,0x03},100,13,13,127,3,{1057},{0x2}
+    },
+    {
+      "CEM_LIN3","OHC",0xD34183,{0x20,0x14,0x16,0x06,0x1C},100,13,13,127,3,{1042},{0x2}
+    },
+    {
+      "ZCUD_LIN3","HCML",0x929A83,{0x27},100,13,13,127,3,{473},{0x8A}
+    },
+    {
+      "CEM_LIN6","BMS",0xD32C83,{0x02,0x03,0x04,0x06,0x07,0x08,0x09,0x10,0x28,0x20,0x21,0x29,0x2A,0x24,0x25,0x26,0x27},100,13,13,127,3,{776},{0x2}
+    },
+    {
+      "CEM_LIN7","POSM",0x908783,{0x11},100,13,13,127,3,{675},{0x2}
+    },
+    {
+      "ZCUD_LIN1","DDS",0xD33083,{0x36},100,13,13,127,3,{1065},{0x2}
+    },
+    {
+      "ZCUD_LIN1","MMD",0xD40883,{0x1},100,13,13,127,3,{239},{0x2}
+    },
+    {
+      "CEM_LIN7","TSC",0x908883,{0xA,0xF},100,13,13,127,3,{720},{0x2}
+    },
+    {
+      "CEM_LIN1","WMM",0xD35383,{0x25},100,13,13,127,3,{1090},{0x2}
+    },
+    {
+      "CEM_LIN3","SRM",0xD36283,{0x11,0x23},100,13,13,127,3,{1130},{0x2}
+    },
+    {
+      "ZCUD_LIN1","ADC",0xD61C83,{0x39,0x3B},100,13,13,127,3,{212},{0x2}
+    },
+    {
+      "CEM_LIN1","IRMM",0xD33E83,{0x10,0x13},100,13,13,127,3,{1112},{0x2}
+    },
+//    {
+//      "CEM_LIN4","FTKS",0x9EB183,{0xC},100,13,13,127,3,{1279},{0x2}
+//    },
+    {
+      "CEM_LIN6","FDML",0x9EB283,{0x18},100,13,13,127,3,{1287},{0x2}
+    },
+//    {
+//      "CEM_LIN2","BBS",0xD32A83,{0x20,0x22},100,13,13,127,3,{64},{0x2}
+//    },
+    {
+      "CEM_LIN6","FMDM",0xD33383,{0x16},100,13,13,127,3,{99},{0x3}
+    },
+//    {
+//      "CEM_LIN2","IMS",0xD35983,{0x30,0x5},100,13,13,127,3,{1034},{0x2}
+//    },
+    {
+      "CEM_LIN3","AWM",0xD36B83,{0x1A},100,13,13,127,3,{642},{0x2}
+    },
+    {
+      "ZCUD_LIN3","MMRL",0xD40A83,{0x20},100,13,13,127,3,{473},{0x8A}
+    }
+  };
+  const int FaultTransmitData_num=6;
+  struct FaultTransmitData FaultTransmitDataTemp[FaultTransmitData_num]={
+    {
+      "CEM_LIN1",0xD30086,100,10,20,20,3
+    },
+    {
+      "CEM_LIN3",0xD30286,100,10,20,20,3
+    },
+    {
+      "ZCUD_LIN2",0x929A86,100,10,20,20,3
+    },
+    {
+      "CEM_LIN6",0xD31486,100,10,20,20,3
+    },
+    {
+      "CEM_LIN7",0xD31586,100,10,20,20,3
+    },
+    {
+      "ZCUD_LIN1",0xD31986,100,10,20,20,3
+    }
+  };
+  const int MissResponse_num=16;
+  struct MissResponse MissResponseTemp[MissResponse_num]={
+    {
+      "CEM_LIN1","RLSM",0xD34587,{0x15,0x2C,0x02,0x03},100,9,9,18,3,255,{1057},{0x2}
+    },
+    {
+      "CEM_LIN3","OHC",0xD34187,{0x20,0x14,0x16,0x06,0x1C},100,9,9,18,3,255,{1042},{0x2}
+    },
+    {
+      "ZCUD_LIN3","HCML",0x929A87,{0x27},100,9,9,18,3,255,{473},{0x8A}
+    },
+    {
+      "CEM_LIN6","BMS",0xD32C87,{0x02,0x03,0x04,0x06,0x07,0x08,0x09,0x10,0x28,0x20,0x21,0x29,0x2A,0x24,0x25,0x26,0x27},100,9,9,18,3,255,{776},{0x2}
+    },
+    {
+      "CEM_LIN7","POSM",0x908787,{0x11},100,9,9,18,3,255,{675},{0x2}
+    },
+    {
+      "ZCUD_LIN1","DDS",0xD33087,{0x36},100,9,9,18,3,255,{1065},{0x2}
+    },
+    {
+      "ZCUD_LIN1","MMD",0xD40887,{0x1},100,9,9,18,3,255,{239},{0x2}
+    },
+    {
+      "CEM_LIN7","TSC",0x908887,{0xA,0xF},100,9,9,18,3,255,{720},{0x2}
+    },
+    {
+      "CEM_LIN6","FMDM",0xD33387,{0x16},100,9,9,18,3,255,{99},{0x2}
+    },
+    {
+      "CEM_LIN1","IRMM",0xD33E87,{0x10,0x13},100,9,9,18,3,255,{1112},{0x2}
+    },
+    {
+      "CEM_LIN1","WMM",0xD35387,{0x25},100,9,9,18,3,255,{1090},{0x2}
+    },
+    {
+      "CEM_LIN3","SRM",0xD36287,{0x11,0x23},100,9,9,18,3,255,{1130},{0x2}
+    },
+    {
+      "ZCUD_LIN1","ADC",0xD61C87,{0x39,0x3B},100,9,9,18,3,255,{212},{0x2}
+    },
+//    {
+//      "CEM_LIN6","BMS",0x91DB87,{0x02,0x03,0x04,0x06,0x07,0x08,0x09,0x10,0x28,0x20,0x21,0x29,0x2A,0x24,0x25,0x26,0x27},100,9,9,18,3,255,{776},{0x2}
+//    },
+//    {
+//      "CEM_LIN3","SIG",0x960687,{0x8},100,9,9,18,3,255,{177},{0x81}
+//    },
+//    {
+//      "CEM_LIN4","FTKS",0x9EB187,{0xC},100,9,9,18,3,255,{1279},{0x2}
+//    },
+    {
+      "CEM_LIN6","FDML",0x9EB287,{0x18},100,9,9,18,3,255,{1287},{0x2}
+    },
+//    {
+//      "CEM_LIN2","BBS",0xD32A87,{0x20,0x22},100,9,9,18,3,255,{64},{0X4}
+//    },
+//    {
+//      "CEM_LIN2","IMS",0xD35987,{0x30,0x5},100,9,9,18,3,255,{1034},{0x2}
+//    },
+    {
+      "CEM_LIN3","AWM",0xD36B87,{0x1A},100,9,9,18,3,255,{642},{0x2}
+    },
+    {
+      "ZCUD_LIN3","MMRL",0xD40A87,{0x20},100,9,9,18,3,255,{473},{0x8A}
+    }
+  };
+
+  const int FaultyPhysical_num=1;
+  struct FaultyPhysical FaultyPhysicalTemp[FaultyPhysical_num];
+	
+  const int SlaveFault_num=1;
+  struct SlaveFault SlaveFaultTemp[SlaveFault_num];
+	
+  byte frameID[50];
+  byte length[50];
+}
+

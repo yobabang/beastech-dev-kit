@@ -1,0 +1,56 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  
+}
+///Precmd/////
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_Offset_PPS_OnOff
+{
+  if(@this==1)
+    SendTcpData("OUTP ON, (@1)\n",PPS_Socket);
+  if(@this==0)
+    SendTcpData("OUTP OFF, (@1)\n",PPS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_OnOff
+{
+  if(@this==0)
+    SendTcpData("OUTP OFF, (@2)\n",PPS_Socket);
+    if(@this==1)
+    SendTcpData("OUTP ON, (@2)\n",PPS_Socket);
+}
+
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_GND_Offset_Positive
+{
+  SendTcpData("VOLT 1, (@1)\n",PPS_Socket);
+  SendTcpData("CURR:LIM 5, (@1)\n",PPS_Socket);  
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_GND_Offset_Negative
+{
+  SendTcpData("VOLT -1, (@1)\n",PPS_Socket);
+  SendTcpData("CURR:LIM 5, (@1)\n",PPS_Socket);
+}
+
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_CURRENT_MEAS
+{
+  SendTcpData("MEAS:CURR? (@2)\n",PPS_Socket);
+}
+  
+
+on sysvar_update sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_VOLTAGE_MEAS
+{
+  SendTcpData("MEAS:VOLT? (@2)\n",PPS_Socket);
+}

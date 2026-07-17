@@ -1,0 +1,74 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  dword gLinChannel1;
+  msTimer gCheckSleepTimer;  // 循环检测定时器
+  int gCheckInterval = 100;  // 检测间隔(ms)
+}
+
+on prestart
+{
+  // 预启动时，获取LIN通道的句柄
+  gLinChannel1 = GetLINChannel("LIN1", 0);
+  
+  // 启动循环检测定时器
+  setTimer(gCheckSleepTimer, gCheckInterval);
+}
+
+on timer gCheckSleepTimer
+{
+  // 定时器触发，检查总线状态
+  checkAndWakeupLIN();
+  
+  // 重新设置定时器，实现循环检测
+  setTimer(gCheckSleepTimer, gCheckInterval);
+}
+
+// 检测并唤醒LIN总线的函数
+void checkAndWakeupLIN()
+{
+  byte busState;
+  
+  // 获取LIN总线当前状态
+  busState = linGetGlobalState(gLinChannel1);
+  
+  // 判断总线是否处于休眠状态
+  // LIN_BUS_SLEEP 通常定义为 2，具体值请参考您的CAPL帮助文档
+  if (busState == LIN_BUS_SLEEP) 
+  {
+    write("检测到LIN总线休眠，正在尝试唤醒...");
+    
+    // 发送唤醒信号，等待响应
+    long result = LinWakeup(gLinChannel1, 150);
+    
+    if (result == 0)
+    {
+      write("LIN总线自动唤醒成功！");
+      // 唤醒成功后可以执行其他操作，如启动调度表
+      // linSetScheduleTable(gLinChannel1, schTable1);
+    }
+    else
+    {
+      write("警告：LIN总线自动唤醒失败，将在下次检测时重试。");
+    }
+  }
+}
+
+// 可选：响应总线状态变化的事件
+on linGlobalStateChange
+{
+  // 当总线状态发生变化时记录日志
+  write("LIN总线状态变化: 新状态 = %d", this.State);
+  
+  // 如果检测到进入休眠状态，立即尝试唤醒（不等待定时器）
+  if (this.State == LIN_BUS_SLEEP)
+  {
+    write("检测到总线状态变为休眠，立即尝试唤醒...");
+    checkAndWakeupLIN();
+  }
+}

@@ -1,0 +1,754 @@
+
+includes
+{
+
+  #include "..\02_Library\DoIP\UDS_Service_for_NMDevice.cin"  
+
+  #include "..\02_Library\CANTP\COM_TP.cin"
+
+  #include "..\02_Library\VH1150.cin"
+
+  #include "..\02_Library\Parameter.cin"
+  #include "ECUInfor.cin"
+
+}
+  
+variables
+{
+  enum eStressDevice {Stress_NotUse,Stress_VH6501};
+  enum Project {Geely3_0,Geely3_5};
+  dword gSimCanNm=gUpperCANID;//仿真的CAN NM报文ID
+  dword gWaitForDiag=500;//诊断发送前的等待时间
+  long gTimeAckDebounce=10;//单位ms，NoACK错误帧出现后等待的时间，用例1366376中使用
+  dword Project=Geely3_0;
+  enum cBusType DiagType=cCAN;
+  enum PhyChannel DiagChannel=cCAN1;
+  enum PhyChannel StressChannel=cCAN1;
+  dword RequestID_CAN=0x730;
+  dword ResponseID_CAN=0x630;
+  dword ECUAddress=0x1401;
+  long gTimeSleepInterval=10000;
+  long gTimeGoToSleep=100000;
+  int MasterChannel=-1;
+  float gCurrentLowPower=10;//判断进入低功耗的电流，mA
+  long TAfterRun=5000;
+
+  enum eStressDevice StressDevice=Stress_VH6501;
+  int gStressSeq;
+  
+  dword gSimAppHigh=0x1;
+  dword gsimAppLow=0x7fe;
+  long gMoreThanMaxUsedPnc=44;//大于使用的PNC
+  
+  dword LocalAddress = 0x0E80;
+  int Global=29;
+  long TresetToRead=2000;//复位后等待的时间
+   long tNoacktime=1000;//检测错误报文持续的时间，默认1s
+
+  byte DTCReadMask=0x0f;
+  byte DTCSearchMask=0x0f;
+  const float VoltageNormal=12;
+  
+  float gDev_h=1.1;//busoff快慢周期上阈值倍数
+  float gDev_l=0.9;//busoff快慢周期下阈值倍数
+ 
+  const long cTCANPowerWakeUpToApp = 400;
+  const long cTCANEventWakeUpToApp = 50;
+  const long cTCANResumeCom = 25;
+  const long cTCANWakeAndGwPncRequest=15;
+  const long cTCANGwPncRequest = 15;
+   
+  const long gVFCMaxNum=10;
+  long OtherWakeupNum[gBusNum];
+
+  long timeLowPower_NW[gOneECUMaxChannel];
+  long maxLowPowerTime_NW=20000;
+  long timeLowPower_HW[gOneECUMaxChannel];
+  long maxLowPowerTime_HW=20000;
+  long RandomDev=100;//休眠临界点扫描测试中用于计算的区间长度，默认±100
+  const int gRandomStep=1;//休眠临界点扫描测试的步长，默认1
+  long gRandomForceLow=0;//休眠临界点扫描测试中强制写入总区间下限，0表示不使用此选项
+  long gRandomForceHigh=0;//休眠临界点扫描测试中强制写入总区间上限，0表示不使用此选项
+  long gRandomForceStart=0;//休眠临界点扫描测试中写入开始测试值，0表示不使用此选项
+  dword gRandomMaxWaitTime=5000;//休眠临界点扫描测试中最大的尝试等待唤醒时间
+  long timeDebounce[gOneECUMaxChannel];
+  
+  long HWReleaseTime=1000;//KL15上电下单之间需要维持的时间
+    
+  long tCommon5=5000;
+  long tCommon5For3_0=5000;//1318561 3.0判断控制器是否进入慢恢复监控时长
+  long tCommon5For3_5=1000;//1318561 3.5判断控制器是否进入慢恢复监控时长
+  long tCommon2=2000;
+  long tCommon10=10000;
+  
+  long tMsg=2000; //用于检测继续通信/停止通信，即正常情况此时间内应该发送至少1帧报文(CAN)
+  long tStart=2000;//用于检测开始通信，唤醒后第一帧报文需要在此时间内发送至少1帧
+  long tDiagOn=5000;
+  long tClearToRead=5000;
+  
+  long timeGoToL2For3_0=2000;//StateErrorHandling busoff故障注入时长for 3.0
+	long timeGoToL2For3_5=10000;//StateErrorHandling busoff故障注入时长for 3.5
+  
+  long t_delay;//进入低功耗的额外时间  
+  
+  /*------------VehMod related var------------------*/
+  int IfUse3E80=-1;
+  msTimer t_TesterPresent;    
+  int StartUMActive=-1;  
+  message 0x0 CanUM;  
+  int StartBattU=-1;
+  message 0x0 CanBattU;  
+  byte gUMActValue=0xb;
+  byte gCMNrmlValue=0x0;
+  byte gVehManUB=1;  
+  int gVehBatVotg=0x82;
+  int gVehBatQf=3; 
+  msTimer t_UsgMode;
+  int gUMCounter;  
+  msTimer t_BattU;
+  
+}
+
+On timer t_UsgMode
+{
+  UpdateUm();
+}
+
+On timer t_BattU
+{
+  UpdateBattU();
+}
+
+on timer t_TesterPresent
+{
+  byte SID3E[2]={0x3E,0x80};
+//  SID3E_TesterPresent(physical,SPRMIB_True);
+  TP_Send(SID3E,physical);
+}
+
+
+/// <ForDevice/Init>
+void VariablesInit()
+{
+  int i,j;
+  gTimeGoToSleep=gTimeGoToSleep+gTimeSleepInterval;
+  gSwtichImmediateNmTransmission=SwitchOff;
+  ImmediateNmTransmission=0;
+  gFrameOnWhichChannel=0;
+  gAnyRxComOnChannel=0;
+  gIntervalFrameOnBus=0;
+}
+
+/// <ForDevice/power>
+void PowerPrecondition(enum ePowerSwitch index)
+{
+  int i;
+  switch(index)
+  {
+    case PowerSupply: 
+      kl15(T_off);
+      testWaitForTimeout(200);
+      cancelTimer(timerSimAPP);
+      cancelTimer(timerSimAPPinBurst);
+      cancelTimer(ActiveNmCyc);
+      cancelTimer(timer_SimNmBurst);
+      cancelTimer(NMCyc2);
+      cancelTimer(NMCyc3);
+      StopUM();
+      StopBattU();
+      CANReset();
+      for(i=0;i<gBusNum;i++)
+        IfCANBusStart[i]=0;
+      KL30(T_off); 
+      testWaitForTimeout(1000);
+      KL30(T_on);
+      testWaitForTimeout(5000);//PEPS=30, other=10
+      break;
+    case NoPower:       
+      kl15(T_off);
+      testWaitForTimeout(200);
+      cancelTimer(timerSimAPP);
+      cancelTimer(timerSimAPPinBurst);
+      cancelTimer(ActiveNmCyc);
+      cancelTimer(timer_SimNmBurst);
+      cancelTimer(NMCyc2);
+      cancelTimer(NMCyc3);
+      StopUM();
+      StopBattU();
+      CANReset();
+      for(i=0;i<gBusNum;i++)
+        IfCANBusStart[i]=0;
+      KL30(T_off);
+      testWaitForTimeout(TAfterRun+1);       
+      break;
+     default:
+      testStepFail("OR","Fail--> over range of command PowerPrecondition with index=%d",index);
+      break;
+  } 
+}
+
+/// <ForDevice/power>
+void KL30(enum T_mode sw)
+{
+
+  VH1150_KL30(sw);
+
+}
+
+/// <ForDevice/power>
+void kl15(enum T_mode sw)
+{
+
+  VH1150_KL15(sw);
+
+}
+
+/// <ForDevice/power>
+void kl31(enum T_mode sw)
+{
+
+
+  VH1150_KL31(sw);
+
+}
+
+/// <ForDevice/power>
+void SetBatteryVoltage(float V)
+{
+
+  VH1150_VoltageSet(V);
+
+}
+
+/// <ForDevice/power>
+void ShowCurrent(int channel, double cycleTime)
+{
+
+}
+
+/// <ForDevice/power>
+float GetCurrent()
+{
+
+  float curr;
+  curr=VH1150_CurrentGet();
+  return curr;
+
+}
+
+/// <ForDevice/Wakeup>
+void HardwareWakeup(int testBus,int index)
+{
+//  switch (testBus)
+//  {
+//    case 0:
+//      kl15(T_on);
+//      break;
+//  }
+  kl15(T_on);
+}
+
+/// <ForDevice/Wakeup>
+void HardwareRelease(int testBus,int index)
+{
+//  switch (testBus)
+//  {
+//    case 0:
+//      kl15(T_off);
+//      break;
+//  }
+  kl15(T_off);
+}
+
+/// <ForDevice/Wakeup>
+void NetworkWakeup(int testBus, int index)
+{
+  int i;
+  i=testBus;
+  write("NetworkWakeup.i=%d, type=%s",i,TestECU[i].BusType.name());
+  if(TestECU[i].BusType==cCAN | TestECU[i].BusType==cCANFD)
+  {
+    CANSetPN(AllPN); 
+    CANSetNMFrame(i,gSimCanNm,gSimCanNm&0xff,0x40);
+    CANSwitchNMSim(SwitchOn,MixedSend);
+  }
+}
+
+/// <ForDevice/Wakeup>
+void NetworkRelease(int testBus, int index)
+{
+  int i;
+  i=testBus;
+  if(TestECU[i].BusType==cCAN | TestECU[i].BusType==cCANFD)
+  {
+    CANSwitchNMSim(SwitchOff,NormalSend);
+  }
+}
+
+/// <ForDevice/Wakeup>
+void OtherWakeup(int testBus, int index)
+{
+  
+}
+
+/// <ForDevice/Wakeup>
+void OtherRelease(int testBus, int index)
+{
+  
+}
+
+/// <ForDevice/Wakeup>
+void Wakeup(int testBus, int index)
+{
+  int i;
+  i=testBus;
+  if(TestECU[i].CanBeSleepinPower>0)
+  {    
+    if(TestECU[i].SupportNetworkWakeup>0)
+      NetworkWakeup(i,0);
+    else if(TestECU[i].SupportHardwareWakeup>0)
+      HardwareWakeup(i,0);
+    else if(MasterChannel>=0)
+    {
+      if(TestECU[i].NMDB.PNCGW!=NonePNCGW)
+      {
+        PresetMasterChannel(5);
+        MasterChannelStart(1);
+        MasterChannelRequestPN(AllPN,1,SwitchOn);
+      }
+      else
+      {
+        PresetMasterChannel(5);
+        MasterChannelStart(1);
+        MasterChannelRequestPN(AllPN,1,SwitchOn);      
+        {
+          CANSetPN(AllPN); 
+          CANSetNMFrame(i,gSimCanNm,gSimCanNm&0xff,0x40);
+          CANSwitchNMSim(SwitchOn,MixedSend);
+        }
+      }
+    }
+  }
+  
+}
+
+/// <ForDevice/Wakeup>
+void Sleep(int testBus, int index)
+{
+  int i;
+  i=testBus;
+  if(TestECU[i].CanBeSleepinPower>0)
+  {
+    if(TestECU[i].SupportNetworkWakeup>0)
+      NetworkRelease(i,0);
+    else if(TestECU[i].SupportHardwareWakeup>0)
+      HardwareRelease(i,0);
+    else if(MasterChannel>=0)
+    {
+      MasterChannelRequestPN(AllPN,1,SwitchOff);
+      if(TestECU[i].NMDB.PNCGW==NonePNCGW)
+      {
+        {
+          CANSwitchNMSim(SwitchOff,NormalSend);
+        }
+      }
+    }
+  }
+}
+
+/// <ForDevice/Stress>
+void CANStressDeviceIn(int testBus)
+{	
+  int i;
+  i=TestECU[testBus].Channel;
+  gStressSeq=testBus;
+
+  testWaitForTimeout(500);
+}
+
+/// <ForDevice/Stress>
+int DisturbContinue()
+{    
+  int res;
+  
+  dword msg_id;
+  int i,j;
+  msg_id=0x7ff;
+  i=gStressSeq;
+  for(j=0;j<TestECU[i].APPDB.APPNum;j++)
+  {
+    if(TestECU[i].APPDB.APPID[j].cycle==0)
+      continue;
+    if(msg_id>TestECU[i].APPDB.APPID[j].id)
+      msg_id=TestECU[i].APPDB.APPID[j].id;
+  }
+  testStep("Step","Continue disturb message %#X",msg_id);
+  res=canConfigureBusOff(TestECU[i].Channel,msg_id,1);	
+	
+  return res;
+}
+
+/// <ForDevice/Stress>
+void DisturbContinueReset()
+{    
+  
+  dword msg_id;
+  int i,j;
+  msg_id=0x7ff;
+  i=gStressSeq;
+  for(j=0;j<TestECU[i].APPDB.APPNum;j++)
+  {
+    if(TestECU[i].APPDB.APPID[j].cycle==0)
+      continue;
+    if(msg_id>TestECU[i].APPDB.APPID[j].id)
+      msg_id=TestECU[i].APPDB.APPID[j].id;
+  }
+  testStep("Step","Stop disturb message %#X",msg_id);
+  canConfigureBusOff(TestECU[i].Channel,msg_id,0);
+
+	
+}
+
+/// <ForDevice/Stress>
+void CANStressDeviceOut(int testBus)
+{	
+  int i;
+  i=TestECU[testBus].Channel;
+
+  testWaitForTimeout(500);
+
+}
+
+testfunction TestContext_Init()
+{
+  int i;
+  int res;
+  int k;
+  long j;
+  testWaitForTimeout(100);
+  getlocaltime(tmnow);
+  for(k=0;k<9;k++)
+  {
+    tmstart[k]=tmnow[k];
+  }
+  snprintf(tim,50,"..\\07_Log&Report\\Report&Log_%d-%d-%d_%d-%d-%d\\",tmstart[5]+1900,tmstart[4]+1,tmstart[3],tmstart[2],tmstart[1],tmstart[0]);
+  snprintf(reportname,100,"%s%s_NM_report",tim,ExcelInfor[0].ECUName);
+  testReportFileName(reportname);
+  setTimerCyclic(gTimer,2000);
+  
+  CANSetChannelInit();
+  VariablesInit();
+  WriteOnline();
+  
+
+	VH1150_InitConfig();
+	testWaitForTimeout(100);
+
+  SetBatteryVoltage(VoltageNormal);
+  testWaitForTimeout(100);
+  kl31(T_on);
+  testWaitForTimeout(500);
+  if(IfNeedUMActive>0)
+  {
+    InitUM();    
+  }
+  if(IfNeedBattU>0)
+      InitBattU();
+  PowerPrecondition(NoPower);
+  
+}
+
+testfunction TestContext_End()
+{  
+  testWaitForTimeout(tCommon2);
+  stopLogging();
+
+  VH1150_Close();
+
+  testWaitForTimeout(100);
+	///删除stop();使脚本可直接在canoe中设置压力测试次数
+  /// stop();
+}
+
+/// <ForDevice/Stress>
+void CANBusFault(enum BusFaultType type)
+{
+	switch (type)
+	{
+		case H2L:
+			testStep("Step","Short CANH to CANL");
+  DisturbContinue();
+
+		break;
+		case reset_short:
+			testStep("Step","Remove bus short");
+  DisturbContinueReset();
+
+		break;
+	default:
+	      testStepFail("Fail","Command fail -> Unknown command");
+	      break;
+	}
+}
+
+/// <ForDevice/Diagnose>
+void ToDiagBus()
+{
+  long aa,bb;
+  char theDiagBus[NameLong];
+  strncpy(theDiagBus,PrintPhyChannel[DiagChannel],NameLong);
+  SetBusContext(getBusNameContext(theDiagBus));
+
+  TP_init();  
+  testWaitForTimeout(gWaitForDiag);
+  CAN_TP_CreatConnection(aa,bb,RequestID_CAN,ResponseID_CAN,0x7ff,theDiagBus);
+  
+  if(DiagType==cETH || DiagType==cETH_VGM)
+    testWaitForTimeout(10000);
+  if(IfUse3E80>0)
+    setTimerCyclic(t_TesterPresent,2000);
+}
+
+/// <ForDevice/Diagnose>
+void ToDiagBuswithoutWait10()
+{
+  long aa,bb;
+  char theDiagBus[NameLong];
+  strncpy(theDiagBus,PrintPhyChannel[DiagChannel],NameLong);
+  SetBusContext(getBusNameContext(theDiagBus));
+
+  TP_init();  
+  testWaitForTimeout(gWaitForDiag);
+  CAN_TP_CreatConnection(aa,bb,RequestID_CAN,ResponseID_CAN,0x7ff,theDiagBus);
+  
+  if(DiagType==cETH || DiagType==cETH_VGM)
+    //testWaitForTimeout(10000);
+  if(IfUse3E80>0)
+    setTimerCyclic(t_TesterPresent,2000);
+}
+
+/// <ForDevice/Diagnose>
+void StopDiag()
+{
+  if(DiagType==cETH_VGM)
+  {
+    kl15(T_off);
+    DoIP_CloseConnection();
+  }
+  cancelTimer(NMCyc2);	
+  if(IfUse3E80>0)
+    cancelTimer(t_TesterPresent);
+}
+
+/// <ForDevice/Diagnose>
+void PreStartDiag ()
+{
+  int i,j;
+  int res;
+  
+  res=0;
+  
+  if(DiagType==cETH_VGM)
+  {
+    kl15(T_on);
+    res=1;
+  }
+  if(MasterChannel>=0)
+  {
+    
+  }
+  if(DiagType==cCAN || DiagType==cCANFD)
+  {
+    if(IfCANBusStart[DiagChannel]==0)
+    {
+      CANSetPN2(AllPN); 
+      SimNMmsg2.msgChannel=DiagChannel;
+      SimNMmsg2.id=gSimCanNm;
+      SimNMmsg2.dlc=8;
+      SimNMmsg2.byte(cCanNmPduNidPosition)=gSimCanNm&0xff;
+      SimNMmsg2.byte(cCanNmPduCbvPosition)=0x40;
+      CANSwitchNMSim2(SwitchOn,PeriodSend,cCanNmImmediateNmCycleTime);
+      IfCANBusStart[DiagChannel]=1;
+    }
+  }
+  if(res>0)
+    testWaitForTimeout(10000);
+}
+
+/// <ForDevice/MasterChannel>
+void PresetMasterChannel(int IfUseDefUsage)
+{
+  
+}
+
+
+/// <ForDevice/MasterChannel>
+void MasterChannelStart(int IfWPSend)
+{
+  
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelRequestPN(enum ePNRquest r, int PN, enum eSwitch pState)
+{
+  if(MasterChannel>=0 && MasterChannel<TestNum)
+  {
+    if(TestECU[MasterChannel].BusType==cCAN || TestECU[MasterChannel].BusType==cCANFD)
+    {
+      switch(r)
+      {
+        case AllPN:
+          CANSetPN2(AllPN); 
+          CANSetNMFrame2(MasterChannel,gSimCanNm,gSimCanNm&0xff,0x40);
+          CANSwitchNMSim2(pState,PeriodSend,cCanNmMsgCycleTime/4);
+          break;
+        case NoPN:
+          CANSetPN2(NoPN); 
+          CANSetNMFrame2(MasterChannel,gSimCanNm,gSimCanNm&0xff,0x40);
+          CANSwitchNMSim2(pState,PeriodSend,cCanNmMsgCycleTime/4);
+          break;
+        case OnePN:
+          CANOnlyWritePN2(PN); 
+          CANSetNMFrame2(MasterChannel,gSimCanNm,gSimCanNm&0xff,0x40);
+          CANSwitchNMSim2(pState,PeriodSend,cCanNmMsgCycleTime/4);
+          break;
+        default:
+          testStepFail("OR","Fail--> over range of command MasterChannelRequestPN with PNRequest=%s on CAN",r.name());
+          break;
+          
+      }
+    }
+  }
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelStop()
+{
+  cancelTimer(NMCyc2);
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelAddPN(long ThisPN)
+{
+  CANAddPN2(ThisPN);
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelSetPN(byte CBV,enum ePNRquest PNRequest)
+{
+  CANSetPN2(PNRequest); 
+  CANSetNMFrame2(MasterChannel,gSimCanNm,gSimCanNm&0xff,CBV);
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelOnlyWritePN(long ThisPN)
+{
+  CANOnlyWritePN2(ThisPN);
+}
+
+/// <ForDevice/MasterChannel>
+void MasterChannelSwitch(enum eSwitch pState)
+{
+  CANSwitchNMSim2(pState,PeriodSend,cCanNmMsgCycleTime/4);
+}
+
+/// <ForDevice/UM&Batt>
+void InitUM()
+{
+  int i;
+  for(i=0;i<TestNum;i++)
+  {
+    if(TestECU[i].IfOnBus!=Yes)
+      continue;
+    if(IfNeedUMActive<=0)
+      continue;
+    if(strncmp(TestECU[i].BusName,VehModMngtGlbSafe[0].cluster,NameLong)==0)
+    {
+        CanUM.msgChannel=GetUsedChannel(i);
+        CanUM.id=VehModMngtGlbSafe[0].slotID;
+        CanUM.dlc=VehModMngtGlbSafe[0].dlc;
+        if(TestECU[i].BusType==cCANFD)
+          CanUM.FDF=1;
+        else
+          CanUM.FDF=0;
+        if(IfNeedUMActive>0)
+          IfNeedUMActive=TestECU[i].Channel;
+    }
+  }
+}
+/// <ForDevice/UM&Batt>
+void InitBattU()
+{
+  int i;
+  for(i=0;i<TestNum;i++)
+  {
+    if(TestECU[i].IfOnBus!=Yes)
+      continue;
+    if(IfNeedBattU<=0)
+      continue;
+    if(strncmp(TestECU[i].BusName,VehModMngtGlbSafe[1].cluster,NameLong)==0)
+    {
+	    CanBattU.msgChannel=GetUsedChannel(i);
+	    CanBattU.id=VehModMngtGlbSafe[1].slotID;
+	    CanBattU.dlc=VehModMngtGlbSafe[1].dlc;
+	    if(TestECU[i].BusType==cCANFD)
+	      CanBattU.FDF=1;
+	    else
+	      CanBattU.FDF=0;
+	    if(IfNeedBattU>0)
+	      IfNeedBattU=TestECU[i].Channel;
+    }
+  }
+}
+
+/// <ForDevice/UM&Batt>
+void StartUM()
+{
+  int j;
+  if(IfNeedUMActive>0)
+  {
+    StartUMActive=1;
+    for(j = 2; j < VehModMngtGlbSafe[0].sigNum; j++)
+    {
+      VehModMngtGlbSafe[0].e2eSignalList[j].sigValue=0x0;
+    }
+    VehModMngtGlbSafe[0].e2eSignalList[2].sigValue=gCMNrmlValue;//CarMode
+    VehModMngtGlbSafe[0].e2eSignalList[7].sigValue=0;//PwEi
+    VehModMngtGlbSafe[0].e2eSignalList[9].sigValue=gUMActValue;//UsgMode
+    gUMCounter=0;
+    setTimerCyclic(t_UsgMode,0,50);
+  }
+}
+
+/// <ForDevice/UM&Batt>
+void StopUM()
+{
+  StartUMActive=-1;
+  cancelTimer(t_UsgMode);
+}
+/// <ForDevice/UM&Batt>
+void StartBattU()
+{
+  int j;
+  if(IfNeedBattU>0)
+  {
+    StartBattU=1;
+    for(j = 0; j < VehModMngtGlbSafe[1].sigNum; j++)
+    {
+      VehModMngtGlbSafe[1].e2eSignalList[j].sigValue=0x0;
+    }
+    VehModMngtGlbSafe[1].e2eSignalList[0].sigValue=gVehBatVotg;
+    VehModMngtGlbSafe[1].e2eSignalList[1].sigValue=gVehBatQf;
+    setTimerCyclic(t_BattU,0,50);
+  }
+}
+
+/// <ForDevice/UM&Batt>
+void StopBattU()
+{
+  if(IfNeedBattU>0)
+  {
+    StartBattU=-1;
+    cancelTimer(t_BattU);
+  }
+}

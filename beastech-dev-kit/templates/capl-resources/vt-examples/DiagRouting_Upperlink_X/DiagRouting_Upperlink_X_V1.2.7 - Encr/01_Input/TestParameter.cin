@@ -1,0 +1,233 @@
+/*@!Encoding:936*/
+/*@!Encoding:936*/
+variables
+{
+  char NodeName[30]="ZCUD";//节点名称，报告打印显示
+  char IP_Address1[32]="198.18.44.8";//ETH节点需填写IP地址
+  enum ECUName_List
+  {    
+    FunctionalReq   =   0,
+    GW              =   1 
+  };
+  
+  enum TestParameters
+  {
+//    ECUResetTime    = 8000,        //ECU重置时间
+//    EcuSum          =   39,        //路由地址个数+2
+    ECUResetTime    = 15000,        //ECU重置时间
+    EcuSum          =   36,        //路由地址个数+2
+    TransLatency_Ack_Confirm =  3, //Doip ACK确认时间
+    TransLatency_Doip2Doip   =  5, //Doip与Doip转发延迟
+    TransLatency_Doip2DoCAN  =  10,//Doip与DoCAN转发延迟
+    TransLatency_DoCAN2DoCAN =  10,//DoCAN与DoCAN转发延迟
+//    DomianFun_Sum   =   8,         //域功能寻址个数+1
+    DomianFun_Sum   =   1,         //域功能寻址个数+1
+//    Req_Sum         =   53,      //Boot下路由地址个数+2
+    NetworkNumber   = 6  ,         //所有的子网段数目
+
+	DiagReqLen = 1024,//上位机诊断请求长度
+   /*边缘节点DHU并行能力*/
+////    CANFD_CC_App   = 6,
+////    CANFD_CC_Boot  = 12,
+////    CAN_CC_App     = 3,
+////    CAN_CC_Boot    = 3,
+    /*域节点ZCUDM并行能力*/
+    CANFD_CC_App   = 3,
+    CANFD_CC_Boot  = 3,
+    CAN_CC_App     = 3,
+    CAN_CC_Boot    = 3,
+    
+    /*边缘节点:DHU*/
+////    requestBufferAPP_ETH      = 64 * 1024-1,  responseBufferAPP_ETH      = 16 * 1024-1, 
+////    requestBufferAPP_CANFD    = 4 * 1024-1,   responseBufferAPP_CANFD    = 4 * 1024-1,   
+////    requestBufferAPP_CAN      = 4 * 1024-1,   responseBufferAPP_CAN      = 4 * 1024-1,
+////    requestBufferBoot_ETH     = 64 * 1024-1,  responseBufferBoot_ETH     = 8 * 1024-1, 
+////    requestBufferBoot_CANFD   = 4 * 1024-1,   responseBufferBoot_CANFD   = 4 * 1024-1, 
+////    requestBufferBoot_CAN     = 4 * 1024-1,   responseBufferBoot_CAN     = 4 * 1024-1, 
+////    
+////    requestRAMAPP_ETH         = 128 * 1024-1, responseRAMAPP_ETH         = 64 * 1024-1,
+////    requestRAMAPP_CANFD       = 32 * 1024-1,  responseRAMAPP_CANFD       = 32 * 1024-1,
+////    requestRAMAPP_CAN         = 12 * 1024-1,  responseRAMAPP_CAN         = 8 * 1024-1,
+////    requestRAMBoot_ETH        = 128 * 1024-1, responseRAMBoot_ETH        = 8 * 1024-1, 
+////    requestRAMBoot_CANFD      = 48 * 1024-1,  responseRAMBoot_CANFD      = 8 * 1024-1,
+////    requestRAMBoot_CAN        = 24 * 1024-1,  responseRAMBoot_CAN        = 4 * 1024-1,
+////        
+////    requestBufferAPP_NUM_CANFD     = 80,      responseBufferAPP_NUM_CANFD     = 32, 
+////    requestBufferAPP_NUM_CAN       = 6,       responseBufferAPP_NUM_CAN       = 32, 
+////    requestBufferBoot_NUM_CANFD    = 80,      responseBufferBoot_NUM_CANFD    = 32,
+////    requestBufferBoot_NUM_CAN      = 6,       responseBufferBoot_NUM_CAN      = 32
+        
+    /*域节点：ZCUDM*/
+    requestBufferAPP_ETH      = 64 * 1024-1,  responseBufferAPP_ETH      = 16 * 1024-1, 
+    requestBufferAPP_CANFD    = 4 * 1024-1,   responseBufferAPP_CANFD    = 4 * 1024-1,   
+    requestBufferAPP_CAN      = 4 * 1024-1,   responseBufferAPP_CAN      = 4 * 1024-1,
+    requestBufferBoot_ETH     = 64 * 1024-1,  responseBufferBoot_ETH     = 8 * 1024-1, 
+    requestBufferBoot_CANFD   = 4 * 1024-1,   responseBufferBoot_CANFD   = 4 * 1024-1, 
+    requestBufferBoot_CAN     = 4 * 1024-1,   responseBufferBoot_CAN     = 4 * 1024-1, 
+    
+    requestRAMAPP_ETH         = 128 * 1024-1, responseRAMAPP_ETH         = 64 * 1024-1,
+    requestRAMAPP_CANFD       = 12 * 1024-1,  responseRAMAPP_CANFD       = 8 * 1024-1,
+    requestRAMAPP_CAN         = 12 * 1024-1,  responseRAMAPP_CAN         = 8 * 1024-1,
+    requestRAMBoot_ETH        = 128 * 1024-1, responseRAMBoot_ETH        = 8 * 1024-1, 
+    requestRAMBoot_CANFD      = 24 * 1024-1,  responseRAMBoot_CANFD      = 4 * 1024-1,
+    requestRAMBoot_CAN        = 24 * 1024-1,  responseRAMBoot_CAN        = 4 * 1024-1,
+    
+    requestBufferAPP_NUM_CANFD     = 32,      responseBufferAPP_NUM_CANFD     = 32, 
+    requestBufferAPP_NUM_CAN       = 32,       responseBufferAPP_NUM_CAN       =32, 
+    requestBufferBoot_NUM_CANFD    = 32,      responseBufferBoot_NUM_CANFD    = 32,
+    requestBufferBoot_NUM_CAN      = 32,       responseBufferBoot_NUM_CAN      = 32
+  };
+  
+  int ecunum[40][40];
+  struct  EcuAddress
+  {
+    word   SN;
+    word   domain;
+    char   RoutingNet[20];
+    word   SourceID;
+    word   TargetID;
+    char   EcuName[10];
+    char   Type[10];
+  };
+  
+  struct EcuAddress EcuAddressTable[EcuSum] = 
+  {
+  // SN  domain  RoutingNet  SourceID   TargetID    EcuName   Type
+    { 0,  0,     "Tester",    0x0E80,    0x1FFF,    "Func",   "CANFD"   },//功能寻址
+    { 1,  0,     "Tester",    0x0E80,    0x1D01,    "ZCUD" ,   "CANFD"   },//DHU
+        //Domain
+    { 2,  1, "Tester",           0x0e80, 0x1A15, "POT","CAN"  },
+    { 3,  1, "Tester",           0x0e80, 0x1A39, "SRS","CAN"  },
+    { 4,  1, "Tester",           0x0e80, 0x1A31, "SMBL","CAN" },
+    { 5,  1, "Tester",           0x0e80, 0x1A32, "SMBR","CAN" },
+    { 6,  1, "Tester",           0x0e80, 0x1A10, "RML","CAN"  },
+    { 7,  1, "Tester",           0x0e80, 0x1A11, "RMR","CAN"  },
+    { 8,  1, "Tester",           0x0e80, 0x1A29, "SMB","CAN"  },
+    { 9,  1, "Tester",           0x0e80, 0x1A17, "TRM","CAN"  },
+	{ 10, 1, "Tester",           0x0e80, 0x1A2A, "TCMB","CAN"  },
+    { 11, 1, "Tester",           0x0e80, 0x1A23, "SDL","CAN"  },
+    { 12, 1, "Tester",           0x0e80, 0x1A24, "SDR","CAN"  },
+	{ 13, 1, "Tester",           0x0e80, 0x1A3C, "OGM","CAN"  },
+	{ 14, 1, "Tester",           0x0e80, 0x1A36, "WPRL2","CAN"  },
+	{ 15, 1, "Tester",           0x0e80, 0x1A37, "WPRR2","CAN"  },
+	{ 16, 1, "Tester",           0x0e80, 0x1A30, "HRM","CAN"  },
+	//{ 17, 1, "Tester",           0x0e80, 0x1A3B, "SMT","CAN"  },
+	{ 17, 1, "Tester",           0x0e80, 0x1A26, "CRPM","CAN"  },
+	{ 18, 1, "Tester",           0x0e80, 0x1A2B, "WPC5","CAN"  },
+    { 19,  2, "RoutingCAN_NoDiag",0x0e80, 0x1670, "PSCM","CAN" },
+    { 20,  2, "RoutingCAN_NoDiag",0x0e80, 0x1672, "CSTM","CAN"  }, 
+	//{ 20,  2, "RoutingCAN_NoDiag",0x0e80, 0x1A40, "HWAM2","CAN"  }, 
+	//{ 21,  2, "RoutingCAN_NoDiag",0x0e80, 0x1A42, "HWAS2","CAN"  }, 
+	{ 21,  2, "RoutingCAN_NoDiag",0x0e80, 0x1671, "RASM","CAN"  },
+    //{ 23,  2, "RoutingCAN_NoDiag",0x0e80, 0x1A43, "RWAM2","CAN"  },
+	//{ 21,  2, "RoutingCAN_NoDiag",0x0e80, 0x167E, "RWAS2","CAN"  },
+	//{ 21,  2, "RoutingCAN_NoDiag",0x0e80, 0x1674, "PSCM2a","CAN"  },
+	{ 22,  3, "RoutingCAN_NoDiag",0x0e80, 0x1613, "RBCM","CANFD"}, 
+    //{ 23,  3, "RoutingCAN_NoDiag",0x0e80, 0x1614, "SUM","CANFD"}, 
+	{ 23,  3, "RoutingCAN_NoDiag",0x0e80, 0x1610, "ECM","CANFD"},  
+    { 24,  3, "RoutingCAN_NoDiag",0x0e80, 0x1612, "XCU","CANFD"},
+	{ 25,  4, "Tester",           0x0e80, 0x1A40, "HWAM2","CANFD"  },
+    { 26,  4, "Tester",           0x0e80, 0x1A42, "HWAS2","CANFD"  },
+    { 27,  4, "Tester",           0x0e80, 0x1A43, "RWAM2","CANFD"  },
+	{ 28,  4, "Tester",           0x0e80, 0x1A41, "SUM4","CANFD"  },
+	{ 29,  4, "Tester",           0x0e80, 0x1A44, "HVFM","CANFD"  },
+	{ 30,  5, "Tester",           0x0e80, 0x1A49, "DPOD2","CANFD"  },
+	{ 31,  5, "Tester",           0x0e80, 0x1A4A, "LPOD2","CANFD"  },
+	{ 32,  5, "Tester",           0x0e80, 0x1A48, "DDRM2","CANFD"  },
+	{ 33,  5, "Tester",           0x0e80, 0x1A4B, "RDRM2","CANFD"  },
+	{ 34,  6, "Tester",           0x0e80, 0x1BB3, "HCML3","CAN"  },
+	{ 35,  6, "Tester",           0x0e80, 0x1BB4, "HCMR3","CAN"  }
+	
+	
+  }; 
+    
+//  struct EcuAddress EcuAddressTable_Boot[Req_Sum] = 
+//  {
+//    { 0,  0,     "Tester",0x0E80,    0x1FFF,    "Func",   "ETH"   },//功能寻址
+//    { 1,  0,     "Tester",0x0E80,    0x1001,    "DHU" ,   "ETH"   },//DHU
+//    //Domain
+//    { 2, 1, "Tester",0x0e80, 0x1401, "ASDM","CANFD"  }, //ZCUCANFD1
+//    { 3, 1, "Tester",0x0e80, 0x1D81, "BCM","CANFD"  },
+//    { 4, 1, "Tester",0x0e80, 0x1B61, "BMS","CANFD"  },
+//    { 5, 1, "Tester",0x0e80, 0x1610, "ECM","CANFD"  },
+//    { 6, 1, "Tester",0x0e80, 0x1619, "EPB","CANFD"  },
+//    { 7, 1, "Tester",0x0e80, 0x1444, "FLR","CANFD"  },
+//    { 8, 1, "Tester",0x0e80, 0x1431, "FSRL5","CANFD"  },
+//    { 9, 1, "Tester",0x0e80, 0x1432, "FSRR5","CANFD"  },
+//    { 10, 1, "Tester",0x0e80, 0x1432, "GCM","CANFD"  },
+//    { 11, 1, "Tester",0x0e80, 0x1D85, "PAS3","CANFD"  },
+//    { 12, 1, "Tester",0x0e80, 0x1670, "PSCM","CANFD"  },
+//    { 13, 1, "Tester",0x0e80, 0x1613, "RBCM","CANFD"  },
+//    { 14, 1, "Tester",0x0e80, 0x1672, "SAS","CANFD"  },
+//    { 15, 1, "Tester",0x0e80, 0x1615, "SCL","CANFD"  },
+//    { 16, 1, "Tester",0x0e80, 0x1450, "SODL","CANFD"  },
+//    { 17, 1, "Tester",0x0e80, 0x1451, "SODR","CANFD"  },
+//    { 18, 1, "Tester",0x0e80, 0x1614, "SUM","CANFD"  },
+//    { 19, 1, "Tester",0x0e80, 0x1D22, "WPC1","CANFD"  },
+//    { 20, 1, "Tester",0x0e80, 0x1612, "XCU","CANFD"  },
+//    { 21, 2, "Tester",0x0e80, 0x1D03 , "DIM","CANFD"  },  //ZCUCANFD2
+//    { 22, 2, "Tester",0x0e80, 0x1BB3, "HCML","CANFD"  },
+//    { 23, 2, "Tester",0x0e80, 0x1BB4, "HCMR","CANFD"  },
+//    { 24, 2, "Tester",0x0e80, 0x1A15, "POT","CANFD"  },  
+//    { 25, 2, "Tester",0x0e80, 0x1A10, "POT","CANFD"  },
+//    { 26, 2, "Tester",0x0e80, 0x1A11, "POT","CANFD"  },
+//    { 27, 2, "Tester",0x0e80, 0x1A29, "POT","CANFD"  },
+//    { 28, 2, "Tester",0x0e80, 0x1A31, "POT","CANFD"  },
+//    { 29, 2, "Tester",0x0e80, 0x1A32, "POT","CANFD"  },
+//    { 30, 2, "Tester",0x0e80, 0x1A39, "POT","CANFD"  },
+//    { 31, 2, "Tester",0x0e80, 0x1B72, "POT","CANFD"  },
+//    { 32, 2, "Tester",0x0e80, 0x1A17, "POT","CANFD"  },
+//    { 33, 2, "Tester",0x0e80, 0x1D01, "POT","CANFD"  },
+//    { 33, 2, "Tester",0x0e80, 0x1D21, "POT","CANFD"  },
+//    { 35, 2, "Tester",0x0e80, 0x1D02, "POT","CANFD"  },
+//    { 36, 3, "Tester",0x0e80, 0x1261, "WPC3","CANFD"  },  //ConnectivityCANFD
+//    { 37, 3, "Tester",0x0e80, 0x1125, "WPC3","CANFD"  },
+//    { 38, 3, "Tester",0x0e80, 0x1126, "WPC3","CANFD"  },
+//    { 39, 4, "Tester",0x0e80, 0x1212, "AUD","CAN"  },    //PrivateInfoCAN
+//    { 40, 4, "Tester",0x0e80, 0x1214, "PDCM","CAN"  },
+//    { 41, 4, "Tester",0x0e80, 0x1216, "PDCM","CAN"  },
+//    { 42, 4, "Tester",0x0e80, 0x1218, "PDCM","CAN"  },
+//    { 43, 4, "Tester",0x0e80, 0x121B, "PDCM","CAN"  },
+//    { 44, 5, "Tester",0x0e80, 0x1635, "BECM","CAN"  },   //PropulsionCAN
+//    { 45, 5, "Tester",0x0e80, 0x1650, "CDD","CAN"  },
+//    { 46, 5, "Tester",0x0e80, 0x1633, "EGSM","CAN"  },
+//    { 47, 5, "Tester",0x0e80, 0x1656, "EGSM","CAN"  },
+//    { 48, 5, "Tester",0x0e80, 0x1637, "EGSM","CAN"  },
+//    { 49, 5, "Tester",0x0e80, 0x1636, "EGSM","CAN"  },
+//    { 50, 5, "Tester",0x0e80, 0x1632, "EGSM","CAN"  },
+//    { 51, 5, "Tester",0x0e80, 0x163B, "TMCU","CAN"  },
+//    { 52, 6, "Tester",0x0e80, 0x1101, "TCAM","ETH"  }   //TCAM
+//  };
+  
+  struct EcuAddress EcuAddressTable_Fun[DomianFun_Sum] = 
+  {
+    // SN  domain  RoutingNet  SourceID   TargetID     EcuName      Type
+    { 0,    0,     "Tester",   0x0E80,    0x1FFF,      "Func",      "CANFD"    }//功能寻址
+//    { 1,    0,     "Tester",   0x0e80,    0x10FF,      "WPC3",      "CANFD"  },
+//    /*域功能寻址转发多个子网段时填写多个：如0x11FF*/
+//    { 2,    6,     "Tester",   0x0e80,    0x11FF,      "WPC3",      "CANFD"  },
+//    { 3,    3,     "Tester",   0x0e80,    0x11FF,      "WPC3",      "CANFD"  },
+//    { 4,    4,     "Tester",   0x0e80,    0x12FF,      "AUD",       "CAN"    } , 
+//    { 5,    5,     "Tester",   0x0e80,    0x16FF,      "SODL",      "CANFD"  },
+//    { 6,    2,     "Tester",   0x0e80,    0x1DFF,      "POT",       "CANFD"  },
+//    { 7,    1,     "Tester",   0x0e80,    0x1CFF,      "POT",       "CANFD"  }
+  };
+}
+
+/*
+**获取ECU ID在路由表中的编号
+*/
+long GetEcuSN(word ecuAddress)
+{
+  word i = 0;
+
+  for(i=0;i<EcuSum;i++)
+	{
+		if(EcuAddressTable[i].TargetID == ecuAddress)
+		{
+			return i;
+		}
+	}
+  
+  return -1;
+}

@@ -1,0 +1,414 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{ 
+  enum ResponseCodeType
+  {
+    POSITIVERESPONSE = 0
+  };
+
+  struct  SDU_Data
+  {
+    word   SourceID;
+    word   TargetID;
+    dword  Length;
+    byte   Payload[65536];
+  };
+  struct ServiceVars
+  {
+    word   Flag;
+    word   Network_num;
+    word   Req_SPRMIB;
+    word   SID36_Counter;
+    word   SID2A_Response;
+    double TimeStamp;
+    word   QueueOrder;
+    struct SDU_Data Packet;
+  };
+  
+  struct ServiceVars  Response;
+  struct ServiceVars  Response_NRC;
+  
+  enum TestCase_List //用于Ecu仿真节点应答不同的数据
+  {
+    DID_EDA0_900B  =  5,
+    DID_EDA0_100B  =  1,
+    DID_EDA0_1kB   =  2,
+    DID_EDA0_4kB   =  3,
+    DID_EDA0_8kB   =  4
+  };
+}
+
+byte SID10_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  word SN,i;
+  
+  txPackage.Flag = 1;
+  txPackage.Packet.Length = 6;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1] & 0x7F;  //subfunction
+  txPackage.Packet.Payload[2] = 0x00;
+  txPackage.Packet.Payload[3] = 0x32;
+  txPackage.Packet.Payload[4] = 0x00;
+  txPackage.Packet.Payload[5] = 0xC8;
+  
+  if((rxPackage.Payload[1] & 0x80) == 0x80)
+  {
+    txPackage.Req_SPRMIB = 1;
+  }
+  else 
+  {
+    txPackage.Req_SPRMIB = 0;
+  }
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 11**********************************/
+byte SID11_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  word SN,i;
+  
+  txPackage.Flag = 1;
+  txPackage.Packet.Length = 2;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1] & 0x7F;  //subfunction
+  
+  if((rxPackage.Payload[1] & 0x80) == 0x80)
+  {
+    txPackage.Req_SPRMIB = 1;
+  }
+  else 
+  {
+    txPackage.Req_SPRMIB = 0;
+  }
+  
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 22**********************************/
+byte SID22_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  word  Identifier,SN;
+  dword i,j;
+  
+  txPackage.Flag = 1;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];         //ID_High
+  txPackage.Packet.Payload[2] = rxPackage.Payload[2];         //ID_Low
+  
+  Identifier = rxPackage.Payload[1] << 8 | rxPackage.Payload[2];
+  //write("1234!!! Response_data=%x",@GW::Response_data);
+  switch(Identifier)
+  {
+    case 0xF186: 
+    {
+      //WRITE("86");
+      txPackage.Packet.Length = 3 + 1;
+      txPackage.Packet.Payload[3] = 0x1;
+    }
+    break;
+    case 0xEDA0: 
+    {
+      txPackage.Packet.Length = @GW::Response_data;
+      for(i=3; i<txPackage.Packet.Length; i++)
+      {
+        if(((i - 3) % 14) / 7 == 0)
+        {
+          txPackage.Packet.Payload[i] = 0x33;
+        }
+        else 
+        {
+          txPackage.Packet.Payload[i] = 0x44;
+        }
+      }
+    }
+    break;
+    case 0xF12A:
+    {
+      txPackage.Packet.Length = 3;
+      //txPackage.Packet.Payload[3] = 0xAA;
+    }
+    break;
+    case 0xF18C:
+    {
+      txPackage.Packet.Length = 3;
+      //txPackage.Packet.Payload[3] = 0xAA;
+    }
+    break;
+    case 0xF125:
+    {
+      txPackage.Packet.Length = 3;
+      //txPackage.Packet.Payload[3] = 0xAA;
+    }
+    break;
+    case 0xF123:
+    {
+      txPackage.Packet.Length = 3;
+      //txPackage.Packet.Payload[3] = 0xAA;
+    }
+    break;
+    
+    default: break;
+  }
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 27**********************************/
+byte SID27_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  byte subFunction;
+  byte sendKey[4];
+  
+  txPackage.Flag = 1;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];         //subfunction
+  
+  subFunction = rxPackage.Payload[1];
+  switch(subFunction)
+  {  
+    case 0x01: 
+    {
+      txPackage.Packet.Length = 6;
+      sendKey[0] = rxPackage.Payload[2];
+      sendKey[1] = rxPackage.Payload[3];
+      sendKey[2] = rxPackage.Payload[4];
+      sendKey[3] = rxPackage.Payload[5];
+    }
+    break;
+    
+    case 0x02: 
+    {
+      txPackage.Packet.Length = 2;
+    }
+    break;
+  }
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 2A**********************************/
+//byte SID2A_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+//{
+//  byte i;
+//  
+//  txPackage.Packet.Length = 1;
+//  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+//  
+//  txPackage.SID2A_Response = 1;
+//  
+//  //获取sub-sequent response messages
+//  SID2A_SubSequentResponse.Request_Enable = 1;
+//  SID2A_SubSequentResponse.Length = rxPackage.Length-6;
+//  SID2A_SubSequentResponse.TransmissionMode = rxPackage.Payload[1];
+//  for(i=0; i<SID2A_SubSequentResponse.Length; i++)
+//  {
+//    SID2A_SubSequentResponse.PeriodicDataIdentifier[i] = rxPackage.Payload[2+i];
+//  }
+//  
+//  return POSITIVERESPONSE;
+//}
+
+//void SID2A_SubSequentResponse(struct ServiceVars txPackage)
+//{ 
+//  byte i;
+//    
+//  switch(SID2A_SubSequentResponse.PeriodicDataIdentifier[i])
+//  {
+//    case 0x01:
+//    {
+//      txPackage.Packet.Length = 2;
+//      txPackage.Packet.Payload[0] = SID2A_SubSequentResponse.PeriodicDataIdentifier[i];  //periodicDataIdentifier
+//      txPackage.Packet.Payload[1] = 01;
+//    }
+//    break;
+//  }
+//}
+
+/**********************************SID 2C**********************************/
+byte SID2C_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 4;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];         //sub-function
+  txPackage.Packet.Payload[2] = rxPackage.Payload[2];         //ID_High
+  txPackage.Packet.Payload[3] = rxPackage.Payload[3];         //ID_Low
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 2E**********************************/
+byte SID2E_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 3;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];         //ID_High
+  txPackage.Packet.Payload[2] = rxPackage.Payload[2];         //ID_Low
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 31**********************************/
+byte SID31_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  word RoutineID;
+  
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];         //routineControlType
+  txPackage.Packet.Payload[2] = rxPackage.Payload[2];         //ID_H
+  txPackage.Packet.Payload[3] = rxPackage.Payload[3];         //ID_L
+  
+  RoutineID = ((word)rxPackage.Payload[2] << 8) | rxPackage.Payload[3];
+  if(rxPackage.Payload[1] == 0x1) //startRoutine
+  {
+    switch(RoutineID)
+    {
+      case 0x0206:  //Prepare to enter programming mode
+      {
+        txPackage.Packet.Length = 4 + 2;
+        txPackage.Packet.Payload[4] = 0x01;
+        txPackage.Packet.Payload[5] = 0x01;
+      }
+      break; 
+      case 0xFF00:  //Erase Memory
+      {
+        txPackage.Packet.Length = 4 + 1;
+        txPackage.Packet.Payload[4] = 0x01;
+      }
+      break;
+      case 0x0301:  //
+      {
+        txPackage.Packet.Length = 4 + 1;
+        txPackage.Packet.Payload[4] = 0x01;
+      }
+      break;
+      case 0x0205:  //
+      {
+        txPackage.Packet.Length = 4 + 1;
+        txPackage.Packet.Payload[4] = 0x01;
+      }
+      break;
+      case 0xFF01:  //CheckProgramming
+      {
+        txPackage.Packet.Length = 4 + 1;
+        txPackage.Packet.Payload[4] = 0x01;
+      }
+      break;
+    }
+  }
+  
+  return POSITIVERESPONSE;
+}
+/**********************************SID 34**********************************/
+byte SID34_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 1;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[2] & 0xF0;  //lengthFormatIdentifier
+  txPackage.Packet.Payload[2] = 0x00;                              //maxNumberOfBlockLength
+  txPackage.Packet.Payload[3] = 0x00;
+  txPackage.Packet.Payload[4] = 0x04;
+  txPackage.Packet.Payload[5] = 0x00;  //1kB 长度待定
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 35**********************************/
+byte SID35_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 6;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[2] & 0xF0;  //lengthFormatIdentifier
+  txPackage.Packet.Payload[2] = 0x00;                              //maxNumberOfBlockLength
+  txPackage.Packet.Payload[3] = 0x00;
+  txPackage.Packet.Payload[4] = 0x10;
+  txPackage.Packet.Payload[5] = 0x00;  //4kB 长度待定
+  
+  txPackage.SID36_Counter = 0;
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 36**********************************/
+byte SID36_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  //write("36resp");
+  if(@GW::QueRequest_flag==1)
+  {
+    txPackage.Packet.Length = 2;
+    txPackage.Packet.Payload[0] = rxPackage.Payload[0]+0x40;  
+    txPackage.Packet.Payload[1] = rxPackage.Payload[1];         
+    txPackage.Flag = 1;   
+  }
+  else
+  {
+    txPackage.Packet.Length = 3;
+    txPackage.Packet.Payload[0] = 0x7F;  
+    txPackage.Packet.Payload[1] = rxPackage.Payload[0];  
+    txPackage.Packet.Payload[2] = rxPackage.Payload[1];         
+    txPackage.Flag = 1;
+  }
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 37**********************************/
+byte SID37_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 2;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  txPackage.Packet.Payload[1] = rxPackage.Payload[1];       
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID 3E**********************************/
+byte SID3E_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  txPackage.Packet.Length = 1;
+  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+  
+  if((rxPackage.Payload[1] & 0x80) == 0x80)
+  {
+    txPackage.Req_SPRMIB = 1;
+  }
+  else 
+  {
+    txPackage.Req_SPRMIB = 0;
+  }
+  
+  return POSITIVERESPONSE;
+}
+
+/**********************************SID A5**********************************/
+byte SIDA5_Response(struct ECU_SDU rxPackage, struct ServiceVars txPackage)
+{
+  int i;
+  if(@GW::Response_data == 1 )
+  {
+    txPackage.Packet.Length=responseBufferAPP1;
+    for(i=0;i<txPackage.Packet.Length;i++)
+      txPackage.Packet.Payload[i]=0xA5;
+  }
+  else if(@GW::Response_data == 2)
+  {
+    txPackage.Packet.Length=responseBufferBoot1;
+    for(i=0;i<txPackage.Packet.Length;i++)
+      txPackage.Packet.Payload[i]=0xA5;
+  }
+  else
+  {
+    txPackage.Packet.Length = rxPackage.Length;
+    memcpy(txPackage.Packet.Payload,rxPackage.Payload,txPackage.Packet.Length);
+  }
+//////  txPackage.Packet.Payload[0] = rxPackage.Payload[0] | 0x40;  //SID
+//////  txPackage.Packet.Payload[1] = rxPackage.Payload[1];       
+  txPackage.Flag = 1;
+  
+  return POSITIVERESPONSE;
+}

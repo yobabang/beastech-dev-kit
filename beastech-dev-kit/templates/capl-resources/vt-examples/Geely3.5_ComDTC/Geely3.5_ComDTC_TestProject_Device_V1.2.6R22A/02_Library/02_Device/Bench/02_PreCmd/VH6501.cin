@@ -1,0 +1,432 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+/**************
+适用于波特率为500K
+***************/
+variables
+{
+  long DeviceID,DisturbanceChannel;
+  enum VH6501_FaultType{CANH_ShortTo_CANL,CANH_BAT,CANH_GND,CANL_BAT,CANL_GND,CANH_Swap_CANL};
+  int64 VH6501_ResistanceOff=2147483647;
+  int VH6501_CANH_State = 0;
+  int VH6501_CANL_State = 0;
+}
+
+void VH6501_Init()
+{
+  DeviceID = @sysvar::CANDisturbanceInterface1::DeviceNo;
+  DisturbanceChannel = @sysvar::CANDisturbanceInterface1::ChannelNo;
+  VH6501_Reset();
+  testWaitForTimeout(100);
+}
+
+void VH6501_Reset()
+{
+      @sysvar::CANDisturbanceInterface1::Switches::CANh_CANl_Swap::Value=0;//CAN_H和CAN_L互换故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_CANl::Value=2147483647;//CAN_H和CAN_L短接故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=2147483647;//CAN_H和电源短接故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=2147483647;//CAN_H和地短接故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=2147483647;//CAN_L和电源短接故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=2147483647;//CAN_L和地短接故障移除
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Mode=1;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Mode=0;
+      @sysvar::CANDisturbanceInterface1::Capacitors::CANh_CANl::Value=0;//电容OFF
+  canDisturbanceTriggerDisable(DeviceID);
+  testStep("Step","Reset device VH6501");
+}
+
+
+//发送报文0x001，DLC=8，数据场全为0xAA，包含位填充
+//对数据场靠后的一个显性位，从最后一个TQ开始往前翻转，翻转TQ数目为BtlNumber
+void VH6501_SamplePointTestTriggerSet(long BtlNumber) 
+{
+
+    CanDisturbanceSequence     sequence;
+    CanDisturbanceFrameTrigger   frameTrigger;
+    message *                triggerMessage;
+    long                         validityMask;
+    long                       result;
+    long                       segmentCount;  
+  int i;
+  
+  sequence.Clear(); //清除序列
+  
+  //输入序列至VH6501寄存器
+   sequence.AppendToSequence(1600, 'd');
+   sequence.AppendToSequence(320, 'R');
+   sequence.AppendToSequence(1600, 'd');
+   sequence.AppendToSequence(320, 'R');
+   sequence.AppendToSequence(320, 'd'); 
+   sequence.AppendToSequence(320, 'R');//SOF+ID :0 0000S00000S01
+   sequence.AppendToSequence(960, 'd');//RTR+IDE+FDF:0 0 0
+   sequence.AppendToSequence(320, 'R');
+   sequence.AppendToSequence(960, 'd');//DLC:1000
+  for(i=1;i<=30;i++)  //data: 101010...
+  {
+   sequence.AppendToSequence(320, 'R');
+   sequence.AppendToSequence(320, 'd');
+  }
+   sequence.AppendToSequence(320, 'R');
+   sequence.AppendToSequence(320, 'd');//
+//   sequence.AppendToSequence(BtlNumber, 'r');//要干扰的位
+  sequence.AppendToSequence(320-BtlNumber, 'R');//
+   sequence.AppendToSequence(320+BtlNumber, 'd');//干扰位无法为最后一个显性位，因为sequence序列中数目不能为0
+   sequence.AppendToSequence(640, 'd');
+   sequence.AppendToSequence(640, 'r');
+   sequence.AppendToSequence(960, 'd');
+   sequence.AppendToSequence(320, 'r');
+   sequence.AppendToSequence(320, 'd');
+   sequence.AppendToSequence(960, 'r');
+   sequence.AppendToSequence(320, 'd');
+   sequence.AppendToSequence(640, 'r');//CRC:001100010111011,0x18BB
+   sequence.AppendToSequence(960, 'r');//CRC.DEL+ACK+ACK.DEL:1 1 1，自身不给ACK
+   sequence.AppendToSequence(2240, 'r');//EOF:
+
+  
+   segmentCount = sequence.segmentCount;
+
+  testWaitForTimeout(1);//
+  
+    if(segmentCount == 83)//寄存器序列数目核对
+    {
+//      validityMask=@sysvar::CanDisturbance::Enums::ValidityMaskFlags::IDBase;
+      frameTrigger.SetMessage(triggerMessage, DeviceID, validityMask);
+      frameTrigger.TriggerFieldType =@sysvar::CanDisturbance::Enums::FieldType::EndOfFrame;
+      frameTrigger.TriggerFieldOffset=10;//收到触发条件，偏差后触发,此值为20，调试时为任意一帧EOF完成后30us（15bit）发出序列
+                                         //即触发时间为EOF第2位结束（算上延迟）
+                                            //注意：如果控制器报文处于burst发送，必定出现错误帧！
+      result = canDisturbanceTriggerEnable(DeviceID, frameTrigger, sequence);//发送序列至总线
+      if(result == 1)
+      {
+        write("Trigger is successful！");
+      }
+      else
+      {
+        testStepfail("Fail","Disturbance fail -> Enable trigger error, Result =%d", result);
+      }
+    }
+    else
+    {
+      testStepfail("Fail","Device fail -> segmentCount=%d is wrong,expect count is 83!",segmentCount);
+    }
+}
+
+
+
+void VH6501_RTRBitDisturbance(dword DistID,dword DistNumber)//对ID为DistID的报文进行RTR位干扰，干扰次数为DistNumber
+{
+  
+    CanDisturbanceFrameTrigger         FrameTrigger;
+    CanDisturbanceSequence             Sequence;
+    CanDisturbanceTriggerRepetitions   Repetitions;
+    long                               Result;
+    message*                           TriggerMessage;
+    long                               ValidityMask;
+    TriggerMessage.id=DistID;
+    //clear the Sequence
+    Sequence.Clear();
+    ValidityMask = @sysvar::CanDisturbance::Enums::ValidityMaskFlags::IDBase;
+    FrameTrigger.SetMessage(TriggerMessage, DeviceID, ValidityMask);
+
+    FrameTrigger.TriggerFieldType =@sysvar::CanDisturbance::Enums::FieldType::RemoteBase;
+    FrameTrigger.TriggerFieldOffset = 0;
+  
+    Repetitions.Cycles=1;
+    Repetitions.HoldOffCycles = 1;
+    Repetitions.HoldOffRepetitions = 0;
+    Repetitions.Repetitions = DistNumber;
+    Result = Sequence.AppendToSequence(5*320, 'R');
+  
+    if(Result == 1)
+    {
+      Result = canDisturbanceTriggerEnable(DeviceID, FrameTrigger, Sequence, Repetitions);
+      if(Result == 1)
+      {
+        write("Trigger is successful！");
+      }
+      else
+      {
+        teststepfail("Chk","Enable trigger error Result =%d", Result);
+      }
+    }
+    else
+    {
+      teststepfail("Chk","Append segment to Sequence");
+    }
+}
+
+void VH6501_AckDelimiterDisturbance(dword DistID,dword DistNumber)
+{
+    CanDisturbanceFrameTrigger         FrameTrigger;
+    CanDisturbanceSequence             Sequence;
+    CanDisturbanceTriggerRepetitions   Repetitions;
+    long                               Result;
+    long                               ValditiyMask;
+    message*                           TriggerMessage;
+    long                               ValidityMask;
+    TriggerMessage.id=DistID;
+    //clear the Sequence
+    Sequence.Clear();
+    ValidityMask = @sysvar::CanDisturbance::Enums::ValidityMaskFlags::IDBase;
+    FrameTrigger.SetMessage(TriggerMessage, DeviceID, ValidityMask);
+
+    FrameTrigger.TriggerFieldType=@sysvar::CanDisturbance::Enums::FieldType::AckSlot;
+    FrameTrigger.TriggerFieldOffset = 0;
+    
+    Repetitions.Cycles=1;
+    Repetitions.HoldOffCycles = 1;
+    Repetitions.HoldOffRepetitions = 0;
+    Repetitions.Repetitions = DistNumber;
+    Result = Sequence.AppendToSequence(320, 'd');
+  
+    if(Result == 1)
+    {
+      Result = canDisturbanceTriggerEnable(DeviceID, FrameTrigger, Sequence, Repetitions);
+      if(Result == 1)
+      {
+        testStepPass("Chk","Trigger is successful");
+      }
+      else
+      {
+        teststepfail("Chk","Enable trigger error Result =%d", Result);
+      }
+    }
+    else
+    {
+      teststepfail("Chk","Append segment To Sequence");
+    }
+}
+
+//对所有报文有效，在报文第一字节直接输入6个显性位，干扰次数为DistCycle*DistNumber
+//可用于干扰进入busoff，设置干扰次数为较大值，等待时间后disable
+void VH6501_AllMessageContinueDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+    CanDisturbanceFrameTrigger         FrameTrigger;
+    CanDisturbanceSequence             Sequence;
+    CanDisturbanceTriggerRepetitions   Repetitions;
+    long                               Result;
+    message*                           TriggerMessage;
+    long                               ValidityMask;
+  
+    Sequence.Clear();
+    FrameTrigger.SetMessage(TriggerMessage, DeviceID, ValidityMask);
+
+    FrameTrigger.TriggerFieldType = @sysvar::CanDisturbance::Enums::FieldType::DataByte0;
+    FrameTrigger.TriggerFieldOffset = 0;
+  
+    Repetitions.Cycles=DistCycle;
+    Repetitions.HoldOffCycles = 0;
+    Repetitions.HoldOffRepetitions = 0;
+    Repetitions.Repetitions = DistNumber;
+    Result = Sequence.AppendToSequence(8*320, 'd');//6 continue dominant
+  
+    if(Result == 1)
+    {
+      Result = canDisturbanceTriggerEnable(DeviceID, FrameTrigger, Sequence,Repetitions);
+      if(Result == 1)
+      {
+        write("Trigger is successful");
+      }
+      else
+      {
+        teststepfail("step","Enable trigger error Result =%d", Result);
+      }
+    }
+    else
+    {
+      teststepfail("Append segment to Sequence");
+    }
+}
+
+void VH6501_AllAckDelimiterDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+    CanDisturbanceFrameTrigger         FrameTrigger;
+    CanDisturbanceSequence             Sequence;
+    CanDisturbanceTriggerRepetitions   Repetitions;
+    long                               Result;
+    message*                           TriggerMessage;
+    long                               ValidityMask;
+  
+    Sequence.Clear();
+    FrameTrigger.SetMessage(TriggerMessage, DeviceID, ValidityMask);
+
+    FrameTrigger.TriggerFieldType = @sysvar::CanDisturbance::Enums::FieldType::AckSlot;
+    FrameTrigger.TriggerFieldOffset = 0;
+  
+    Repetitions.Cycles=DistCycle;
+    Repetitions.HoldOffCycles = 0;
+    Repetitions.HoldOffRepetitions = 0;
+    Repetitions.Repetitions = DistNumber;
+    Result = Sequence.AppendToSequence(3*320, 'd');
+  
+    if(Result == 1)
+    {
+      Result = canDisturbanceTriggerEnable(DeviceID, FrameTrigger, Sequence,Repetitions);
+      if(Result == 1)
+      {
+        write("Trigger is successful");
+      }
+      else
+      {
+        teststepfail("step","Enable trigger error Result =%d", Result);
+      }
+    }
+    else
+    {
+      teststepfail("Append segment to Sequence");
+    }
+}
+
+void VH6501_AllRTRDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+    CanDisturbanceFrameTrigger         FrameTrigger;
+    CanDisturbanceSequence             Sequence;
+    CanDisturbanceTriggerRepetitions   Repetitions;
+    long                               Result;
+    message*                           TriggerMessage;
+    long                               ValidityMask;
+  
+    Sequence.Clear();
+    FrameTrigger.SetMessage(TriggerMessage, DeviceID, ValidityMask);
+
+    FrameTrigger.TriggerFieldType = @sysvar::CanDisturbance::Enums::FieldType::IDBase;
+    FrameTrigger.TriggerFieldOffset = 8;
+  
+    Repetitions.Cycles=DistCycle;
+    Repetitions.HoldOffCycles = 0;
+    Repetitions.HoldOffRepetitions = 0;
+    Repetitions.Repetitions = DistNumber;
+    Result = Sequence.AppendToSequence(5*320, 'R');
+  
+    if(Result == 1)
+    {
+      Result = canDisturbanceTriggerEnable(DeviceID, FrameTrigger, Sequence,Repetitions);
+      if(Result == 1)
+      {
+        write("Trigger is successful");
+      }
+      else
+      {
+        teststepfail("step","Enable trigger error Result =%d", Result);
+      }
+    }
+    else
+    {
+      teststepfail("Append segment to Sequence");
+    }
+}
+void VH6501_CANBusFaultSet(enum VH6501_FaultType FaultType)
+{  
+  switch(FaultType)
+  {
+    case CANH_ShortTo_CANL://CAN_H和CAN_L短接
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_CANl::Value=0;
+      testStep("Step","Set CAN bus fault: CANH short to CANL!");
+      break;
+      
+    case CANH_BAT://CAN_H和电源短接
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Mode=1;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=0;
+      testStep("Step","Set CAN bus fault: CANH short to battery!");
+      break;
+      
+    case CANH_GND://CAN_H和地短接
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Mode=0;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=0;
+      testStep("Step","Set CAN bus fault: CANH short to GND!");
+      break;
+      
+    case CANL_BAT://CAN_L和电源短接
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Mode=1;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=0;
+      testStep("Step","Set CAN bus fault: CANL short to battery!");
+      break;
+      
+    case CANL_GND://CAN_L和地短接
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Mode=0;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=0;
+      testStep("Step","Set CAN bus fault: CANL short to GND!");
+      break;
+      
+    case CANH_Swap_CANL://CAN_H和CAN_L互换
+      @sysvar::CANDisturbanceInterface1::Switches::CANh_CANl_Swap::Value=1;
+      testStep("Step","Set CAN bus fault: CANH and CANL swap!");
+      break;
+    
+    Default:
+      testStepFail("Fail","Set fail -> Unknown type of VH6501_CANBusFaultSet!");
+      break;
+  }
+}
+
+void VH6501_CapacitanceSet(enum VH6501_FaultType Type, long capacitance)//设置电容,值为capacitance，单位pF
+{
+  switch(Type)
+  {
+    case CANH_ShortTo_CANL://CANH和CANL之间的电容值
+      @sysvar::CANDisturbanceInterface1::Capacitors::CANh_CANl::Value=capacitance;
+      testStep("Context","Capacitance value: CAN_H to CAN_L is %d pf!",capacitance);
+      break;
+//    case CANH_GND:
+//      
+//      testStep("Context","Capacitance value: CAN_H to GND is %d pf!",capacitance);
+//      break;
+//    case CANH_BAT:
+//      
+//      testStep("Context","Capacitance value: CAN_H to Battery is %d pf!",capacitance);
+//      break;
+//    case CANL_GND:
+//      
+//      testStep("Context","Capacitance value: CAN_L to GND is %d pf!",capacitance);
+//      break;
+//    case CANL_BAT:
+//      
+//      testStep("Context","Capacitance value: CAN_L to Battery is %d pf!",capacitance);
+//      break;
+
+    default:
+      testStepFail("Fail","Set fail -> Unknown type of SetCANCapacitance!");
+      break;
+  }    
+}
+
+void VH6501_ResistanceSet(enum VH6501_FaultType Type, long resistance)//设置电阻,值为resistance，单位Ω
+{
+  switch(Type)
+  {
+    case CANH_ShortTo_CANL://CANH和CANL间电阻值
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_CANl::Value=resistance;
+      testStep("Context","Resistance value: CAN_H to CAN_L is %d Ω!",resistance);
+      break;
+    case CANH_GND://CANH和地之间的电阻值
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Mode=1;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=resistance;
+      testStep("Context","Resistance value: CAN_H to GND is %d Ω!",resistance);
+      break;
+    case CANH_BAT://CANH和电源之间的电阻值
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Mode=0;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANh_S::Value=resistance;
+      testStep("Context","Resistance value: CAN_H to Battery is %d Ω!",resistance);
+      break;
+    case CANL_GND://CANL和地之间的电阻值
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Mode=1;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=resistance;
+      testStep("Context","Resistance value: CAN_L to GND is %d Ω!",resistance);
+      break;
+    case CANL_BAT://CANL和电源之间的电阻值
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Mode=0;
+      @sysvar::CANDisturbanceInterface1::Resistors::CANl_S::Value=resistance;
+      testStep("Context","Resistance value: CAN_L to Battery is %d Ω!",resistance);
+      break;
+    default:
+      testStepFail("Fail","Set fail -> Unknown type of SetCANResistance!");
+      break;
+  }    
+}

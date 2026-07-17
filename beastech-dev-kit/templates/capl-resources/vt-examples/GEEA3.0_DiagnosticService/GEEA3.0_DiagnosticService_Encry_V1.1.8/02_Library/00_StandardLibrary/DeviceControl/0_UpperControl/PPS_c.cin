@@ -1,0 +1,56 @@
+/*@!Encoding:936*/
+variables
+{
+  float gCurrentLimit = 20;
+}
+
+void PPS_InitConfig()
+{
+  @sysvar::DeviceControl::PPS::InitConfig = 1;
+}
+
+//设置电压
+void PPS_SetVoltage(float V)
+{
+  @sysvar::DeviceControl::PPS::settingVoltage = V;
+  testWaitForTimeout(100);
+}
+
+//设置电压和电流
+void PPS_SetVoltage(float V, float C)
+{
+  @sysvar::DeviceControl::PPS::settingVoltage = V;
+  testWaitForTimeout(100);
+  @sysvar::DeviceControl::PPS::settingCurrent = C;
+  testWaitForTimeout(100);
+}
+
+//获取电压值
+float PPS_VoltageGet()
+{
+  float Voltage;
+  Voltage = @sysvar::DeviceControl::PPS::readingVoltage;
+  
+  if(Voltage == 0)
+  {
+    Voltage = @sysvar::DeviceControl::PPS::settingVoltage;
+  }
+  return Voltage;
+}
+
+//获取电压值
+float PPS_CurrentGet()
+{
+  float Current;
+  @sysvar::DeviceControl::PPS::getCurrent = 1;
+  testWaitForTimeout(10);
+  Current = @sysvar::DeviceControl::PPS::readingCurrent;
+  write("Current=%5.3f",Current);
+  return Current;
+}
+
+//设置电源输出状态（off=0 on=1）
+void PPS_Output(int status)
+{
+  @sysvar::DeviceControl::PPS::output = status;
+}

@@ -1,0 +1,440 @@
+/*@!Encoding:936*/
+
+variables
+{
+  enum PPS_OutputSts{PPS_On,PPS_Off};
+}
+
+//void PPS_InitConfig()
+//{
+//  PPS_OutputStsSet(PPS_Off);
+//  testWaitForTimeout(100);
+//  PPS_Shift_OutputStsSet(PPS_Off);
+//  testWaitForTimeout(100);
+//  PPS_PowerSet(13.8,3);
+//  testWaitForTimeout(100);
+//  PPS_Shift_PowerSet(0,3);
+//  PPS_OutputStsSet(PPS_On);
+//  testWaitForTimeout(100);
+//  PPS_Shift_OutputStsSet(PPS_On);
+//}
+
+on sysvar_update sysvar::PPS::PPS_InitConfig
+{
+  @sysvar::PPS::PPS_OutputStsSet=0;//OFF
+  @sysvar::PPS::PPS_Shift_OutputStsSet=0;//OFF
+  @sysvarMember::PPS::PPS_PowerSet[0]=13.8;//Volt
+  @sysvarMember::PPS::PPS_PowerSet[1]=20;//Curr
+  @sysvar::PPS::PPS_Shift_PowerSet[0]=0;//Volt
+  @sysvar::PPS::PPS_Shift_PowerSet[1]=5;//Curr
+  testWaitForTimeout(3000);
+  @sysvar::PPS::PPS_OutputStsSet=1;//ON
+  @sysvar::PPS::PPS_Shift_OutputStsSet=0;//OFF
+
+}
+
+//void PPS_OutputStsSet(enum PPS_OutputSts Sts)
+//{
+//  if(Sts==PPS_On)
+//    Agilent_PPS_On();
+//  else
+//    Agilent_PPS_Off();
+//}
+
+on sysvar_update sysvar::PPS::PPS_OutputStsSet
+{
+  if(@this==1)
+    @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_OnOff=1;
+  else
+    @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_OnOff=0;
+}
+
+//void PPS_Shift_OutputStsSet(enum PPS_OutputSts Sts)
+//{
+//  if(Sts==PPS_On)
+//    Agilent_Offset_PPS_On();
+//  else
+//    Agilent_Offset_PPS_Off();
+//}
+
+on sysvar_update sysvar::PPS::PPS_Shift_OutputStsSet
+{
+  if(@this==1)
+    @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_Offset_PPS_OnOff=1;
+  else
+    @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_Offset_PPS_OnOff=0;
+}
+
+//void PPS_Shift_VoltageSet(float Volt)
+//{
+//  char c1[100]="";
+//  char Voltage[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv;
+//  if(Volt>30)
+//    iv=30;
+//  else
+//    iv=Volt;
+//  
+//  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+//  snprintf(Voltage,10,"%.2f", iv);
+//  str_replace_regex(c1,"Parameter1",Voltage);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd,PPS_Socket);
+//}
+
+on sysvar_update sysvar::PPS::PPS_Shift_VoltageSet
+{
+  char c1[100]="";
+  char Voltage[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  double Volt;
+  Volt=@this;
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+  
+  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+//
+//void PPS_Shift_CurrentSet(float Curr)
+//{
+//  char c1[100]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv;
+//  if(Curr>20)
+//    iv=20;
+//  else
+//    iv=Curr;
+//  strncpy(c1,"CURR:LIM Parameter1, (@1)\n",100);
+//  snprintf(Current,10,"%.2f", iv);
+//  str_replace_regex(c1,"Parameter1",Current);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd,PPS_Socket);
+//}
+
+on sysvar_update sysvar::PPS::PPS_Shift_CurrentSet
+{
+  char c1[100]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  double Curr;
+  Curr=@this;
+  if(Curr>20)
+    iv=20;
+  else
+    iv=Curr;
+  strncpy(c1,"CURR:LIM Parameter1, (@1)\n",100);
+  snprintf(Current,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Current);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+
+//void PPS_Shift_PowerSet(float Volt,float Curr)
+//{
+//  char c1[100]="";
+//  char c2[100]="";
+//  char Voltage[10]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv,ic;
+//  if((Volt>6))
+//    iv=6;
+//  else
+//    iv=Volt;
+//  if(Curr>3)
+//    ic=3;
+//  else
+//    ic=Curr;
+//  writeToLog("Voltage = %f Current Limit = %f",iv,ic);
+//  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+//  strncpy(c2,"CURR:LIM Parameter2, (@1)\n",100);
+//  snprintf(Voltage,10,"%.2f", iv);
+//  snprintf(Current,10,"%.2f", ic);
+//  str_replace_regex(c1,"Parameter1",Voltage);
+//  str_replace_regex(c2,"Parameter2",Current); 
+//  strncpy(cmd,c2,100);
+//  SendTcpData(cmd,PPS_Socket);
+//  testWaitForTimeout(100);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd,PPS_Socket);
+//}
+
+
+on sysvar_update sysvar::PPS::PPS_Shift_PowerSet
+{
+  char c1[100]="";
+  char c2[100]="";
+  char Voltage[10]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv,ic;
+  double Volt;
+  double Curr;
+  Volt=@this[0];
+  Curr=@this[1];
+  if((Volt>6))
+    iv=6;
+  else
+    iv=Volt;
+  if(Curr>5)
+    ic=5;
+  else
+    ic=Curr;
+  writeToLog("Voltage = %f Current Limit = %f",iv,ic);
+  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+  strncpy(c2,"CURR:LIM Parameter2, (@1)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  snprintf(Current,10,"%.2f", ic);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  str_replace_regex(c2,"Parameter2",Current); 
+  strncpy(cmd,c2,100);
+  SendTcpData(cmd,PPS_Socket);
+//  testWaitForTimeout(100);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+
+void PPS_VoltageSet(float Volt)
+{
+  char c1[100]="";
+  char Voltage[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+on sysvar_update sysvar::PPS::PPS_VoltageSet
+{
+  char c1[100]="";
+  char Voltage[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  double Volt;
+  Volt=@this;
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+//void PPS_CurrentSet(float Curr)
+//{
+//  char c1[100]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv;
+//  if(Curr>20)
+//    iv=20;
+//  else
+//    iv=Curr;
+//  strncpy(c1,"CURR Parameter1, (@2)\n",100);
+//  snprintf(Current,10,"%.2f", iv);
+//  str_replace_regex(c1,"Parameter1",Current);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd,PPS_Socket);
+//}
+
+on sysvar_update sysvar::PPS::PPS_CurrentSet
+{
+  char c1[100]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  double Curr;
+  Curr=@this;
+  if(Curr>20)
+    iv=20;
+  else
+    iv=Curr;
+  strncpy(c1,"CURR Parameter1, (@2)\n",100);
+  snprintf(Current,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Current);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+//void PPS_PowerSet(float Volt,float Curr)
+//{
+//  char c1[100]="";
+//  char c2[100]="";
+//  char Voltage[10]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv,ic;
+//  if(Volt>30)
+//    iv=30;
+//  else
+//    iv=Volt;
+//  if(Curr>3)
+//    ic=3;
+//  else
+//    ic=Curr;
+//  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+//  strncpy(c2,"CURR Parameter2, (@2)\n",100);
+//  snprintf(Voltage,10,"%.2f", iv);
+//  snprintf(Current,10,"%.2f", ic);
+//  str_replace_regex(c1,"Parameter1",Voltage);
+//  str_replace_regex(c2,"Parameter2",Current);
+//  strncpy(cmd,c2,100);
+//  SendTcpData(cmd,PPS_Socket);
+//  testWaitForTimeout(100);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd,PPS_Socket);
+//}
+
+on sysvar_update sysvar::PPS::PPS_PowerSet
+{
+  char c1[100]="";
+  char c2[100]="";
+  char Voltage[10]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv,ic;
+  double Volt;
+  double Curr;
+  Volt=@this[0];
+  Curr=@this[1];
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+//  if(Curr>3)
+//    ic=3;
+  if(Curr>20)
+    ic=20;
+  else
+    ic=Curr;
+  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+  strncpy(c2,"CURR Parameter2, (@2)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  snprintf(Current,10,"%.2f", ic);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  str_replace_regex(c2,"Parameter2",Current);
+  strncpy(cmd,c2,100);
+  SendTcpData(cmd,PPS_Socket);
+//  testWaitForTimeout(100);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd,PPS_Socket);
+}
+
+
+//double PPS_CurrentMeasure()
+//{
+//  double Curr;
+//  Agilent_PPS_CURRENT_MEAS();
+//  TestWaitForTimeout(500);
+//  strtod(PPS_RecvData,Curr);
+//  teststep("Info","Current:%fA",Curr);
+////  write ("Curr = %f",Curr);
+//  return(Curr);
+//}
+
+on sysvar_update sysvar::PPS::PPS_CurrentMeasure
+{
+  double Curr;
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_CURRENT_MEAS=1;
+//  TestWaitForTimeout(500);
+  strtod(PPS_RecvData,Curr);
+  @sysvar::PPS::PPS_CurrentMeasure_Value=Curr;
+//  teststep("Info","Current:%fA",Curr);
+//  write ("Curr = %f",Curr);
+//  return(Curr);
+}
+
+
+//double PPS_VoltageMeasure()
+//{
+//  double Volt;
+//  Agilent_PPS_VOLTAGE_MEAS();
+//  TestWaitForTimeout(500);
+//  strtod(PPS_RecvData,Volt);
+//  teststep("Info","Current:%fV",Volt);
+////  write ("Volt = %f",Volt);
+//  return(Volt);
+//}
+
+on sysvar_update sysvar::PPS::PPS_VoltageMeasure
+{
+  double Volt;
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_VOLTAGE_MEAS=1;
+//  TestWaitForTimeout(500);
+  write ("TIME %f",timenow()/100.0);
+  strtod(PPS_RecvData,Volt);
+  @sysvar::PPS::PPS_VoltageMeasure_Value=Volt;
+//  teststep("Info","Current:%fV",Volt);
+//  write ("Volt = %f",Volt);
+//  return(Volt);
+}
+
+//void PPS_ShowVoltage(int Vtype, double CycleTime)
+//{
+//  switch (Vtype)
+//  {
+//    case 1:
+//  sysvar::VTS::M1_Out1::AvgVoltage.SetTransferCycle(CycleTime);
+//
+//      break;
+//    case 2:
+//  sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(CycleTime);
+//
+//      break;
+//    default:
+//      testStepFail("Fail","Command fail -> Unknown command");
+//      break;
+//  }
+//}
+
+on sysvar_update sysvar::PPS::PPS_ShowVoltage
+{
+  switch (@sysvar::PPS::PPS_ShowVoltage[0])
+  {
+    case 1:
+  sysvar::VTS::M1_Out1::AvgVoltage.SetTransferCycle(@sysvar::PPS::PPS_ShowVoltage[1]);
+
+      break;
+    case 2:
+  sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(@sysvar::PPS::PPS_ShowVoltage[1]);
+
+      break;
+    default:
+      testStepFail("Fail","Command fail -> Unknown command");
+      break;
+  }
+}

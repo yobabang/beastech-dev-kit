@@ -1,0 +1,269 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+
+variables
+{
+  frConfiguration gFRParams;
+  int sFlag;
+}
+
+void setFRConf_AS()
+{
+  if(sFlag!=1)
+  {
+    frGetConfiguration(1, gFRParams);//GEELY2.0
+    gFRParams.FRBaudrate = 10000; // "kBit/s"GEELY2.0
+    gFRParams.gdMacrotick = 1; // "us"GEELY2.0
+    gFRParams.gMacroPerCycle = 5000; // "MT"GEELY2.0
+    gFRParams.gdNIT = 48; // "MT" GEELY2.0
+    gFRParams.gdSampleClockPeriod = 0.012500; // "us"
+    gFRParams.gdTSSTransmitter = 9; // "Bit"GEELY2.0
+    gFRParams.gPayloadLengthStatic = 32; // "Words" GEELY2.0
+    gFRParams.gdActionPointOffset = 9; // "MT" GEELY2.0//////////////////////
+    gFRParams.gdStaticSlot = 122; // "MT" GEELY2.0 GEELY2.0
+    gFRParams.gNumberOfStaticSlots = 33; // "#" GEELY2.0
+    gFRParams.gdMinislotActionPointOffset = 3; // "MT" GEELY2.0
+    gFRParams.gdMinislot = 10; // "MT"  GEELY2.0
+    gFRParams.gNumberOfMinislots = 92; // "#" GEELY2.0  GEELY2.0
+    gFRParams.gClusterDriftDamping = 2; // "" GEELY2.0
+    gFRParams.gListenNoise = 2; // ""  GEELY2.0
+    gFRParams.gColdStartAttempts = 10; // "#" GEELY2.0
+    gFRParams.gSyncNodeMax = 8; // "#" GEELY2.0
+    gFRParams.gOffsetCorrectionStart = 4981; // "MT" GEELY2.0
+    gFRParams.gdDynamicSlotIdlePhase = 0; // "MS" GEELY2.0
+    gFRParams.gdSymbolWindow = 0; // "MT" GEELY2.0
+    gFRParams.gdCASRxLowMax = 87; // "Bit" GEELY2.0
+    gFRParams.gdCASRxLowMin = 29; // "Bit"
+    gFRParams.gdWakeupSymbolRxIdle = 59; // "Bit"  GEELY2.0
+    gFRParams.gdWakeupSymbolRxLow = 55; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolRxWindow = 301; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolTxIdle = 180; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolTxLow = 60; // "Bit" GEELY2.0
+    gFRParams.gMaxWithoutClockCorrectionFatal = 14; // "double cycles" GEELY2.0
+    gFRParams.gMaxWithoutClockCorrectionPassive = 10; // "double cycles" GEELY2.0
+    gFRParams.gNetworkManagementVectorLength = 8; // "Bytes" GEELY2.0
+    gFRParams.pChannels = 3; // "A" GEELY2.0
+    gFRParams.pMicroPerCycle = 200000; // "uT" GEELY2.0
+    gFRParams.pSamplesPerMicrotick = 2; // "#" GEELY2.0
+    gFRParams.pPayloadLengthDynMax = 127; // "Words" GEELY2.0
+    gFRParams.pPayloadLengthFIFO = 32; // "Words"
+    gFRParams.pLatestTx = 65; // "MS" GEELY2.0
+    gFRParams.pdMaxDrift = 601; // "uT" GEELY2.0
+    gFRParams.pdAcceptedStartupRange = 212; // "uT"
+    gFRParams.pdListenTimeout = 401202; // "uT" GEELY2.0
+    gFRParams.pClusterDriftDamping = 2; // "uT" GEELY2.0
+    gFRParams.pDecodingCorrection = 48; // "uT" GEELY2.0
+    gFRParams.pDelayCompensation_A = 1; // "uT" GEELY2.0
+    gFRParams.pDelayCompensation_B = 1; // "uT" GEELY2.0
+    gFRParams.pOffsetCorrectionOut = 361; // "uT" GEELY2.0
+    gFRParams.pRateCorrectionOut = 601; // "uT" GEELY2.0
+    gFRParams.pExternOffsetCorrection = 0; // "uT" GEELY2.0
+    gFRParams.pExternRateCorrection = 0; // "uT" GEELY2.0
+    gFRParams.pExternCorrectionMode = 0; // "" 
+    gFRParams.pMacroInitialOffset_A = 11; // "MT" GEELY2.0
+    gFRParams.pMacroInitialOffset_B = 11; // "MT" GEELY2.0
+    gFRParams.pMicroInitialOffset_A = 31; // "uT" GEELY2.0
+    gFRParams.pMicroInitialOffset_B = 31; // "uT" GEELY2.0
+    gFRParams.pWakeupChannel = 1; // 1 (A) or 2 (B)
+    gFRParams.pWakeupPattern = 43; // "#"
+    gFRParams.pAllowHaltDueToClock = 1; // "Boolean" GEELY2.0
+    gFRParams.pAllowPassiveToActive = 2; // "cycles" GEELY2.0
+    gFRParams.pBGTick = 1; // "Boolean"
+    gFRParams.pPhysicalLayer = 2; // ""
+    gFRParams.pSingleSlotEnabled = 0; // "Boolean" GEELY2.0
+    gFRParams.pBGEnable = 1; // "Boolean"
+    gFRParams.pDynamicSegmentEnable = 1; // "Boolean"
+
+
+    frSetConfiguration(1, gFRParams);
+    resetFlexRayCC(1); // in order to apply the new values
+    testStep("step","setFRConf_AS");
+    testWaitForTimeout(500);
+    sFlag=1;
+  }
+}
+
+
+
+void setFRConf_BS()
+{
+  if(sFlag!=2)
+  {
+    frGetConfiguration(1, gFRParams);//GEELY2.0
+    gFRParams.FRBaudrate = 10000; // "kBit/s"GEELY2.0
+    gFRParams.gdMacrotick = 1; // "us"GEELY2.0
+    gFRParams.gMacroPerCycle = 5000; // "MT"GEELY2.0
+    gFRParams.gdNIT = 50; // "MT" GEELY2.0
+    gFRParams.gdSampleClockPeriod = 0.012500; // "us"
+    gFRParams.gdTSSTransmitter = 9; // "Bit"GEELY2.0
+    gFRParams.gPayloadLengthStatic = 32; // "Words" GEELY2.0
+    gFRParams.gdActionPointOffset = 9; // "MT" GEELY2.0
+    gFRParams.gdStaticSlot = 122; // "MT" GEELY2.0 GEELY2.0
+    gFRParams.gNumberOfStaticSlots = 12; // "#" GEELY2.0
+    gFRParams.gdMinislotActionPointOffset = 3; // "MT" GEELY2.0
+    gFRParams.gdMinislot = 10; // "MT"  GEELY2.0
+    gFRParams.gNumberOfMinislots = 348; // "#" GEELY2.0  GEELY2.0
+    gFRParams.gClusterDriftDamping = 2; // "" GEELY2.0
+    gFRParams.gListenNoise = 2; // ""  GEELY2.0
+    gFRParams.gColdStartAttempts = 10; // "#" GEELY2.0
+    gFRParams.gSyncNodeMax = 8; // "#" GEELY2.0
+    gFRParams.gOffsetCorrectionStart = 4981; // "MT" GEELY2.0
+    gFRParams.gdDynamicSlotIdlePhase = 0; // "MS" GEELY2.0
+    gFRParams.gdSymbolWindow = 0; // "MT" GEELY2.0
+    gFRParams.gdCASRxLowMax = 87; // "Bit" GEELY2.0
+    gFRParams.gdCASRxLowMin = 29; // "Bit"
+    gFRParams.gdWakeupSymbolRxIdle = 59; // "Bit"  GEELY2.0
+    gFRParams.gdWakeupSymbolRxLow = 55; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolRxWindow = 301; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolTxIdle = 180; // "Bit" GEELY2.0
+    gFRParams.gdWakeupSymbolTxLow = 60; // "Bit" GEELY2.0
+    gFRParams.gMaxWithoutClockCorrectionFatal = 14; // "double cycles" GEELY2.0
+    gFRParams.gMaxWithoutClockCorrectionPassive = 10; // "double cycles" GEELY2.0
+    gFRParams.gNetworkManagementVectorLength = 8; // "Bytes" GEELY2.0
+    gFRParams.pChannels = 3; // "A" GEELY2.0
+    gFRParams.pMicroPerCycle = 200000; // "uT" GEELY2.0
+    gFRParams.pSamplesPerMicrotick = 2; // "#" GEELY2.0
+    gFRParams.pPayloadLengthDynMax = 127; // "Words" GEELY2.0
+    gFRParams.pPayloadLengthFIFO = 32; // "Words"
+    gFRParams.pLatestTx = 321; // "MS" GEELY2.0
+    gFRParams.pdMaxDrift = 601; // "uT" GEELY2.0
+    gFRParams.pdAcceptedStartupRange = 212; // "uT"
+    gFRParams.pdListenTimeout = 401202; // "uT" GEELY2.0
+    gFRParams.pClusterDriftDamping = 2; // "uT" GEELY2.0
+    gFRParams.pDecodingCorrection = 48; // "uT" GEELY2.0
+    gFRParams.pDelayCompensation_A = 1; // "uT" GEELY2.0
+    gFRParams.pDelayCompensation_B = 1; // "uT" GEELY2.0
+    gFRParams.pOffsetCorrectionOut = 378; // "uT" GEELY2.0
+    gFRParams.pRateCorrectionOut = 601; // "uT" GEELY2.0
+    gFRParams.pExternOffsetCorrection = 0; // "uT" GEELY2.0
+    gFRParams.pExternRateCorrection = 0; // "uT" GEELY2.0
+    gFRParams.pExternCorrectionMode = 0; // "" 
+    gFRParams.pMacroInitialOffset_A = 11; // "MT" GEELY2.0
+    gFRParams.pMacroInitialOffset_B = 11; // "MT" GEELY2.0
+    gFRParams.pMicroInitialOffset_A = 31; // "uT" GEELY2.0
+    gFRParams.pMicroInitialOffset_B = 31; // "uT" GEELY2.0
+    gFRParams.pWakeupChannel = 1; // 1 (A) or 2 (B)
+    gFRParams.pWakeupPattern = 48; // "#"
+    gFRParams.pAllowHaltDueToClock = 1; // "Boolean" GEELY2.0
+    gFRParams.pAllowPassiveToActive = 2; // "cycles" GEELY2.0
+    gFRParams.pBGTick = 1; // "Boolean"
+    gFRParams.pPhysicalLayer = 2; // ""
+    gFRParams.pSingleSlotEnabled = 1; // "Boolean" GEELY2.0
+    gFRParams.pBGEnable = 1; // "Boolean"
+    gFRParams.pDynamicSegmentEnable = 1; // "Boolean"
+
+    frSetConfiguration(1, gFRParams);
+    resetFlexRayCC(1); // in order to apply the new values
+    testStep("step","setFRConf_BS");
+    testWaitForTimeout(500);
+    sFlag=2;
+  }
+}
+
+//on sysvar Simulation_Control::VGM
+//{
+//  if(1 == @this)
+//  {
+//    canOnline();
+//  }
+//  else
+//  {
+//    canOffline();
+//  }
+//}
+
+
+void printFRConf_AS()
+{
+   frGetConfiguration(1, gFRParams);
+   Write("%33s = %6d %s", "pCCVersion", gFRParams.pCCVersion, "");
+   Write("%33s = %6ld %s","FRBaudrate", gFRParams.FRBaudrate, "kBit/s");
+   Write("%33s = %6f %s", "gdMacrotick", gFRParams.gdMacrotick, "us");
+   Write("%33s = %6d %s", "gMacroPerCycle", gFRParams.gMacroPerCycle, "MT");
+   Write("%33s = %6d %s", "gdNIT", gFRParams.gdNIT, "MT");
+   Write("%33s = %6f %s", "gdSampleClockPeriod", gFRParams.gdSampleClockPeriod, "us");
+   Write("%33s = %6d %s", "gdTSSTransmitter", gFRParams.gdTSSTransmitter, "Bit");
+   Write("%33s = %6d %s", "gPayloadLengthStatic", gFRParams.gPayloadLengthStatic, "Words");
+   Write("%33s = %6d %s", "gdActionPointOffset", gFRParams.gdActionPointOffset, "MT");
+   Write("%33s = %6d %s", "gdStaticSlot", gFRParams.gdStaticSlot, "MT");
+
+   Write("%33s = %6d %s", "gNumberOfStaticSlots", gFRParams.gNumberOfStaticSlots, "#");
+   Write("%33s = %6d %s", "gdMinislotActionPointOffset", gFRParams.gdMinislotActionPointOffset, "MT");
+   Write("%33s = %6d %s", "gdMinislot", gFRParams.gdMinislot, "MT");
+   Write("%33s = %6d %s", "gNumberOfMinislots", gFRParams.gNumberOfMinislots, "#");
+   Write("%33s = %6d %s", "gClusterDriftDamping", gFRParams.gClusterDriftDamping, "");
+   Write("%33s = %6d %s", "gListenNoise", gFRParams.gListenNoise, "");
+   Write("%33s = %6d %s", "gColdStartAttempts", gFRParams.gColdStartAttempts, "#");
+   Write("%33s = %6d %s", "gSyncNodeMax", gFRParams.gSyncNodeMax, "#");
+   Write("%33s = %6d %s", "gOffsetCorrectionStart", gFRParams.gOffsetCorrectionStart, "MT");
+   Write("%33s = %6d %s", "gdDynamicSlotIdlePhase", gFRParams.gdDynamicSlotIdlePhase, "MS");
+
+   Write("%33s = %6d %s", "gdSymbolWindow", gFRParams.gdSymbolWindow, "MT");
+   Write("%33s = %6d %s", "gdCASRxLowMax", gFRParams.gdCASRxLowMax, "Bit");
+   Write("%33s = %6d %s", "gdCASRxLowMin", gFRParams.gdCASRxLowMin, "Bit");
+   Write("%33s = %6d %s", "gdWakeupSymbolRxIdle", gFRParams.gdWakeupSymbolRxIdle, "Bit");
+   Write("%33s = %6d %s", "gdWakeupSymbolRxLow", gFRParams.gdWakeupSymbolRxLow, "Bit");
+   Write("%33s = %6d %s", "gdWakeupSymbolRxWindow", gFRParams.gdWakeupSymbolRxWindow, "Bit");
+   Write("%33s = %6d %s", "gdWakeupSymbolTxIdle", gFRParams.gdWakeupSymbolTxIdle, "Bit");
+   Write("%33s = %6d %s", "gdWakeupSymbolTxLow", gFRParams.gdWakeupSymbolTxLow, "Bit");
+   Write("%33s = %6d %s", "gMaxWithoutClockCorrectionFatal", gFRParams.gMaxWithoutClockCorrectionFatal, "double cycles");
+   Write("%33s = %6d %s", "gMaxWithoutClockCorrectionPassive", gFRParams.gMaxWithoutClockCorrectionPassive, "double cycles");
+
+   Write("%33s = %6d %s", "gNetworkManagementVectorLength", gFRParams.gNetworkManagementVectorLength, "Bytes");
+   Write("%33s = %6d %s", "pChannels", gFRParams.pChannels, "");
+   Write("%33s = %6d %s", "pMicroPerCycle", gFRParams.pMicroPerCycle, "uT");
+   Write("%33s = %6d %s", "pSamplesPerMicrotick", gFRParams.pSamplesPerMicrotick, "#");
+   Write("%33s = %6d %s", "pPayloadLengthDynMax", gFRParams.pPayloadLengthDynMax, "Words");
+   Write("%33s = %6d %s", "pPayloadLengthFIFO", gFRParams.pPayloadLengthFIFO, "Words");
+   Write("%33s = %6d %s", "pLatestTx", gFRParams.pLatestTx, "MS");
+   Write("%33s = %6d %s", "pdMaxDrift", gFRParams.pdMaxDrift, "uT");
+   Write("%33s = %6d %s", "pdAcceptedStartupRange", gFRParams.pdAcceptedStartupRange, "uT");
+   Write("%33s = %6d %s", "pdListenTimeout", gFRParams.pdListenTimeout, "uT");
+
+   Write("%33s = %6d %s", "pClusterDriftDamping", gFRParams.pClusterDriftDamping, "uT");
+   Write("%33s = %6d %s", "pDecodingCorrection", gFRParams.pDecodingCorrection, "uT");
+   Write("%33s = %6d %s", "pDelayCompensation_A", gFRParams.pDelayCompensation_A, "uT");
+   Write("%33s = %6d %s", "pDelayCompensation_B", gFRParams.pDelayCompensation_B, "uT");
+   Write("%33s = %6d %s", "pOffsetCorrectionOut", gFRParams.pOffsetCorrectionOut, "uT");
+   Write("%33s = %6d %s", "pRateCorrectionOut", gFRParams.pRateCorrectionOut, "uT");
+   Write("%33s = %6d %s", "pExternOffsetCorrection", gFRParams.pExternOffsetCorrection, "uT");
+   Write("%33s = %6d %s", "pExternRateCorrection", gFRParams.pExternRateCorrection, "uT");
+   Write("%33s = %6d %s", "pExternCorrectionMode", gFRParams.pExternCorrectionMode, "");
+   Write("%33s = %6d %s", "pMacroInitialOffset_A", gFRParams.pMacroInitialOffset_A, "MT");
+
+   Write("%33s = %6d %s", "pMacroInitialOffset_B", gFRParams.pMacroInitialOffset_B, "MT");
+   Write("%33s = %6d %s", "pMicroInitialOffset_A", gFRParams.pMicroInitialOffset_A, "uT");
+   Write("%33s = %6d %s", "pMicroInitialOffset_B", gFRParams.pMicroInitialOffset_B, "uT");
+   Write("%33s = %6d %s", "pWakeupChannel", gFRParams.pWakeupChannel, "");
+   Write("%33s = %6d %s", "pWakeupPattern", gFRParams.pWakeupPattern, "#");
+   Write("%33s = %6d %s", "pAllowHaltDueToClock", gFRParams.pAllowHaltDueToClock, "Boolean");
+   Write("%33s = %6d %s", "pAllowPassiveToActive", gFRParams.pAllowPassiveToActive, "cycles");
+   Write("%33s = %6d %s", "pBGTick", gFRParams.pBGTick, "Boolean");
+   Write("%33s = %6d %s", "pPhysicalLayer", gFRParams.pPhysicalLayer, "");
+   Write("%33s = %6d %s", "pSingleSlotEnabled", gFRParams.pSingleSlotEnabled, "Boolean");
+
+   Write("%33s = %6d %s", "pBGEnable", gFRParams.pBGEnable, "Boolean");
+   Write("%33s = %6d %s", "pDynamicSegmentEnable", gFRParams.pDynamicSegmentEnable, "Boolean");
+   Write("%33s = %6d %s", "pStrobePointPosition", gFRParams.pStrobePointPosition, "");
+   Write("%33s = %6f %s", "pdMicrotick", gFRParams.pdMicrotick, "us");
+}
+
+//on key 'a'
+//{
+//  setFRConf_BS();
+//}
+//
+//on key 'b'
+//{
+//  setFRConf_AS();
+//}
+//
+//
+//on key 'c'
+//{
+//  printFRConf_AS();
+//}

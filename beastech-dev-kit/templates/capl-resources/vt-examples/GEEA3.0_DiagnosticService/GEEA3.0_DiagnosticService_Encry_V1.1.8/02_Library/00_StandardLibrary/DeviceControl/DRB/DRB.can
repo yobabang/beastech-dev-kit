@@ -1,0 +1,84 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_DRB.cin"
+}
+
+variables
+{
+  int Offset_Volt_CANH_State = 0 ;
+  int Offset_Volt_CANL_State = 0;
+}
+
+void MainTest ()
+{
+  DRB();
+}
+
+testcase DRB()
+{
+  long index = 0;
+  
+  while(1)
+  {
+    testJoinTextEvent("DRB_InitConfig");
+    testJoinTextEvent("OSC_Connect");
+    testJoinTextEvent("OSC_DisConnect");
+    index = testWaitForAnyJoinedEvent(500000);
+    CMD(index);
+  }
+}
+
+void CMD(long index)
+{
+  switch(index)
+  {
+    case(1):
+      DRB_InitConfig();
+      break;
+    case(2):
+      ConnectWithPCS();
+      break;
+    case(3):
+      DisconnectWithPCS();
+      break;
+    default:
+      break;
+  }
+}
+
+void DRB_InitConfig()
+{
+  int i;
+  word id;
+  
+  for(i = 0; i < DRB_NUM; i++)
+  { 
+    id = DRB_List[i].id;
+    SetDRBId(id);
+    DRB_Reset();
+    testwaitfortimeout(100);
+    
+//    ConnectWitnGND();
+//    testwaitfortimeout(100);
+  }
+}
+
+void ConnectWithPCS()
+{
+  DRB_OSC(OSC_Single);
+  testWaitForTimeout(100);
+  write("ConnectWithPCS");
+  DRB_REFGND(Node_GND);
+  testWaitForTimeout(100);
+}
+
+VOID DisconnectWithPCS()
+{
+  DRB_OSC(OSC_DisConnect);
+  testWaitForTimeout(100);
+  
+  DRB_REFGND(DEV_GND);//正常情况下是否接设备地？
+  testWaitForTimeout(100);
+}
+

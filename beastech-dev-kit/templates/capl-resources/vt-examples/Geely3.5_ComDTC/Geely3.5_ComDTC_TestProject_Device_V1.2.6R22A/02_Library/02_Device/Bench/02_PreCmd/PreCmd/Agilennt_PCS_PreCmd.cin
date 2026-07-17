@@ -1,0 +1,711 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  enum PCS_GetValue{Ch1_Top,Ch2_Top,Ch1_Base,Ch2_Base,Math_Base,Math_Top,PCS_MaxVolt,PCS_MinVolt,Ch1_id};//新增
+  enum Picture_Name{dominant,recessive,bitTime};//新增
+  
+}
+
+//void OSC_CAN_Init()
+//{
+//  SendTcpData(":RUN\n",PCS_Socket);
+//  SendTcpData(":CHANnel1:SCALe 1V\n",PCS_Socket);
+//  SendTcpData(":CHANnel2:SCALe 1V\n",PCS_Socket);
+//  SendTcpData("CHANnel1:OFFSet 1\n",PCS_Socket);
+//  SendTcpData("CHANnel2:OFFSet 1\n",PCS_Socket);
+//  SendTcpData(":CHANnel1:DISPlay 1\n",PCS_Socket);
+//  SendTcpData(":CHANnel2:DISPlay 1\n",PCS_Socket);
+//  SendTcpData(":TIMebase:SCALe 0.000002\n",PCS_Socket);
+//  SendTcpData(":TIMebase:POSition 0\n",PCS_Socket);
+//  SendTcpData(":TRIGger:SWEep NORMAL\n",PCS_Socket);
+//  SendTcpData(":TRIGger:MODE EDGE\n",PCS_Socket);
+//  SendTcpData(":TRIGger:EDGE:SLOPe POSitive\n",PCS_Socket);
+//  SendTcpData(":TRIGger:EDGE:SOURce CHAN1 \n",PCS_Socket);
+//  SendTcpData(":TRIGger:EDGE:LEVel 3.1 \n",PCS_Socket);
+//  SendTcpData(":FUNCtion:DISPlay 1\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:SOURCE1 CHANnel1\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:SOURCE2 CHANnel2\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:OPERation SUBTract\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:SCALe 1V\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+//  SendTcpData(":MEASure:STATistics:DISPlay 1\n",PCS_Socket);
+//  SendTcpData(":MEASure:STATistics ON\n",PCS_Socket);
+//}
+
+void OSC_CAN_Init()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CAN_Init=1;
+  
+}
+//void OSC_LIN_Init()
+//{
+//  SendTcpData(":RUN\n",PCS_Socket);
+//  SendTcpData(":CHANnel1:SCALe 5V\n",PCS_Socket);
+//  SendTcpData("CHANnel1:OFFSet 1\n",PCS_Socket);
+//  SendTcpData(":CHANnel1:DISPlay 1\n",PCS_Socket);
+//  SendTcpData(":CHANnel2:DISPlay 0\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:DISPlay 0\n",PCS_Socket);
+//  SendTcpData(":TIMebase:SCALe 0.0002\n",PCS_Socket);
+//  SendTcpData(":TIMebase:POSition 0\n",PCS_Socket);
+//  SendTcpData(":TRIGger:SWEep AUTO\n",PCS_Socket);
+//}
+
+void OSC_LIN_Init()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_LIN_Init=1;
+}
+
+//void Trigger_AUTO()
+//{
+//  SendTcpData(":TRIGger:SWEep AUTO\n",PCS_Socket);
+//}
+
+void Trigger_AUTO()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::Trigger_AUTO=1;
+}
+
+//void OSC_Reset()
+//{
+//  SendTcpData("*RST\n",PCS_Socket);
+//}
+
+void OSC_Reset()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Reset=1;
+}
+
+//void OSC_AutoScale()
+//{
+//  SendTcpData(":AutoScale\n",PCS_Socket);
+//}
+
+void OSC_AutoScale()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_AutoScale=1;
+}
+
+//void Save_Picture()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":DISPlay:DATA? PNG\n",PCS_Socket);
+//}
+
+void Save_Picture()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::Save_Picture=1;
+}
+
+//void OSC_Singel_Trigger()
+//{
+//  SendTcpData(":SINGle\n",PCS_Socket);
+//}
+
+void OSC_Single_Trigger()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Single_Trigger=1;
+}
+
+//void OSC_Meas_Clear()
+//{
+//  SendTcpData(":MEASure:CLEar\n",PCS_Socket);
+//}
+void OSC_STop()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Stop=1;  
+}
+void OSC_Meas_Clear()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Meas_Clear=1;
+}
+
+//void Function_Add()
+//{
+//  SendTcpData(":FUNCtion:OPERation ADD\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:SCALe 5V\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+//}
+
+void Function_Add()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::Function_Add=1;
+}
+
+//void Function_Sub()
+//{
+//  SendTcpData(":FUNCtion:OPERation SUBTract\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:SCALe 1V\n",PCS_Socket);
+//  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+//}
+
+void Function_Sub()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::Function_Sub=1;
+}
+
+//void OSC_Run()
+//{
+//  SendTcpData(":RUN\n",PCS_Socket);
+//}
+
+void OSC_Run()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Run=1;
+}
+//
+//void OSC_CAN_THResholds()
+//{
+//  SendTcpData(":MEASure:SOURce CHANnel1\n",PCS_Socket);
+//  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+//  SendTcpData(":MEASure:SOURce CHANnel2\n",PCS_Socket);
+//  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+//  SendTcpData(":MEASure:SOURce MATH\n",PCS_Socket);
+//  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+//}
+
+void OSC_CAN_THResholds()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CAN_THResholds=1;
+}
+
+//void OSC_LIN_THResholds()
+//{
+//  SendTcpData(":MEASure:SOURce CHANnel3\n",PCS_Socket);
+//  SendTcpData(":MEASure:DEFine THResholds,PERCent,60,50,40\n",PCS_Socket);
+//}
+
+void OSC_LIN_THResholds()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_LIN_THResholds=1;
+}
+
+//void OSC_Cursor_Channel1()
+//{
+//  SendTcpData(":MARKer:X1Y1source CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_Cursor_Channel1()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Channel1=1;
+}
+
+//void OSC_Cursor_Channel3()
+//{
+//  SendTcpData(":MARKer:X1Y1source CHANnel3\n",PCS_Socket);
+//}
+
+void OSC_Cursor_Channel3()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Channel3=1;
+}
+
+//void OSC_Cursor_Xdelta()
+//{
+//  SendTcpData(":MARKer:XDELta?\n",PCS_Socket);
+//}
+
+void OSC_Cursor_Xdelta()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Xdelta=1;
+}
+
+//void OSC_Cursor_Ydelta()
+//{
+//  SendTcpData(":MARKer:YDELta?\n",PCS_Socket);
+//}
+
+void OSC_Cursor_Ydelta()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Ydelta=1;
+}
+
+//void OSC_CHAnnel1_Vtop_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vtop_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vtop_Meas=1;
+}
+
+//void OSC_CHAnnel1_Vtop_Result()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP? CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vtop_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vtop_Result=1;
+}
+
+//void OSC_CHAnnel1_Vbase_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VBASe CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vbase_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vbase_Meas=1;
+}
+
+//void OSC_CHAnnel1_Vbase_Result()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VBASe? CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vbase_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vbase_Result=1;
+}
+
+//void OSC_CHAnnel1_Vmax_Meas()
+//{
+//  SendTcpData(":MEASure:VMAX CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vmax_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmax_Meas=1;
+}
+
+//void OSC_CHAnnel1_Vmax_Result()
+//{
+//  SendTcpData(":MEASure:VMAX? CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vmax_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmax_Result=1;
+}
+
+//void OSC_CHAnnel1_Vmin_Meas()
+//{
+//  SendTcpData(":MEASure:VMIN CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vmin_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmin_Meas=1;
+}
+
+//void OSC_CHAnnel1_Vmin_Result()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VMIN? CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel1_Vmin_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmin_Result=1;
+}
+
+//void OSC_CHAnnel2_Vtop_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel2_Vtop_Meas()
+{
+   @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vtop_Meas=1;
+}
+
+//void OSC_CHAnnel2_Vtop_Result()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP? CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel2_Vtop_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vtop_Result=1;
+}
+
+//void OSC_CHAnnel2_Vbase_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VBASe CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel2_Vbase_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vbase_Meas=1;
+}
+
+//void OSC_CHAnnel2_Vbase_Result()
+//{
+//  SendTcpData(":MEASure:VBASe? CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_CHAnnel2_Vbase_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vbase_Result=1;
+}
+
+//void OSC_Math_Vtop_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vtop_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vtop_Meas=1;
+}
+
+//void OSC_Math_Vtop_Result()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VTOP? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vtop_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vtop_Result=1;
+}
+
+//void OSC_Math_Vbase_Meas()
+//{
+//  Rcv_Begin=1;
+//  Rcv_Size=0;
+//  SendTcpData(":MEASure:VBASe MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vbase_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vbase_Meas=1;
+}
+
+//void OSC_Math_Vbase_Result()
+//{
+//  SendTcpData(":MEASure:VBASe? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vbase_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vbase_Result=1;
+}
+
+//void OSC_Math_Vmax_Meas()
+//{
+//  SendTcpData(":MEASure:VMAX MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vmax_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmax_Meas=1;
+}
+
+//void OSC_Math_Vmax_Result()
+//{
+//  SendTcpData(":MEASure:VMAX? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vmax_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmax_Result=1;
+}
+
+//void OSC_Math_Vmin_Meas()
+//{
+//  SendTcpData(":MEASure:VMIN MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vmin_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmin_Meas=1;
+}
+
+//void OSC_Math_Vmin_Result()
+//{
+//  SendTcpData(":MEASure:VMIN? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_Vmin_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmin_Result=1;
+}
+
+//void OSC_Ch1_RISetime()
+//{
+//  SendTcpData(":MEASure:RISetime CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_Ch1_RISetime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_RISetime=1;
+}
+
+//void OSC_Ch1_RISetime_Result()
+//{
+//  SendTcpData(":MEASure:RISetime? CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_Ch1_RISetime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_RISetime_Result=1;
+}
+
+//void OSC_Ch2_RISetime()
+//{
+//  SendTcpData(":MEASure:RISetime CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_ID_Trigger()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_ID_Trigger=1;
+
+}
+void OSC_ID_VALUE()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_ID_VALUE=1;
+}
+void OSC_Ch2_RISetime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_RISetime=1;
+}
+
+//void OSC_Ch2_RISetime_Result()
+//{
+//  SendTcpData(":MEASure:RISetime? CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_Ch2_RISetime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_RISetime_Result=1;
+}
+
+//void OSC_Math_RISetime()
+//{
+//  SendTcpData(":MEASure:RISetime MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_RISetime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_RISetime=1;
+}
+
+//void OSC_Math_RISetime_Result()
+//{
+//  SendTcpData(":MEASure:RISetime? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_RISetime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_RISetime_Result=1;
+}
+
+//void OSC_Ch1_FALLtime()
+//{
+//  SendTcpData(":MEASure:FALLtime CHANnel1\n",PCS_Socket);
+//}
+
+void OSC_Ch1_FALLtime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_FALLtime=1;
+}
+
+//void OSC_Ch1_FALLtime_Result()
+//{
+//  SendTcpData(":MEASure:FALLtime? CHANnel1\n",PCS_Socket);
+//}sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_FALLtime_Result
+
+void OSC_Ch1_FALLtime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_FALLtime_Result=1;
+}
+
+//void OSC_Ch2_FALLtime()
+//{
+//  SendTcpData(":MEASure:FALLtime CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_Ch2_FALLtime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_FALLtime=1;
+}
+
+//void OSC_Ch2_FALLtime_Result()
+//{
+//  SendTcpData(":MEASure:FALLtime? CHANnel2\n",PCS_Socket);
+//}
+
+void OSC_Ch2_FALLtime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_FALLtime_Result=1;
+}
+
+//void OSC_Math_FALLtime()
+//{
+//  SendTcpData(":MEASure:FALLtime MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_FALLtime()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_FALLtime=1;
+}
+
+//void OSC_Math_FALLtime_Result()
+//{
+//  SendTcpData(":MEASure:FALLtime? MATH\n",PCS_Socket);
+//}
+
+void OSC_Math_FALLtime_Result()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_FALLtime_Result=1;
+}
+
+void OSC_Prepare_Value(enum PCS_GetValue ValueType)//新增函数
+{
+  switch(ValueType)
+  {
+    case Ch1_Top:
+      @sysvar::PCS::V_Ch1_Top_GetValue=1;
+      break;
+    case Ch2_Top:
+      @sysvar::PCS::V_Ch2_Top_GetValue=1;
+      break;
+    case Ch1_Base:
+      @sysvar::PCS::V_Ch1_Base_GetValue=1;
+      break;  
+    case Ch2_Base:
+      @sysvar::PCS::V_Ch2_Base_GetValue=1;
+      break;  
+    case Math_Base:
+      @sysvar::PCS::V_Math_Base_GetValue=1;
+      break;
+    case Math_Top:
+      @sysvar::PCS::V_Math_Top_GetValue=1;
+      break;
+    case PCS_MaxVolt:
+      @sysvar::PCS::PCS_MaxVolt_GetValue=1;
+      break;
+    case PCS_MinVolt:
+      @sysvar::PCS::PCS_MinVolt_GetValue=1;
+      break;
+    case Ch1_id:
+      @sysvar::PCS::V_Ch1_ID_GetValue=1;
+      break;
+
+    default:
+      teststep("step","value type not defined!");
+      break;
+  }
+
+}
+
+
+float OSC_Get_Value(enum PCS_GetValue ValueType)//新增函数
+{
+  float OSC_Volt;
+  switch(ValueType)
+  {
+    case Ch1_Top:
+      
+      OSC_Volt= @sysvar::PCS::PCS_Ch1_Top_ReValue;
+      break;
+    case Ch2_Top:
+      OSC_Volt= @sysvar::PCS::PCS_Ch2_Top_ReValue;
+      break;
+    case Ch1_Base:
+      OSC_Volt= @sysvar::PCS::PCS_Ch1_Base_ReValue;
+      break;  
+    case Ch2_Base:
+      OSC_Volt= @sysvar::PCS::PCS_Ch2_Base_ReValue;
+      break;  
+    case Math_Base:
+      OSC_Volt= @sysvar::PCS::PCS_Math_Base_ReValue;
+      break;
+    case Math_Top:
+      OSC_Volt= @sysvar::PCS::PCS_Math_Top_ReValue;
+      break;
+    case PCS_MaxVolt:
+      OSC_Volt= @sysvar::PCS::PCS_MaxVolt_ReValue;
+      break;
+    case PCS_MinVolt:
+      OSC_Volt= @sysvar::PCS::PCS_MinVolt_ReValue ;
+      break;
+    default:
+      teststep("step","value type not defined!");
+      OSC_Volt= 0;
+      break;
+  }
+  return OSC_Volt;
+  
+}
+
+void OSC_Picture_Name_Set(enum Picture_Name picname,int i)//新增函数
+{
+  sysSetVariableString(sysvar::PCS::Node_Name,NodeName);//获取DUT名称
+  @sysvar::PCS::PCS_Picture_Outer_Cycle=i;
+  switch(picname)
+  {
+    case dominant:
+      @sysvar::PCS::PCS_Picture_Name_Dominant=1;
+      break;
+    case recessive:
+      @sysvar::PCS::PCS_Picture_Name_Recessive=1;
+      break;
+    case bitTime:
+      @sysvar::PCS::PCS_Picture_Name_BitTime=1;
+      break;
+    default:
+      teststep("step","undefined picture name!");
+      break;
+  }
+  @sysvar::PCS::PCS_Picture_Name_Set=1;
+  
+}
+
+
+void OSC_Picture_Convert()//新增函数
+{
+  @sysvar::PCS::PCS_Picture_Convert=1;
+}
+
+
+void TIMebase_SCALE()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::TIMebase_SCALE=1;
+}
+
+void MEASure_PEDGes_CHAnnel1()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::MEASure_PEDGes_CHAnnel1=1;
+
+}
+void OSC_TRIGger_MODE_SOF()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_TRIGger_MODE_SOF=1;
+}
+
+void OSC_Cursor_Xdelta_Meas()
+{
+  @sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Xdelta_Meas=1;
+}
+
+void OSC_BitsTime_Get()
+{
+  @sysvar::PCS::PCS_BitsTime_Get=1;
+}

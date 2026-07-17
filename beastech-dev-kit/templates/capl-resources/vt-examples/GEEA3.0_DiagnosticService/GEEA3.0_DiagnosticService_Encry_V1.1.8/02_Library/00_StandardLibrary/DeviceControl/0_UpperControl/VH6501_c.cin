@@ -1,0 +1,161 @@
+/*@!Encoding:936*/
+/* 通过系统变量去控制VH6501模块*/
+
+void VH6501_InitConfig()
+{
+  VH6501_Reset();
+}
+
+void VH6501_Reset()
+{
+  @sysvar::DeviceControl::VH6501::Command::Reset++;
+}
+
+void VH6501_CANBusFaultSet(enum VH6501_FaultType FaultType)
+{
+//  VH6501_Reset();
+  
+  testwaitfortimeout(500);
+  switch(FaultType)
+  {
+    case CANH_ShortTo_CANL://CAN_H和CAN_L短接
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=0;
+      testStep("VH6501","Set CAN bus fault: CANH short to CANL!");
+      break;
+      
+    case CANH_BAT://CAN_H和电源短接
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=1;
+      testStep("VH6501","Set CAN bus fault: CANH short to battery!");
+      break;
+      
+    case CANH_GND://CAN_H和地短接
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=2;
+      testStep("VH6501","Set CAN bus fault: CANH short to GND!");
+      break;
+      
+    case CANL_BAT://CAN_L和电源短接
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=3;
+      testStep("VH6501","Set CAN bus fault: CANL short to battery!");
+      break;
+      
+    case CANL_GND://CAN_L和地短接
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=4;
+      testStep("VH6501","Set CAN bus fault: CANL short to GND!");
+      break;
+      
+    case CANH_Open://
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=5;
+      testStep("VH6501","Set CAN bus fault: CANH OPEN!");
+      break;
+      
+    case CANL_Open://
+      @sysvar::DeviceControl::VH6501::Parameters::FaultType=6;
+      testStep("VH6501","Set CAN bus fault: CANL OPEN!");
+      break;
+      
+    
+    Default:
+      testStepFail("Fail","Set fail -> Unknown type of VH6501_CANBusFaultSet!");
+      break;
+  }
+  @sysvar::DeviceControl::VH6501::Command::FaultSet++;
+}
+
+
+void VH6501_AckDelimiterDisturbance(char Id[], long times)
+{
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=1;
+  testWaitForTimeout(5);
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,Id);
+  testWaitForTimeout(5);
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  testWaitForTimeout(5);
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  testWaitForTimeout(5);
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  testWaitForTimeout(5);
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  testWaitForTimeout(5);
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+void VH6501_AckDelimiterDisturbance(dword Id, long times)
+{
+  char IdString[20];
+  snprintf(IdString,20,"%02x",Id);
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=1;//干扰ACK del位
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,IdString);
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+
+void VH6501_RTRDisturbance(char Id[], long times)
+{
+  teststep("VH6501","设置触发干扰");
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=0;
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,Id);
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+void VH6501_AllRTRDisturbance(long times)
+{
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=0;
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,"XXX");
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+void VH6501_AllAckDelimiterDisturbance(long times)//增加接口
+{
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=1;
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,"XXX");
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+void VH6501_AllIDEDisturbance(long times)//增加接口
+{
+  @sysvar::DeviceControl::VH6501::Parameters::DisturbBit=2;
+  sysSetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,"XXX");
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles=0;
+  @sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions=0;
+  @sysvar::DeviceControl::VH6501::Parameters::Cycles=1;
+  @sysvar::DeviceControl::VH6501::Parameters::Repetitions=times;
+  @sysvar::DeviceControl::VH6501::Command::Trigger++;
+}
+
+void VH6501_DisturbRTR(dword ID, long time)
+{
+  char IdBuff[10];
+  snprintf(IdBuff,10,"%02x",ID);
+  VH6501_RTRDisturbance(IdBuff,time);
+}
+
+void VH6501_SamplePointTestTriggerSet(long InvertTqNum)
+{
+  @sysvar::DeviceControl::VH6501::Parameters::Sampling_DisturbTqNum=InvertTqNum;
+  @sysvar::DeviceControl::VH6501::Parameters::Datafield = 0;//0:0xAA;1:0x55
+  @sysvar::DeviceControl::VH6501::Command::Sampling_Trigger++;
+}
+
+void VH6501_SamplePointTestTriggerSet(long InvertTqNum,int isTestArbSampling)
+{
+  @sysvar::DeviceControl::VH6501::Parameters::Sampling_DisturbTqNum=InvertTqNum;
+  @sysvar::DeviceControl::VH6501::Parameters::isTestArbSampling=isTestArbSampling;//0:testData(BRS=1),1:testArb
+  @sysvar::DeviceControl::VH6501::Parameters::Datafield=1;//0:0xAA;1:0x55
+  @sysvar::DeviceControl::VH6501::Command::Sampling_Trigger++;
+}

@@ -1,0 +1,938 @@
+/*@!Encoding:936*/
+includes
+{
+//  #pragma library("..\dll\capldll.dll")
+}
+
+variables
+{
+  float V_Ch1_Top=0.0;
+  float V_Ch2_Top=0.0;
+  float V_Math_Top=0.0;
+  float V_Ch1_Base=0.0;
+  float V_Ch2_Base=0.0;
+  float V_Math_Base=0.0;
+  double BitsTime=0.0;
+  char picpath[200];
+  char sharepath[200];
+  char picname[150];
+  int seq;  
+  long t1[9],t2[9];
+  char t3[50]="";  
+  char nodename[200];
+  double  V_Ch1_ID;
+}
+
+void OSC_CAN_Init()
+{
+  SendTcpData(":RUN\n",PCS_Socket);
+  SendTcpData(":CHANnel1:SCALe 1V\n",PCS_Socket);
+  SendTcpData(":CHANnel2:SCALe 1V\n",PCS_Socket);
+  SendTcpData("CHANnel1:OFFSet 1\n",PCS_Socket);
+  SendTcpData("CHANnel2:OFFSet 1\n",PCS_Socket);
+  SendTcpData(":CHANnel1:DISPlay 1\n",PCS_Socket);
+  SendTcpData(":CHANnel2:DISPlay 1\n",PCS_Socket);
+  
+  SendTcpData(":TIMebase:REFerence LEFT\n",PCS_Socket);
+  SendTcpData(":TIMebase:SCALe 0.000002\n",PCS_Socket);
+  SendTcpData(":TIMebase:POSition 0\n",PCS_Socket);
+  
+  SendTcpData(":SBUS1:MODE CAN\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SOURce CHAnnel1\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SIGNal:BAUDrate 500000\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SIGNal:DEFinition CANH\n",PCS_Socket);
+  
+  SendTcpData(":TRIGger:SWEep NORMAL\n",PCS_Socket);
+  SendTcpData(":TRIGger:MODE EDGE\n",PCS_Socket);
+  SendTcpData(":TRIGger:EDGE:SLOPe POSitive\n",PCS_Socket);
+  SendTcpData(":TRIGger:EDGE:SOURce CHAN1 \n",PCS_Socket);
+  SendTcpData(":TRIGger:EDGE:LEVel 3.1 \n",PCS_Socket);
+  
+  SendTcpData(":FUNCtion2:DISPlay 1\n",PCS_Socket);
+  testWaitForTimeout(500);
+  SendTcpData(":FUNCtion2:SOURCE1 CHANnel1\n",PCS_Socket);
+  SendTcpData(":FUNCtion2:SOURCE2 CHANnel2\n",PCS_Socket);
+  SendTcpData(":FUNCtion2:OPERation SUBTract\n",PCS_Socket);
+  testWaitForTimeout(500);
+  SendTcpData(":FUNCtion2:SCALe 1V\n",PCS_Socket);
+  testWaitForTimeout(500);
+  SendTcpData(":FUNCtion2:OFFSet 3\n",PCS_Socket);
+  testWaitForTimeout(500);
+  
+  SendTcpData(":MEASure:STATistics:DISPlay 0\n",PCS_Socket);
+  SendTcpData(":MEASure:STATistics ON\n",PCS_Socket);
+  SendTcpData(":CHANnel3:DISplay OFF \n",PCS_Socket);
+  
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CAN_Init
+{
+  OSC_CAN_Init();
+}
+  
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_ID_VALUE
+{
+  OSC_ID_Result();
+}
+  
+void OSC_LIN_Init()
+{
+  SendTcpData(":RUN\n",PCS_Socket);
+  SendTcpData(":CHANnel1:SCALe 5V\n",PCS_Socket);
+  SendTcpData("CHANnel1:OFFSet 1\n",PCS_Socket);
+  SendTcpData(":CHANnel1:DISPlay 1\n",PCS_Socket);
+  SendTcpData(":CHANnel2:DISPlay 0\n",PCS_Socket);
+  SendTcpData(":FUNCtion:DISPlay 0\n",PCS_Socket);
+  SendTcpData(":TIMebase:SCALe 0.0002\n",PCS_Socket);
+  SendTcpData(":TIMebase:POSition 0\n",PCS_Socket);
+  SendTcpData(":TRIGger:SWEep AUTO\n",PCS_Socket);
+  
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_LIN_Init
+{
+  OSC_LIN_Init();
+}
+
+void Trigger_AUTO()
+{
+  SendTcpData(":TRIGger:SWEep AUTO\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::Trigger_AUTO
+{
+  Trigger_AUTO();
+}
+
+void OSC_Reset()
+{
+  SendTcpData("*RST\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Reset
+{
+  OSC_Reset();
+}
+
+void OSC_AutoScale()
+{
+  SendTcpData(":AutoScale\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_AutoScale
+{
+  OSC_AutoScale();
+}
+
+
+void Save_Picture()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":DISPlay:DATA? PNG\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::Save_Picture
+{
+  Save_Picture();
+}
+
+
+void OSC_Single_Trigger()
+{
+  SendTcpData(":SINGle\n",PCS_Socket);
+}
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Stop
+{
+  OSC_stop();
+}
+void OSC_stop()
+{
+  SendTcpData(":STOP\n",PCS_Socket);
+ 
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Single_Trigger
+{
+  OSC_Single_Trigger();
+}
+On sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_ID_Trigger
+{
+  OSC_id_trigger();
+}
+
+void OSC_id_trigger()
+{
+  SendTcpData("*CLS\n",PCS_Socket);
+  SendTcpData(":RUN\n",PCS_Socket);
+  SendTcpData(":CHANnel1:SCALe 1V\n",PCS_Socket);
+  SendTcpData(":CHANnel2:SCALe 1V\n",PCS_Socket);
+  SendTcpData("CHANnel1:OFFSet 1\n",PCS_Socket);
+  SendTcpData("CHANnel2:OFFSet 1\n",PCS_Socket);
+  SendTcpData(":CHANnel1:DISPlay 1\n",PCS_Socket);
+  SendTcpData(":CHANnel2:DISPlay 1\n",PCS_Socket);
+ 
+  SendTcpData(":TRIGger:SWEep NORMAL\n",PCS_Socket);
+  SendTcpData(":TIMebase:SCALe 0.000002\n",PCS_Socket);
+  SendTcpData(":TIMebase:Position 0\n",PCS_Socket);
+  SendTcpData(":TIMebase:REFerence CENTer\n",PCS_Socket);
+  SendTcpData(":TRIGger:EDGE:LEVel 3.50 \n",PCS_Socket); 
+  SendTcpData(":TRIGger:MODE SBUS1\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SOURce CHAnnel1\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SIGNal:DEFinition CANH\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:TRIGger:PATTern:ID:MODE STANdard\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:TRIGger IDData\n",PCS_Socket);
+  SendTcpData(":FUNCtion:DISPlay 1\n",PCS_Socket);
+  SendTcpData(":FUNCtion:SOURCE1 CHANnel1\n",PCS_Socket);
+  SendTcpData(":FUNCtion:SOURCE2 CHANnel2\n",PCS_Socket);
+  SendTcpData(":FUNCtion:OPERation SUBTract\n",PCS_Socket);
+  SendTcpData(":FUNCtion:SCALe 1V\n",PCS_Socket);
+  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+  SendTcpData(":MEASure:STATistics:DISPlay 1\n",PCS_Socket);
+  SendTcpData(":MEASure:STATistics ON\n",PCS_Socket);
+  
+  OSC_IDTrigger();
+}
+
+
+void OSC_IDTrigger()
+{
+  char c1[200]="";
+  char id[20]="";
+  char cmd[200]="";
+  long res;
+  char buf[20];
+  sysGetVariableString(sysvar::OSC::ID,buf,20);
+  snprintf(id,20,"%s", buf);
+  write("Id is %s",id);
+  strncpy(c1,":SBUS1:CAN:TRIGger:PATTern:ID Parameter1\n",200);
+  str_replace_regex(c1,"Parameter1",id);
+  strncpy(cmd,c1,200);
+  write("%s",cmd);
+  SendTcpData(cmd,PCS_Socket);
+}
+void OSC_ID_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":SBUS1:CAN:TRIGger:PATTern:ID?\n",PCS_Socket);
+}
+void OSC_Meas_Clear()
+{
+  SendTcpData(":MEASure:CLEar\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Meas_Clear
+{
+  OSC_Meas_Clear();
+}
+
+
+void Function_Add()
+{
+  SendTcpData(":FUNCtion:OPERation ADD\n",PCS_Socket);
+  SendTcpData(":FUNCtion:SCALe 5V\n",PCS_Socket);
+  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::Function_Add
+{
+  Function_Add();
+}
+
+
+void Function_Sub()
+{
+  SendTcpData(":FUNCtion:OPERation SUBTract\n",PCS_Socket);
+  SendTcpData(":FUNCtion:SCALe 1V\n",PCS_Socket);
+  SendTcpData(":FUNCtion:OFFSet 3\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::Function_Sub 
+{
+  Function_Sub();
+}
+
+
+void OSC_Run()
+{
+  SendTcpData(":RUN\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Run
+{
+  OSC_Run();
+}
+
+
+void OSC_CAN_THResholds()
+{
+  SendTcpData(":MEASure:SOURce CHANnel1\n",PCS_Socket);
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+  SendTcpData(":MEASure:SOURce CHANnel2\n",PCS_Socket);
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+  SendTcpData(":MEASure:SOURce MATH\n",PCS_Socket);
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CAN_THResholds
+{
+  OSC_CAN_THResholds();
+}
+
+
+void OSC_LIN_THResholds()
+{
+  SendTcpData(":MEASure:SOURce CHANnel3\n",PCS_Socket);
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,60,50,40\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_LIN_THResholds
+{
+  OSC_LIN_THResholds();
+}
+
+
+void OSC_Cursor_Channel1()
+{
+  SendTcpData(":MARKer:X1Y1source CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Channel1
+{
+  OSC_Cursor_Channel1();
+}
+
+
+void OSC_Cursor_Channel3()
+{
+  SendTcpData(":MARKer:X1Y1source CHANnel3\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Channel3
+{
+  OSC_Cursor_Channel3();
+}
+
+
+void OSC_Cursor_Xdelta()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MARKer:XDELta?\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Xdelta
+{
+
+  OSC_Cursor_Xdelta();
+}
+
+
+void OSC_Cursor_Ydelta()
+{
+  SendTcpData(":MARKer:YDELta?\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Ydelta
+{
+   OSC_Cursor_Ydelta();
+}
+
+
+void OSC_CHAnnel1_Vtop_Meas()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VTOP CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vtop_Meas
+{
+  OSC_CHAnnel1_Vtop_Meas();
+}
+
+
+void OSC_CHAnnel1_Vtop_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  write("hello1");
+  write("PCS_Socket=%d",PCS_Socket);
+  SendTcpData(":MEASure:VTOP? CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vtop_Result
+{
+  OSC_CHAnnel1_Vtop_Result();
+}
+
+
+void OSC_CHAnnel1_Vbase_Meas()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VBASe CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vbase_Meas
+{
+  OSC_CHAnnel1_Vbase_Meas();
+}
+
+
+void OSC_CHAnnel1_Vbase_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VBASe? CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vbase_Result
+{
+  OSC_CHAnnel1_Vbase_Result();
+}
+
+
+void OSC_CHAnnel1_Vmax_Meas()
+{
+  SendTcpData(":MEASure:VMAX CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmax_Meas
+{
+  OSC_CHAnnel1_Vmax_Meas();
+}
+
+
+void OSC_CHAnnel1_Vmax_Result()
+{
+  SendTcpData(":MEASure:VMAX? CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmax_Result
+{
+  OSC_CHAnnel1_Vmax_Result();
+}
+
+
+void OSC_CHAnnel1_Vmin_Meas()
+{
+  SendTcpData(":MEASure:VMIN CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmin_Meas
+{
+  OSC_CHAnnel1_Vmin_Meas();
+}
+
+
+void OSC_CHAnnel1_Vmin_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VMIN? CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel1_Vmin_Result
+{
+  OSC_CHAnnel1_Vmin_Result();
+}
+
+
+void OSC_CHAnnel2_Vtop_Meas()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VTOP CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vtop_Meas
+{
+  OSC_CHAnnel2_Vtop_Meas();
+}
+
+
+void OSC_CHAnnel2_Vtop_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VTOP? CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vtop_Result
+{
+  OSC_CHAnnel2_Vtop_Result();
+}
+
+
+void OSC_CHAnnel2_Vbase_Meas()
+{
+ 
+  SendTcpData(":MEASure:VBASe CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vbase_Meas
+{
+  OSC_CHAnnel2_Vbase_Meas();
+}
+
+
+void OSC_CHAnnel2_Vbase_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VBASe? CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_CHAnnel2_Vbase_Result
+{
+  OSC_CHAnnel2_Vbase_Result();
+}
+
+
+void OSC_Math_Vtop_Meas()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VTOP MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vtop_Meas
+{
+  OSC_Math_Vtop_Meas();
+}
+
+
+void OSC_Math_Vtop_Result()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VTOP? MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vtop_Result
+{
+  OSC_Math_Vtop_Result();
+}
+
+
+void OSC_Math_Vbase_Meas()
+{
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":MEASure:VBASe MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vbase_Meas
+{
+  OSC_Math_Vbase_Meas();
+}
+
+
+void OSC_Math_Vbase_Result()
+{
+  SendTcpData(":MEASure:VBASe? MATH\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vbase_Result
+{
+  OSC_Math_Vbase_Result();
+}
+
+void OSC_Math_Vmax_Meas()
+{
+  SendTcpData(":MEASure:VMAX MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmax_Meas
+{
+  OSC_Math_Vmax_Meas();
+}
+
+
+void OSC_Math_Vmax_Result()
+{
+  SendTcpData(":MEASure:VMAX? MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmax_Result
+{
+  OSC_Math_Vmax_Result();
+}
+
+
+void OSC_Math_Vmin_Meas()
+{
+  SendTcpData(":MEASure:VMIN MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmin_Meas
+{
+  OSC_Math_Vmin_Meas();
+}
+
+
+void OSC_Math_Vmin_Result()
+{
+  SendTcpData(":MEASure:VMIN? MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_Vmin_Result
+{
+  OSC_Math_Vmin_Result();
+}
+
+
+void OSC_Ch1_RISetime()
+{
+  SendTcpData(":MEASure:RISetime CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_RISetime
+{
+  OSC_Ch1_RISetime();
+}
+
+
+void OSC_Ch1_RISetime_Result()
+{
+  SendTcpData(":MEASure:RISetime? CHANnel1\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_RISetime_Result
+{
+  OSC_Ch1_RISetime_Result();
+}
+
+
+void OSC_Ch2_RISetime()
+{
+  SendTcpData(":MEASure:RISetime CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_RISetime
+{
+  OSC_Ch2_RISetime();
+}
+
+
+void OSC_Ch2_RISetime_Result()
+{
+  SendTcpData(":MEASure:RISetime? CHANnel2\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_RISetime_Result
+{
+  OSC_Ch2_RISetime_Result();
+}
+
+
+void OSC_Math_RISetime()
+{
+  SendTcpData(":MEASure:RISetime MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_RISetime
+{
+  OSC_Math_RISetime();
+}
+
+
+void OSC_Math_RISetime_Result()
+{
+  SendTcpData(":MEASure:RISetime? MATH\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_RISetime_Result
+{
+  OSC_Math_RISetime_Result();
+}
+
+
+void OSC_Ch1_FALLtime()
+{
+  SendTcpData(":MEASure:FALLtime CHANnel1\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_FALLtime
+{
+  OSC_Ch1_FALLtime();
+}
+
+void OSC_Ch1_FALLtime_Result()
+{
+  SendTcpData(":MEASure:FALLtime? CHANnel1\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch1_FALLtime_Result
+{
+  OSC_Ch1_FALLtime_Result();
+}
+
+void OSC_Ch2_FALLtime()
+{
+  SendTcpData(":MEASure:FALLtime CHANnel2\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_FALLtime
+{
+  OSC_Ch2_FALLtime();
+}
+
+void OSC_Ch2_FALLtime_Result()
+{
+  SendTcpData(":MEASure:FALLtime? CHANnel2\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Ch2_FALLtime_Result
+{
+  OSC_Ch2_FALLtime_Result();
+}
+
+void OSC_Math_FALLtime()
+{
+  SendTcpData(":MEASure:FALLtime MATH\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_FALLtime
+{
+  OSC_Math_FALLtime();
+}
+
+void OSC_Math_FALLtime_Result()
+{
+  SendTcpData(":MEASure:FALLtime? MATH\n",PCS_Socket);
+}
+
+
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Math_FALLtime_Result
+{
+  OSC_Math_FALLtime_Result();
+}
+
+
+void OSC_Getvalue_V_Ch1_Top()//新增函数
+{
+  
+}
+
+on sysvar_update sysvar::PCS::V_Ch1_Top_GetValue
+{
+  strtod(PCS_RecvData, V_Ch1_Top);
+  @sysvar::PCS::PCS_Ch1_Top_ReValue=V_Ch1_Top;
+}
+
+void OSC_Getvalue_V_Ch2_Base()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::V_Ch2_Base_GetValue
+{
+  
+  strtod(PCS_RecvData, V_Ch2_Base);
+  @sysvar::PCS::PCS_Ch2_Base_ReValue=V_Ch2_Base;
+}
+on sysvar_update sysvar::PCS::V_Ch1_ID_GetValue
+{
+  sysSetVariableString(sysvar::PCS::PCS_Ch1_ID_ReValue,PCS_RecvData);
+  write("PCS_RecvData:%s",PCS_RecvData);
+//  strtod(PCS_RecvData, V_Ch1_ID);
+//  
+//  sysvar::PCS::PCS_Ch1_ID_ReValue=V_Ch1_ID;
+}
+void OSC_Getvalue_V_Math_Top()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::V_Math_Top_GetValue
+{
+  strtod(PCS_RecvData, V_Math_Top);
+  @sysvar::PCS::PCS_Math_Top_ReValue=V_Math_Top;
+}
+
+
+void OSC_Getvalue_V_Ch1_Base()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::V_Ch1_Base_GetValue
+{
+  strtod(PCS_RecvData, V_Ch1_Base);
+  @sysvar::PCS::PCS_Ch1_Base_ReValue=V_Ch1_Base;
+}
+
+
+void OSC_Getvalue_V_Ch2_Top()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::V_Ch2_Top_GetValue
+{
+  strtod(PCS_RecvData, V_Ch2_Top);
+  @sysvar::PCS::PCS_Ch2_Top_ReValue=V_Ch2_Top;
+}
+
+void OSC_Getvalue_V_Math_Base()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::V_Math_Base_GetValue
+{
+  strtod(PCS_RecvData, V_Math_Base);
+  @sysvar::PCS::PCS_Math_Base_ReValue=V_Math_Base;
+}
+
+void OSC_Getvalue_PCS_MaxVolt()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::PCS_MaxVolt_GetValue
+{
+  @sysvar::PCS::PCS_MaxVolt_ReValue=PCS_ReceiveDataStg(PCS_RecvData);
+}
+
+void OSC_Getvalue_PCS_MinVolt()//新增函数
+{
+}
+
+on sysvar_update sysvar::PCS::PCS_MinVolt_GetValue
+{
+  @sysvar::PCS::PCS_MinVolt_ReValue=PCS_ReceiveDataStg(PCS_RecvData);
+}
+
+void OSC_Picture_Name_Set_Dominant()//新增函数
+{
+
+  sysGetVariableString(sysvar::PCS::Node_Name,nodename,200);
+  getlocaltime(t1);
+  for(seq=0;seq<9;seq++)
+  {
+    t2[seq]=t1[seq];
+  }
+  snprintf(t3,50,"%d-%d-%d_%d-%d-%d",t2[5]+1900,t2[4]+1,t2[3],t2[2],t2[1],t2[0]);
+  
+  //图片名区别
+  
+  snprintf(picname,150,"");
+  snprintf(picname,150,"%s_%d_%s",nodename,@sysvar::PCS::PCS_Picture_Outer_Cycle+1,t3); 
+  
+  //保存图片
+  snprintf(picpath,200,"");
+  snprintf(sharepath,200,"");         
+  snprintf(picpath,200,"C:\\pic\\%s_dominant.png",picname);
+  snprintf(sharepath,200,"\\\\192.168.7.1\\pic\\%s_dominant.png",picname);
+  sysSetVariableString(sysvar::PCS::PCS_Picture_Sharepath,sharepath);//将图片地址传给系统变量
+  
+}
+
+on sysvar_update sysvar::PCS::PCS_Picture_Name_Dominant
+{
+  OSC_Picture_Name_Set_Dominant();
+}
+
+void OSC_Picture_Name_Set_Recessive()//新增函数
+{
+
+  sysGetVariableString(sysvar::PCS::Node_Name,nodename,200);
+  getlocaltime(t1);
+  for(seq=0;seq<9;seq++)
+  {
+    t2[seq]=t1[seq];
+  }
+  snprintf(t3,50,"%d-%d-%d_%d-%d-%d",t2[5]+1900,t2[4]+1,t2[3],t2[2],t2[1],t2[0]);
+  
+  //图片名区别
+  
+  snprintf(picname,150,"");
+  snprintf(picname,150,"%s_%d_%s",nodename,@sysvar::PCS::PCS_Picture_Outer_Cycle+1,t3); 
+  
+  //保存图片
+  snprintf(picpath,200,"");
+  snprintf(sharepath,200,"");         
+  snprintf(picpath,200,"C:\\pic\\%s_recessive.png",picname);
+  snprintf(sharepath,200,"\\\\192.168.7.1\\pic\\%s_recessive.png",picname);
+  sysSetVariableString(sysvar::PCS::PCS_Picture_Sharepath,sharepath);//将图片地址传给系统变量
+
+}
+
+
+on sysvar_update sysvar::PCS::PCS_Picture_Name_Recessive
+{
+  OSC_Picture_Name_Set_Recessive();
+}
+
+void OSC_Picture_Name_Set_BitTime()//新增函数
+{
+
+  sysGetVariableString(sysvar::PCS::Node_Name,nodename,200);
+  getlocaltime(t1);
+  for(seq=0;seq<9;seq++)
+  {
+    t2[seq]=t1[seq];
+  }
+  snprintf(t3,50,"%d-%d-%d_%d-%d-%d",t2[5]+1900,t2[4]+1,t2[3],t2[2],t2[1],t2[0]);
+  
+  //图片名区别
+  
+  snprintf(picname,150,"");
+  snprintf(picname,150,"%s_%d_%s",nodename,@sysvar::PCS::PCS_Picture_Outer_Cycle+1,t3); 
+  
+  //保存图片
+  snprintf(picpath,200,"");
+  snprintf(sharepath,200,"");         
+  snprintf(picpath,200,"C:\\pic\\%s_BitTime.png",picname);
+  snprintf(sharepath,200,"\\\\192.168.7.1\\pic\\%s_BitTime.png",picname);
+  sysSetVariableString(sysvar::PCS::PCS_Picture_Sharepath,sharepath);//将图片地址传给系统变量
+  
+}
+
+On sysvar_update sysvar::PCS::PCS_Picture_Name_BitTime
+{
+  OSC_Picture_Name_Set_BitTime();
+}
+
+void OSC_Picture_Convert()//新增函数
+{
+  dllpicConvert(Rcv_Size,PCS_RecvData,picpath);  
+}
+
+on sysvar_update sysvar::PCS::PCS_Picture_Convert
+{
+  OSC_Picture_Convert();
+}
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::TIMebase_SCALE
+{
+  SendTcpData(":TIMebase:SCALe 0.00001\n",PCS_Socket);
+}
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_TRIGger_MODE_SOF
+{
+  SendTcpData(":TRIGger:MODE SBUS1\n",PCS_Socket);
+  SendTcpData(":SBUS1:MODE CAN\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SOURce CHAnnel1\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SIGNal:BAUDrate 500000\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:SIGNal:DEFinition CANH\n",PCS_Socket);
+  SendTcpData(":SBUS1:CAN:TRIGger SOF\n",PCS_Socket);
+}
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::MEASure_PEDGes_CHAnnel1
+{
+  SendTcpData(":MEASure:PEDGes CHANnel1 \n",PCS_Socket);
+  SendTcpData(":MARKer:MODE WAVeform\n",PCS_Socket);
+}
+on sysvar_update sysvar::PreCmd::Agilennt_PCS_PreCmd::OSC_Cursor_Xdelta_Meas
+{
+  SendTcpData(":MEASure:TDELta\n",PCS_Socket);
+}
+
+on sysvar_update sysvar::PCS::PCS_BitsTime_Get
+{
+  BitsTime=atodbl(PCS_RecvData)*1000000;
+  write("BitsTime:%f",BitsTime);
+  @sysvar::PCS::PCS_BitsTime=BitsTime;
+}

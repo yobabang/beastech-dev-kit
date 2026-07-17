@@ -1,0 +1,45 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_VT.cin"
+}
+
+void MainTest ()
+{
+  VT();
+}
+
+testcase VT()
+{
+  int res;
+
+  VTSystem_InitConfig();
+  while(1)
+  {
+    testJoinTextEvent("KL30");//1
+    testJoinTextEvent("KL15");//2
+    res=testWaitForAnyJoinedEvent(999999999);
+    CMD(res);
+  }
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):
+      if(kl30_sw == T_on)
+        VT7001_KL30(T_on);
+      else
+        VT7001_KL30(T_off);
+      break;
+    case(2):
+      if(kl15_sw == T_on)
+        VT7001_KL15(T_on);
+      else
+        VT7001_KL15(T_off);
+      break;
+    default:
+      break;
+  }
+}

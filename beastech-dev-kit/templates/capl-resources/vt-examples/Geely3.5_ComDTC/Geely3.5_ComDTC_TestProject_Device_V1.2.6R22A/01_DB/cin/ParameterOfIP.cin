@@ -1,0 +1,32 @@
+
+/*@!Encoding:936*/
+variables
+{
+  /*-------------IP Address--------------------*/
+  char gIpv4AddOfIHU[100]="198.18.34.1";
+  char gIpv4AddOfDIM[100]="198.18.32.19";
+  char gIpv4AddOfDMM[100]="198.18.32.18";
+  char gIpv4AddOfDVR[100]="198.18.37.20";
+  char gIpv4AddOfPAS[100]="198.18.36.96";
+  char gIpv4AddOfTCAM[100]="198.18.32.17";
+  char gIpv4AddOfASDM[100]="198.18.36.1";
+  
+  char gIpv4AddOfVGM[100]="198.18.32.1";
+  
+  struct LinkDownDTC
+  {
+    char node[100];
+    char cluster[100];
+    dword dtc;
+//    
+    int testProd;
+    int SUValue;
+    int SDValue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+    int tstRsltFlg;
+  };
+
+  const int LinkDownDTCnum=1;
+  struct LinkDownDTC LinkDownDTCTemp[LinkDownDTCnum];
+}

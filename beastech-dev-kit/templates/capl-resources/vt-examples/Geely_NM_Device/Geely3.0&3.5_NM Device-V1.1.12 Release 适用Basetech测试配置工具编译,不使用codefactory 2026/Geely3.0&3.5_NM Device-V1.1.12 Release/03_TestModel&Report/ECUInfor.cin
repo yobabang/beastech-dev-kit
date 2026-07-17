@@ -1,0 +1,105 @@
+
+includes
+{
+	
+}
+
+variables
+{
+
+  struct e2eSignal
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;////////////////
+  };
+  
+  struct VehModMng
+  {
+    char cluster[50];
+    char FrameName[32];
+    int FrameCycle;
+    int dlc;
+    char sigGroupName[64];
+    int slotID;
+    int baseCycle;
+    int RepetitionCycle;
+    word dataID;
+    int sigGroup_UB;
+    int sigNum;
+    int pduStartBit;//
+    struct e2eSignal e2eSignalList[100];
+  };
+  
+  int IfNeedUMActive=0;
+  int IfNeedBattU=0;
+  struct VehModMng VehModMngtGlbSafe[2];
+  const int ExcelChannelNum=2;
+
+  struct sExcelInfor
+  {
+    char ECUName[NameLong];
+    char BusName[NameLong];
+    enum cBusType BusType;
+    enum PhyChannel Channel;
+    int IfOnBus;
+    int IfTest;
+    int IfKL30Power;
+    int CanBeSleepinPower;
+    int SupportNetworkWakeup;
+    int IfMCUPoweredinSleep;
+    int WithLowPowerMode;
+    int SupportHardwareWakeup;
+    byte hardware_wakeup_set_pnc[gNmPnInfoLength];
+    word WakeupCoding;
+  }; 
+  struct sExcelInfor ExcelInfor[ExcelChannelNum]=
+  {
+    {"ZCUD","ZCU_CANFD1",cCANFD,cCAN1,1,1,0,1,1,0,1,0,{0x00,0x20,0x00,0x00},0x0105},
+    {"ZCUD","ZCU_CANFD2",cCANFD,cCAN2,1,1,0,1,0,0,1,0,{0x00,0x20,0x00,0x00},0x0105}
+  };
+  const int ArxmlCANNum=3;
+
+  struct sArxmlCAN
+  {
+    char NodeName[NameLong];
+    char ChannelName[NameLong];
+    int NMNum;
+    dword NMID;
+    int DLC;
+    byte SourceID;
+    enum ePNCGateway PNCGW;
+    int PNCMask[gNmPnInfoLength];
+    struct sAppReceive app_receive;
+    struct sAPPMatrixCAN APPMatrix;
+    struct sIPDUMapCAN IPDUMap[MaxPN];
+  };
+   
+  struct sArxmlCAN ArxmlCAN[ArxmlCANNum+1]={
+  {"ZCUP","ZCU_CANFD2",0,0,0,0,NonePNCGW,{0, 34, 80, 0},{0x132,64},
+    {16,{{0x1b9,0.1},{0x321,0.45},{0x208,0.2},{0x136,0.05},{0x4a0,1},{0x258,0.25},{0x323,0.5},{0x283,0.35},{0x372,0.7},{0x102,0.02},
+      {0x546,1},{0x1c7,0},{0x1c3,0.15},{0x33,0},{0x563,0},{0x3a,0.01},{0,0}}},
+      {
+        {25,{{0x102,0.02},{0x283,0.35},{0x208,0.2},{0x1b9,0.1},{0x258,0.25},{0x1c7,0},{0x321,0.45},{0x372,0.7},{0,0}},8},
+        {29,{{0x102,0.02},{0x283,0.35},{0x3a,0.01},{0x208,0.2},{0x1b9,0.1},{0x4a0,1},{0x258,0.25},{0x1c7,0},{0x321,0.45},{0x372,0.7},
+          {0x33,0},{0,0}},11},
+        {38,{{0x102,0.02},{0x3a,0.01},{0x208,0.2},{0x1b9,0.1},{0x4a0,1},{0x258,0.25},{0x1c7,0},{0x321,0.45},{0x372,0.7},{0x33,0},
+          {0,0}},10},
+        {36,{{0x102,0.02},{0x283,0.35},{0x3a,0.01},{0x208,0.2},{0x1b9,0.1},{0x4a0,1},{0x258,0.25},{0x1c7,0},{0x321,0.45},{0x372,0.7},
+          {0x33,0},{0,0}},11},
+        {0,{{0,0}},0}}},
+  {"ZCUP","ZCU_CANFD1",1,0x505,8,0x5,NonePNCGW,{0, 34, 80, 0},{0x210,64},
+    {3,{{0x212,0.06},{0x545,0.5},{0x135,0.05},{0,0}}},
+      {
+        {36,{{0x135,0.05},{0,0}},1},
+        {38,{{0x135,0.05},{0,0}},1},
+        {29,{{0x135,0.05},{0,0}},1},
+        {0,{{0,0}},0}}},
+  {"ZCUP","ZCUD_CAN1",1,0x502,8,0x2,NonePNCGW,{0, 32, 0, 0},{0x150,8},
+    {1,{{0x220,0.07},{0,0}}},
+      {
+        {29,{{0x220,0.07},{0,0}},1},
+        {0,{{0,0}},0}}},
+    {"","",0,0,0,0,NonePNCGW,{0,0,0,0},{0,0},{0,{{0,0}}},{{0,{{0,0}},0}}}};
+}

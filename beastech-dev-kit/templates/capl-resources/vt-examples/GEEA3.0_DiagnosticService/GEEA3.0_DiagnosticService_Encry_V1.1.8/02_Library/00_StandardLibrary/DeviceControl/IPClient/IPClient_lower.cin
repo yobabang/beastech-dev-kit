@@ -1,0 +1,328 @@
+/*@!Encoding:936*/
+/* 不同的项目中 设备IP地址有所不同*/
+
+includes
+{
+
+  #include "..\DevParameter.cin"
+}
+
+variables
+{
+  const long  INVALID_SOCKET =    ~0;
+  const long  WSA_IO_PENDING =   997;
+  const dword INVALID_IP     = 0xffffffff;
+
+  char        gIpLastErrStr[1024]  = "";
+  int         gIpLastErr           = 0;
+  long        gUdpSocket    = INVALID_SOCKET;
+
+
+  dword       gTcpPort          = 0;
+  long        gTcpDataSocket    = INVALID_SOCKET;
+  char        gTcpRxBuffer[65535];
+  //////////////////////////////////////////////////
+  dword PPS_Socket ;
+  dword Shift_PPS_Socket ;
+  dword PMM_Socket ;
+  dword PCS_Socket ;
+  dword ETH_CAN0_Socket ;
+  dword ETH_CAN1_Socket ;
+  
+//  char IPC_IP[100] = "192.168.100.100";
+//  char PPS_IP[100] = "192.168.100.110";
+//  char Shift_PPS_IP[100] = "192.168.100.130";
+//  char PMM_IP[100] = "192.168.100.140";
+//  char PCS_IP[100] = "192.168.100.120";
+//  char ETH_CAN_IP[100] = "192.168.100.150";
+//
+//  
+//  dword PPS_Port = 7000;
+//  dword Shift_PPS_Port = 30000;
+//  dword PMM_Port = 5025;
+//  dword PCS_Port = 5025;
+//  dword ETH_CAN0_Port = 40001;
+//  dword ETH_CAN1_Port = 40002;
+  
+  dword IPC_Port1 = 12001;
+  dword IPC_Port2 = 13001;
+  dword IPC_Port3 = 14001;
+  dword IPC_Port4 = 15001;
+  dword IPC_Port5 = 16001;
+  dword IPC_Port6 = 16001;
+  
+  
+  char PPS_RecvData[400] = "";
+  char PCS_RecvData[400000] = "";
+  char PMM_RecvData[400] = "";
+
+  byte buffer_data[400000];//
+  char Rcv_Begin = 1;
+  long Rcv_Size = 0;
+  
+  msTimer T_rcvData;
+  dword gScoket;
+}
+
+
+
+void IPClient_Init()
+{
+  PPS_Socket = ConnectTcp(PPS_IP,IPC_IP,PPS_Port,IPC_Port1);
+  testWaitForTimeout(100);
+  
+  //如果地漂电源和程控电源是一个设备，这个TCP连接需要注释掉
+  Shift_PPS_Socket = ConnectTcp(Shift_PPS_IP,IPC_IP,Shift_PPS_Port,IPC_Port2);
+  testWaitForTimeout(100);
+  
+  PMM_Socket = ConnectTcp(PMM_IP,IPC_IP,PMM_Port,IPC_Port3);
+  testWaitForTimeout(100);
+  
+  PCS_Socket = ConnectTcp(PCS_IP,IPC_IP,PCS_Port,IPC_Port4);
+  testWaitForTimeout(100);
+  
+  ETH_CAN0_Socket = ConnectTcp(ETH_CAN_IP,IPC_IP,ETH_CAN0_Port,IPC_Port5);
+  testWaitForTimeout(100);
+  
+  ETH_CAN1_Socket = ConnectTcp(ETH_CAN_IP,IPC_IP,ETH_CAN1_Port,IPC_Port6);
+  testWaitForTimeout(100);
+    
+  testWaitForTimeout(1000);
+  Set_Sysvar_Socket();//将Socket赋值给系统变量
+}
+
+void Set_Sysvar_Socket()
+{
+  //如果地漂电源和程控电源是一个socket，那么将程控电源的socket赋值给地漂电源的系统变量
+  @sysvar::DeviceControl::IPClient::Sockets::PPS_Socket=PPS_Socket;//程控电源
+  @sysvar::DeviceControl::IPClient::Sockets::SPPS_Socket=Shift_PPS_Socket;//地漂电源
+  @sysvar::DeviceControl::IPClient::Sockets::PMM_Socket=PMM_Socket;//万用表
+  @sysvar::DeviceControl::IPClient::Sockets::PCS_Socket=PCS_Socket;//示波器
+  @sysvar::DeviceControl::IPClient::Sockets::ETH_CAN0_Socket=ETH_CAN0_Socket;//DRB/PSRB/ENV
+  @sysvar::DeviceControl::IPClient::Sockets::ETH_CAN1_Socket=ETH_CAN1_Socket;//台架BOB
+  
+  sysSetVariableString(sysvar::DeviceControl::IPClient::`IPAddress::IPC_IPAddress,IPC_IP);
+  sysSetVariableString(sysvar::DeviceControl::IPClient::`IPAddress::PCS_IPAddress,PCS_IP);
+  sysSetVariableString(sysvar::DeviceControl::IPClient::`IPAddress::PMM_IPAddress,PMM_IP);
+  sysSetVariableString(sysvar::DeviceControl::IPClient::`IPAddress::PPS_IPAddress,PPS_IP);
+  sysSetVariableString(sysvar::DeviceControl::IPClient::`IPAddress::ETH_CAN_IPAddress,ETH_CAN_IP);
+  
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::Ports::PCS_Port,PCS_Port);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::Ports::PPS_Port,PPS_Port);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::Ports::PMM_Port,PMM_Port);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::Ports::ETH_CAN0_Port,ETH_CAN0_Port);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::Ports::ETH_CAN1_Port,ETH_CAN1_Port);
+  
+  @sysvar::DeviceControl::IPClient::InitCompleted = 1;
+}
+
+on timer T_rcvData
+{
+  sysSetVariableData(sysvar::DeviceControl::IPClient::RcvEvent::TcpRecData,buffer_data,Rcv_Size);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::RcvEvent::Socket,gScoket);
+  sysSetVariableInt(sysvar::DeviceControl::IPClient::RcvEvent::Rcv_Size,Rcv_Size);
+  
+  Rcv_Size=0;
+}
+
+void OnTcpConnect( dword socket, long result)
+{
+  if (0 != result)
+  {
+    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+    writelineex( 0, 2, "[socket#%d]OnTcpConnect error (%d): %s", socket,IpGetLastSocketError( socket), gIpLastErrStr);
+
+    return;
+  }
+  else
+  {
+    writelineex(0, 1, "Successfully connected to server via Tcp");
+    TcpRecv( socket);
+  }
+}
+
+void OnTcpReceive( dword socket, long result, dword address, dword port, char buffer[], dword size)
+{
+  long i=0;//
+
+  /* 不接收以太网转CAN模块发送的数据 */
+  if(socket == ETH_CAN0_Socket || socket == ETH_CAN1_Socket)
+  {
+    return;
+  }
+  
+  gScoket = socket;//
+  
+  if (0 != result)
+  {
+    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+    writelineex( 0, 2, "OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+    return;
+  }
+  
+  if(socket == PCS_Socket)
+  {
+    //write("[%5.9f][IPClient][OnTcpReceive][Socket = %d]size = %d",timeNowNS()/1000000000.0,socket,size);
+  }
+  if(socket == PMM_Socket)
+  {
+    float buff;
+    if(!((buffer[0] == '\r')&&(buffer[1] == '\n')))
+    {
+      strtod(buffer,buff);
+      @sysvar::DeviceControl::PMM::Parameters::PMM_RecvDataValue = buff;
+    }
+  }
+  //接收报文
+  if(size <50) //小数据
+  {
+    for(i=0;i<size;i++)
+    {
+      buffer_data[i]=buffer[i];
+    }
+    Rcv_Size=size;
+
+    sysSetVariableData(sysvar::DeviceControl::IPClient::RcvEvent::TcpRecData,buffer_data,Rcv_Size);
+    sysSetVariableInt(sysvar::DeviceControl::IPClient::RcvEvent::Socket,socket);
+    sysSetVariableInt(sysvar::DeviceControl::IPClient::RcvEvent::Rcv_Size,Rcv_Size);
+
+    Rcv_Size=0;
+  }
+  else //大数据
+  {
+    setTimer(T_rcvData,50);
+    
+    for(i=0;i<size;i++)
+    {
+      buffer_data[Rcv_Size+i]=buffer[i];
+    }
+    Rcv_Size = Rcv_Size + size;
+  }
+  
+  TcpRecv(socket);
+}
+
+void OnTcpClose( dword socket, long result)
+{
+  write("[IPClient] [ OnTcpClose called. (socket: %d, result: %d) ]", socket, result);
+  Tcpclose(socket);
+}
+
+
+dword ConnectTcp(char TcpServerIp[],char CliIp[],dword ServerPort,dword CliPort)
+{ 
+  char buffer[64];
+  char buffer2[64];
+  dword serverIp;
+  dword Ip;
+
+  
+  strncpy(buffer,TcpServerIp,64);
+
+  strncpy(buffer2,CliIp,64);
+  
+  serverIp = IpGetAddressAsNumber(buffer);
+  
+  Ip = IpGetAddressAsNumber(buffer2);
+
+  if (INVALID_IP == serverIp)
+  {
+    writelineex(0, 1, "[ConnectTcp] Error: invalid server Ip address!");  
+    return ~0;
+  }
+  
+  gTcpDataSocket = TcpOpen(Ip, CliPort);
+
+  if ( INVALID_SOCKET == gTcpDataSocket)
+  {
+    writelineex(0, 1, "[ConnectTcp] Error: could not open Tcp socket! error code = %d",IpGetLastError());
+    return ~0;
+  }
+  else
+  {
+    writelineex(0, 1, "[ConnectTcp] Tcp socket opened.");
+  }
+
+  if (0 == TcpConnect(gTcpDataSocket, serverIp, ServerPort))
+  {
+    writelineex(0, 1, "[ConnectTcp] Successfully connected to server %s:%d", buffer, ServerPort);
+
+    TcpRecv( gTcpDataSocket);
+  }
+  write("[ConnectTcp] <%s:%d> with <%s:%d>, socket = %d",TcpServerIp,ServerPort,CliIp,CliPort,gTcpDataSocket);
+  return gTcpDataSocket ;
+}
+
+void SendTcpData(char TcpClientData[],dword TcpDataSocket)
+{
+  char buffer[100];
+  strncpy(buffer,TcpClientData,100);
+  if (INVALID_SOCKET == TcpDataSocket)
+  {
+    writelineex( 0, 2, "Tcp socket is invalid!"); 
+    return;
+  }
+  if (0 != TcpSend( TcpDataSocket, buffer, strlen(buffer)))
+  {
+    gIpLastErr = IpGetLastSocketError(TcpDataSocket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( TcpDataSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+  else
+  {
+    writelineex( 0, 1, "Tcp data sent successfully!");
+  }
+}
+
+void SendTcpData_BYTE(byte TcpClientData[], long dataLen, dword TcpDataSocket)
+{
+  if (INVALID_SOCKET == TcpDataSocket)
+  {
+    writelineex( 0, 2, "Tcp socket is invalid!");
+    return;
+  }
+  
+//  if (0 != TcpSend( TcpDataSocket, TcpClientData, elcount(TcpClientData)))
+  if (0 != TcpSend( TcpDataSocket, TcpClientData, dataLen))
+  {
+    gIpLastErr = IpGetLastSocketError(TcpDataSocket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( TcpDataSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+  else
+  {
+    writelineex( 0, 1, "Tcp data sent successfully!");
+  }
+}
+
+
+long TcpRecv( dword socket)
+{
+  int result = 0;
+
+  result = TcpReceive( socket, gTcpRxBuffer, elcount( gTcpRxBuffer));
+
+  if ( 0 != result)
+  {
+    gIpLastErr = IpGetLastSocketError( socket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+  return result;
+}

@@ -1,0 +1,56 @@
+
+/*@!Encoding:936*/
+includes
+{
+  #include "SystemInformation.cin"
+  #include "COMMatrix.cin"
+}
+variables
+{
+  /*Codefactory配置参数*/
+  char TestEnvironment[32]="Bench";
+  char NodeName[32]="ZCUD5";
+  dword ECUAddress_Temp = 0x1D01;
+  char TpBusType_Temp[20] = "CANFD";
+  char TpBusName_Temp[32] = "ZCU_CANFD2";
+  char ipv4AddrStr[16] = "null";
+  int gWakeup_index=2;
+//gWakeup_index：1=KL15+NM；2=OnlyNM；3=OnlyKL15；4=KL15 or NM;5=KL30
+  dword gSimNMID = 0x53F; 
+  dword gRemoteWakeupCycle=500; 
+  int PostRunMode=0;
+  long PostRunTime = 20000;
+  long T_DiagInterval = 10;
+  long TCPLinkTime = 10000;
+
+  /*用例相关参数，便于开发移植*/
+  float gSPmax_500K=87;
+  float gSPmin_500K=77;
+  float gSPmax_2M=75;//2M采样点需求固定为70%
+  float gSPmin_2M=65;
+  float gSPmax_5M=75;
+  float gSPmin_5M=65;
+  long bittimeArbmin=1997;
+  long bittimeArbmax=2003;
+  long bittimeDatamin=499;
+  long bittimeDatamax=501;
+  float gVoltageLow=8;
+  float gVoltageNormal=12;
+  float gVoltageHigh=18;
+  long gCheckAliveTime=2000;//DUT唤醒的时间
+  long gCheckErrorTime=5000;
+  long gCheckPeriodTime=30000;
+  float gCycleDevLow1=0.97;//大于等于分界值的下偏差
+  float gCycleDevHigh1=1.03;//大于等于分界值的上偏差
+  float gCycleDevLow2=0.9;//小于分界值的下偏差
+  float gCycleDevHigh2=1.1;//小于分界值的上偏差
+  long gPeriodTestCheckTime=15000;
+  float Tclosed=2000;//从停发app报文到控制器进入到低功耗的时间
+  long BitTimeMin=1997;//unit=ns
+  long BitTimeMax=2003;//unit=ns  
+  long BusFaultTime=15;//unit=s  
+//  long tFastRecovery=100;//unit=ms
+//  long TslowRecovery=1000;
+//  int cL1ToL2=5;
+//  long TrecoveryDeviation=0.1;//误差10%
+}

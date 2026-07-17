@@ -1,0 +1,100 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+/**************
+适用于波特率为500K
+***************/
+variables
+{
+  long DeviceID,DisturbanceChannel;
+  enum VH6501_FaultType{CANH_ShortTo_CANL,CANH_BAT,CANH_GND,CANL_BAT,CANL_GND,CANH_Swap_CANL};
+  int64 VH6501_ResistanceOff=2147483647;
+  int VH6501_CANH_State = 0;
+  int VH6501_CANL_State = 0;
+}
+
+void VH6501_Init()
+{
+
+}
+
+void VH6501_Reset()
+{
+    canConfigureBusOff(gerrFrmChnl,NetwrkMsgTemp[gDisturbIndex].gAllMsgOfDut[1],0);
+}
+
+
+//发送报文0x001，DLC=8，数据场全为0xAA，包含位填充
+//对数据场靠后的一个显性位，从最后一个TQ开始往前翻转，翻转TQ数目为BtlNumber
+void VH6501_SamplePointTestTriggerSet(long BtlNumber) 
+{
+
+}
+
+
+
+void VH6501_RTRBitDisturbance(dword DistID,dword DistNumber)//对ID为DistID的报文进行RTR位干扰，干扰次数为DistNumber
+{
+  
+ 
+}
+
+void VH6501_AckDelimiterDisturbance(dword DistID,dword DistNumber)
+{
+ 
+}
+
+//对所有报文有效，在报文第一字节直接输入6个显性位，干扰次数为DistCycle*DistNumber
+//可用于干扰进入busoff，设置干扰次数为较大值，等待时间后disable
+void VH6501_AllMessageContinueDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+ 
+}
+
+void VH6501_AllAckDelimiterDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+ 
+}
+
+void VH6501_AllAckDelimiterRxDisturbance(dword DistCycle, dword DistNumber)
+{
+  canConfigureBusOff(gerrFrmChnl,NetwrkMsgTemp[gDisturbIndex].gAllMsgOfDut[1],1);
+}
+
+void VH6501_AllAckDelimiterDisturbanceComb(dword DistCycle, dword DistNumber,int index)
+{
+  int chanl;
+  chanl=getBusNameContext(NetwrkMsgTemp[index].cluster);
+  canConfigureBusOff(chanl,NetwrkMsgTemp[index].gAllMsgOfDut[1],1);
+}
+
+void VH6501_AllRTRDisturbance(dword DistCycle, dword DistNumber)
+{
+  
+  
+}
+
+void VH6501_AllRTRRxDisturbance(dword DistCycle, dword DistNumber)
+{
+  testStepWarning("Warning","Use CANpiggy can't implement RTR disturb.");
+}
+
+void VH6501_CANBusFaultSet(enum VH6501_FaultType FaultType)
+{  
+ 
+}
+
+void VH6501_CapacitanceSet(enum VH6501_FaultType Type, long capacitance)//设置电容,值为capacitance，单位pF
+{
+ 
+}
+
+void VH6501_ResistanceSet(enum VH6501_FaultType Type, long resistance)//设置电阻,值为resistance，单位Ω
+{
+ 
+}

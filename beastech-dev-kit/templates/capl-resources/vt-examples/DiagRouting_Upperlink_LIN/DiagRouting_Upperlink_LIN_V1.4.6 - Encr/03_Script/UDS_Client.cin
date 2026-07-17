@@ -1,0 +1,933 @@
+/*@!Encoding:936*/
+variables
+{ 
+  struct  SDU_Data
+  {
+    word   SourceID;
+    word   TargetID;
+    dword  Length;
+    byte   Payload[65536];
+  };
+
+  struct ServiceVars
+  {
+    word   Flag;
+    word   Network_num;
+    word   Req_SPRMIB;
+    word   SID36_Counter;
+    word   SID2A_Response;
+    double TimeStamp;
+    word   QueueOrder;
+    struct SDU_Data Packet;
+  };
+  struct ServiceVarsForQueueCheck
+  {
+    word   Flag;
+    word   Req_SPRMIB;
+    word   SID36_Counter;
+    word   SID2A_Response;
+    double TimeStamp;
+    word   QueueOrder;
+    struct SDU_Data Packet[3];
+  };
+  struct SendBuffer
+  {
+    word   sendFlag;          //0,空   1,有数据
+    word   Num;
+    struct SDU_Data Packet;
+  };
+  struct SendBuffer   ETHTxBuffer[EcuSum][2];
+  struct ServiceVars  GatewayReq;    //存放网关的诊断请求
+  struct ServiceVars  GatewayResp;   //存放网关的诊断应答 
+  struct ServiceVars  Request[EcuSum];        //存放诊断请求的数据包
+  struct ServiceVars  QueRequest[EcuSum];     //存放队列请求的数据包
+  struct ServiceVars  Response[EcuSum];
+  struct ServiceVars  RequestTrans[EcuSum]; 
+  struct ServiceVars  FunRequest[EcuSum*2]; 
+  struct ServiceVars  ResponseTrans[EcuSum]; 
+  struct ServiceVars  QueRequestTrans[EcuSum][2];
+  struct ServiceVars  void_Request;        
+  /**************************************************/
+  /**************************************************/
+  
+  enum TestCase_List //用于Ecu仿真节点应答不同的数据
+  {
+    DID_EDA0_900B  =  5,
+    DID_EDA0_100B  =  1,
+    DID_EDA0_1kB   =  2,
+    DID_EDA0_4kB   =  3,
+    DID_EDA0_8kB   =  4
+  };
+  
+  enum DiagnosticSession
+  {
+    DefaultSession            = 0x0,
+    ProgrammingSession        = 0x1,
+    ExtendedSession           = 0x2,
+    DefaultSession_SPRMIB     = 0x3,
+    ProgrammingSession_SPRMIB = 0x4,
+    ExtendedSession_SPRMIB    = 0x5
+  };
+  enum TesterPresent
+  {
+    TesterPresent             = 0x00,
+    TesterPresent_SPRMIB      = 0x01
+  };
+  
+  enum ECUReset
+  {
+    HardReset         = 0x0,
+    HardReset_SPRMIB  = 0x1
+  };
+  enum ReadDataByIdentifier
+  {
+    Read_F186         = 0x0,
+    Read_EDA0         = 0x1,
+    Read_F1AE         = 0x2,
+    Read_F1AA         = 0x3,
+    Read_D01C         = 0x4,
+    Read_ED20         = 0x5
+  };
+  enum WriteDataByIdentifier
+  {
+    Write_EDA0        = 0x0,
+    Write_1122        = 0x1
+  };
+  enum RoutineControl
+  {
+    RID_0206          = 0x0,
+    RID_FF00          = 0x1,
+    RID_0301          = 0x2,
+    RID_0205          = 0x3,
+    RID_FF01          = 0x4
+  };
+  enum TransferData
+  {
+    Tran_0264          = 0x0,
+    Tran_2000          = 0x1,
+    Tran_0064          = 0x02
+  };
+  struct SourceDataPars  //SID2C_Packageameter
+  {
+    byte DID[2];
+    byte Position;
+    byte MemorySize;
+  };
+  
+  /****************Diagnostic Service Package Define*******************/
+  struct DiagnosticSessionControl  //Service_10
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  SubFunction;
+  }; 
+  
+  struct ECUReset  //Service_11
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  SubFunction;
+  }; 
+  struct ReadDataByIdentifier  //Service_22
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  Identifier[2];
+  };
+  struct SecurityAccess  //Service_27
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  SubFunction;
+    byte  Data[4];
+  }; 
+  struct ReadDataByPeriodicIdentifier  //Service_2A
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  TransmissionMode;
+    byte  PeriodicDataIdentifier[1];
+  }; 
+  struct DynamicallyDefinedDataIdentifier //Service_2C
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  SubFunction;
+    byte  DyDefinedDID[2];
+    struct SourceDataPars SourData[100];
+  };
+  struct WriteDataByIdentifier  //Service_2E
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  Identifier[2];
+    byte  Data[65536];
+  };
+  struct RoutineControl  //Service_31
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+//    byte  SID;
+//    byte  SubFunction;
+//    byte  Identifier[2];
+    byte  Data[500];
+  };
+  struct RequestDownload    //Service_34
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  DataFormatIdentifier;
+    byte  DataFormatIdentifier1;
+    byte  MemoryAddress[4];
+    byte  MemorySize[4];
+  };
+  Struct RequestUpload      //Service_35
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    word  DataFormatIdentifier;
+    byte  MemoryAddress[4];
+    byte  MemorySize[4];
+  };
+  Struct TransferData       //Service_36
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  BS_Counter;
+    byte  Data[65535];
+  };
+  Struct RequestTransferExit //Service_37
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+  };
+  Struct TesterPresent //Service_3E
+  {
+    byte  GW_SPRMIB;
+    dword Length;
+    byte  SID;
+    byte  SubFunction;
+  };
+ 
+  /****************variable Define*******************/  
+  struct SID2A_Response //SID2A_PeriodicResponse
+  {
+    byte Request_Enable;
+    byte Length;
+    byte TransmissionMode;
+    byte PeriodicDataIdentifier[1];
+    
+  }SID2A_PeriodicResponse;
+  
+//  byte  CurrentSession[EcuSum];
+  word  PDU_Offset = 8; //诊断服务结构体到Doip PDU映射偏移量
+  
+  // 20231026：yangjing
+  enum  UDS_SessionMode  { DEFAULTSESSION = 0x01, EXTENDEDSESSION = 0x03, PROGRAMMINGSESSION = 0x02 };
+}
+  
+/********************************Transmit/response data check******************************/
+//Check ECU Response
+void CheckECU_Response(double P2, struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+//  if(P2 < P2Client)
+//  {
+//    testStep("1","ecuResp.Packet.TargetID=0x%x",ecuResp.Packet.TargetID);
+//    testStep("2","ecuResp.Packet.SourceID=0x%x",ecuResp.Packet.SourceID);
+//    testStep("1","testerReq.Packet.TargetID=0x%x",testerReq.Packet.TargetID);
+//    testStep("2","testerReq.Packet.SourceID=0x%x",testerReq.Packet.SourceID);
+  
+    if((testerReq.Packet.TargetID == ecuResp.Packet.SourceID) && (testerReq.Packet.SourceID == ecuResp.Packet.TargetID))
+    {
+      if(ecuResp.Packet.Payload[0] == 0x7F)
+      {
+        testStepWarning("Chk","Unexpect NegativeResponseServiceID 0x%x (NRC:0x%x)",ecuResp.Packet.Payload[1],ecuResp.Packet.Payload[2]);
+      }
+      else if(ecuResp.Packet.Payload[0] != (testerReq.Packet.Payload[0] + 0x40))
+      { 
+        if(SID2A_PeriodicResponse.Request_Enable == 1)
+        {
+          if(ecuResp.Packet.Payload[0] != SID2A_PeriodicResponse.PeriodicDataIdentifier[0])
+          {
+            testStepFail("Chk","Unexpect SID2A PeriodicResponseID 0x%x",ecuResp.Packet.Payload[0]);
+          }
+          else 
+          {
+            testStepPass("Chk","Expect SID2A PeriodicResponseID 0x%x",ecuResp.Packet.Payload[0]);
+            
+            CheckPeriodicResponse_SID2A(testerReq, ecuResp);
+          }
+        }
+        else 
+        {
+          testStepFail("Chk","Unexpect PositiveResponseServiceID 0x%x",ecuResp.Packet.Payload[0]);
+        }
+      }
+      else
+      {
+        testStepPass("Chk","PositiveResponseServiceID 0x%x",ecuResp.Packet.Payload[0]);
+        
+        switch(testerReq.Packet.Payload[0])
+        {
+          case 0x10: CheckPosResponse_SID10(testerReq, ecuResp); break;
+          case 0x11: CheckPosResponse_SID11(testerReq, ecuResp); break;
+          case 0x22: CheckPosResponse_SID22(testerReq, ecuResp); break;
+          case 0x27: CheckPosResponse_SID27(testerReq, ecuResp); break;
+          case 0x2A: CheckPosResponse_SID2A(testerReq, ecuResp); break;
+          case 0x2C: CheckPosResponse_SID2C(testerReq, ecuResp); break;
+          case 0x2E: CheckPosResponse_SID2E(testerReq, ecuResp); break;
+          case 0x31: CheckPosResponse_SID31(testerReq, ecuResp); break;
+          case 0x34: CheckPosResponse_SID34(testerReq, ecuResp); break;
+          case 0x35: CheckPosResponse_SID35(testerReq, ecuResp); break;
+          case 0x36: CheckPosResponse_SID36(testerReq, ecuResp); break;
+          case 0x37: CheckPosResponse_SID37(testerReq, ecuResp); break;
+          case 0x3E: CheckPosResponse_SID3E(testerReq, ecuResp); break;
+          default: break;
+        }
+      }
+    }
+    else
+    {
+      testStepFail("ChkID","Diagnostic Address ID is not Correct");
+    }
+//  }
+//  else 
+//  {
+//    testStepFail("Chk","Timeout Non Response recived");
+//  }
+}
+
+////Check Request Transmit by GW
+//void CheckDataTransmit_Request(struct SDU_Data testerReq, struct SDU_Data ecuReq)
+//{
+//  if(testerReq.Length == ecuReq.Length)
+//  {
+//    testStepPass("Chk","Transmit request data length is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit request data length:%d is not correct", ecuReq.Length);
+//  }
+//  
+//  if(testerReq.TargetID == ecuReq.TargetID)
+//  {
+//    testStepPass("Chk","Transmit request data ID is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit request data ID:%x is not correct",ecuReq.TargetID);
+//  }
+//  
+//  if(0 == memcmp(testerReq.Payload, ecuReq.Payload, ecuReq.Length))
+//  {
+//    testStepPass("Chk","Transmit request data is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit request data is not correct");
+//  }
+//}
+////Check Response Transmit by GW
+//void CheckDataTransmit_Response(struct SDU_Data testerResp, struct SDU_Data ecuResp)
+//{
+//  if(ecuResp.Length == testerResp.Length)
+//  {
+//    testStepPass("Chk","Transmit response data length is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit response data length:%d is not correct",testerResp.Length);
+//  }
+//  
+//  if(ecuResp.SourceID == testerResp.SourceID)
+//  {
+//    testStepPass("Chk","Transmit response data ID is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit response data ID:%x is not correct",testerResp.SourceID);
+//  }
+//  
+//  if(0 == memcmp(testerResp.Payload, ecuResp.Payload, testerResp.Length))
+//  {
+//    testStepPass("Chk","Transmit response data is correct");
+//  }
+//  else
+//  {
+//    testStepFail("Chk","Transmit response data is not correct");
+//  }
+//}
+//
+///**********************************SID 10**********************************/
+void SID10_DiagnosticSessionControl(struct DiagnosticSessionControl SID10_Package, struct ServiceVars txPackage)
+{
+  word SN,i;
+  
+  txPackage.Req_SPRMIB = (SID10_Package.SubFunction & 0x80) >> 7;
+  txPackage.Packet.Length = SID10_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID10_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  //@sysvar::GW::CurrentSession = SID10_Package.SubFunction & 0x7F; //保存当前会话模式
+
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID10(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  byte P2_Server[4];
+  
+//  if(gRSS == TIMEOUT)       { testStepFail("Fail","Timeout No Response Received!"); return; }
+//  else if(gRSS == NEGETIVE) { testStepFail("Fail","Negetive Response Received!");   return; }
+  
+  testStep("step","ecuResp.Packet.Length=%x",ecuResp.Packet.Length);
+  if(6 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+  
+  if(ecuResp.Packet.Payload[1]==testerReq.Packet.Payload[1])
+  {  
+    testStepPass("Chk","PositiveResponseSubfunction 0x%x",ecuResp.Packet.Payload[1]);
+  }
+  else
+  {
+    testStepFail("Chk","Unexpect PositiveResponseSubfunction 0x%x",ecuResp.Packet.Payload[1]);  
+  }
+  
+  if(ecuResp.Packet.Payload[1] == 0x02)
+  {
+    P2_Server[0] = 0x00;
+    P2_Server[1] = 0x19;
+    P2_Server[2] = 0x01;
+    P2_Server[3] = 0xF4;
+  }
+  else 
+  {
+    P2_Server[0] = 0x00;
+    P2_Server[1] = 0x32;
+    P2_Server[2] = 0x01;
+    P2_Server[3] = 0xF4;
+  }
+  
+  if((ecuResp.Packet.Payload[2] == P2_Server[0]) && (ecuResp.Packet.Payload[3] == P2_Server[1])
+    && (ecuResp.Packet.Payload[4] == P2_Server[2]) && (ecuResp.Packet.Payload[5] == P2_Server[3]))
+  {
+    testSteppass("Chk","Parameter P2 is 0x%02X%02X",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3]);
+    testSteppass("Chk","Parameter P2* is 0x%02X%02X",ecuResp.Packet.Payload[4],ecuResp.Packet.Payload[5]);
+  }
+  else
+  {
+     testStepfail("Chk","Parameter P2 is 0x%02X%02X,Expect P2 is 0x%02X%02X",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3],P2_Server[0],P2_Server[1]);
+     testStepfail("Chk","Parameter P2* is 0x%02X%02X,Expect P2* is 0x%02X%02X",ecuResp.Packet.Payload[4],ecuResp.Packet.Payload[5],P2_Server[2],P2_Server[3]); 
+  }
+}
+//
+///**********************************SID 11**********************************/
+void SID11_ECUReset(struct ECUReset SID11_Package,struct ServiceVars txPackage)
+{
+  txPackage.Req_SPRMIB = (SID11_Package.SubFunction & 0x80) >> 7;
+  txPackage.Packet.Length = SID11_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID11_Package, PDU_Offset, txPackage.Packet.Length); 
+  
+  //CurrentSession[GW] = 1;
+  
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID11(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(2 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+  
+  if(ecuResp.Packet.Payload[1]==testerReq.Packet.Payload[1])
+  {  
+    testStepPass("Chk","PositiveResponseSubfunction %x",ecuResp.Packet.Payload[1]);
+  }
+  else
+  {
+    testStepFail("Chk","Unexpect PositiveResponseSubfunction %x",ecuResp.Packet.Payload[1]);  
+  }
+}
+//
+///**********************************SID 22**********************************/
+void SID22_ReadDataByIdentifier(struct ReadDataByIdentifier SID22_Package, struct ServiceVars txPackage)
+{
+  
+  txPackage.Req_SPRMIB = SID22_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID22_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID22_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID22(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  word Identifier;
+  byte SN;
+    
+  if((ecuResp.Packet.Payload[1] != testerReq.Packet.Payload[1])&&(ecuResp.Packet.Payload[2] != testerReq.Packet.Payload[2]))
+  {
+    testStepFail("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[1],ecuResp.Packet.Payload[2]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[1],ecuResp.Packet.Payload[2]);   
+  }
+  
+  Identifier = ecuResp.Packet.Payload[1] << 8 | ecuResp.Packet.Payload[2];
+  switch(Identifier)
+  {
+    case 0xF186: 
+    {
+      if(4 == ecuResp.Packet.Length)
+      {
+        testStepPass("Chk","Response data length is correct");
+      }
+      else
+      {
+        testStepFail("Chk","Response data length is not correct");
+      }
+      
+      SN = GetEcuSN(ecuResp.Packet.SourceID);
+      if(ecuResp.Packet.Payload[3] == @sysvar::GW::CurrentSession)
+      {
+        //testStepPass("Chk","The Current Session is %x", @sysvar::GW::CurrentSession);
+        testStepPass("Chk","The Current Session is %x(expect %x)", ecuResp.Packet.Payload[3],@sysvar::GW::CurrentSession);
+      }
+      else
+      {
+        //testStepFail("Chk","The Current Session is %x", @sysvar::GW::CurrentSession);
+        testStepFail("Chk","The Current Session is %x(expect %x)", ecuResp.Packet.Payload[3],@sysvar::GW::CurrentSession);
+      }
+    }break;
+    
+    case 0xF12A: 
+    {
+      if(8 == ecuResp.Packet.Length)
+      {
+        testStepPass("Chk","Response data length is correct");
+      }
+      else
+      {
+        testStepFail("Chk","Response data length is not correct");
+      }
+    }break;
+  }
+}
+
+///**********************************SID 27**********************************/
+void SID27_SecurityAccess(struct SecurityAccess SID27_Package, struct ServiceVars txPackage)
+{
+  SID27_Package.SID = 0x27;
+  txPackage.Req_SPRMIB = SID27_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID27_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID27_Package, PDU_Offset, txPackage.Packet.Length);
+}
+
+void CheckPosResponse_SID27(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  byte subFunction;
+  byte requestSeed[4],sendKey[4];
+  
+  subFunction = ecuResp.Packet.Payload[1];
+  switch(subFunction)
+  {
+    requestSeed[0] = ecuResp.Packet.Payload[2];
+    requestSeed[1] = ecuResp.Packet.Payload[3];
+    requestSeed[2] = ecuResp.Packet.Payload[4];
+    //requestSeed[3] = ecuResp.Packet.Payload[5];
+    case 0x01: 
+    {
+      if(5 == ecuResp.Packet.Length)
+      {
+        testStepPass("Chk","Response data length is correct");
+      }
+      else
+      {
+        testStepFail("Chk","Response data length is not correct");
+      }
+      
+    }
+    break;
+    
+    case 0x02: 
+    {
+      if(2 == ecuResp.Packet.Length)
+      {
+        testStepPass("Chk","Response data length is correct");
+      }
+      else
+      {
+        testStepFail("Chk","Response data length is not correct");
+      }
+    }
+    break;
+  }
+}
+//
+///**********************************SID 2A**********************************/
+//void SID2A_ReadDataByPeriodicIdentifier(struct ReadDataByPeriodicIdentifier SID2A_Package, struct ServiceVars txPackage)
+//{
+//  
+//  txPackage.Req_SPRMIB = SID2A_Package.GW_SPRMIB;
+//  txPackage.Packet.Length = SID2A_Package.Length;
+//  memcpy_off(txPackage.Packet.Payload, 0, SID2A_Package, PDU_Offset, txPackage.Packet.Length);
+//  
+//  SID2A_PeriodicResponse.Request_Enable = 1;
+//  SID2A_PeriodicResponse.TransmissionMode = SID2A_Package.TransmissionMode;
+//  SID2A_PeriodicResponse.PeriodicDataIdentifier[0] = SID2A_Package.PeriodicDataIdentifier[0];
+//  
+//  txPackage.Flag = 1;
+//}
+//
+void CheckPosResponse_SID2A(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(1 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+//
+void CheckPeriodicResponse_SID2A(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(2 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+//
+///**********************************SID 2C**********************************/
+void SID2C_DynamicallyDefinedDataIdentifier(struct DynamicallyDefinedDataIdentifier SID2C_Package, struct ServiceVars txPackage)
+{
+  
+  txPackage.Req_SPRMIB = SID2C_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID2C_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID2C_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  txPackage.Flag = 1;
+}
+//
+void CheckPosResponse_SID2C(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(4 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+	
+	//Subfunction
+  if(ecuResp.Packet.Payload[1] != testerReq.Packet.Payload[1]) 
+  {
+    testStepFail("Chk","Response Subfunction is [0x%x]",ecuResp.Packet.Payload[1]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response Subfunction is [0x%x]",ecuResp.Packet.Payload[1]);   
+  }
+  
+  //Identifier
+  if((ecuResp.Packet.Payload[2] != testerReq.Packet.Payload[2])&&(ecuResp.Packet.Payload[3] != testerReq.Packet.Payload[3]))
+  {
+    testStepFail("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3]);   
+  }
+}
+
+/**********************************SID 2E**********************************/
+void SID2E_WriteDataByIdentifier(struct WriteDataByIdentifier SID2E_Package, struct ServiceVars txPackage)
+{
+  
+  txPackage.Req_SPRMIB = SID2E_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID2E_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID2E_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID2E(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(3==ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+  
+  if(ecuResp.Packet.Payload[1]!=testerReq.Packet.Payload[1] && ecuResp.Packet.Payload[2]!=testerReq.Packet.Payload[1])
+  {
+    testStepFail("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[1],ecuResp.Packet.Payload[2]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[1],ecuResp.Packet.Payload[2]);   
+  }
+}
+//
+///**********************************SID 31**********************************/
+//void SID31_RoutineControl(struct RoutineControl SID31_Package, struct ServiceVars txPackage)
+//{
+//  
+//  txPackage.Req_SPRMIB = SID31_Package.GW_SPRMIB;
+//  txPackage.Packet.Length = SID31_Package.Length;
+//  memcpy_off(txPackage.Packet.Payload, 0, SID31_Package, PDU_Offset, txPackage.Packet.Length);
+//  
+//  txPackage.Flag = 1;
+//}
+void SID31_RoutineControl(struct RoutineControl SID31_Package, struct ServiceVars txPackage)
+{
+  
+  txPackage.Req_SPRMIB = SID31_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID31_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID31_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  //txPackage.Flag = 1;
+}
+void CheckPosResponse_SID31(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  word RoutineID;
+  
+  //Subfunction
+  if(ecuResp.Packet.Payload[1] != testerReq.Packet.Payload[1]) 
+  {
+    testStepFail("Chk","Response Subfunction is [0x%x]",ecuResp.Packet.Payload[1]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response Subfunction is [0x%x]",ecuResp.Packet.Payload[1]);   
+  }
+  
+  //Routine Identifier
+  if((ecuResp.Packet.Payload[2] != testerReq.Packet.Payload[2])&&(ecuResp.Packet.Payload[3] != testerReq.Packet.Payload[3]))
+  {
+    testStepFail("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3]);    
+  }
+  else
+  {
+    testSteppass("Chk","Response PID is [0x%x %x]",ecuResp.Packet.Payload[2],ecuResp.Packet.Payload[3]);   
+  }
+  
+  RoutineID = ((word)ecuResp.Packet.Payload[2] << 8) | ecuResp.Packet.Payload[3];
+  if(ecuResp.Packet.Payload[1] == 0x1) //startRoutine
+  {
+    switch(RoutineID)
+    {
+      case 0x0206:  //Prepare to enter programming mode
+      {
+        if(6 == ecuResp.Packet.Length)
+        {
+          testStepPass("Chk","Response data length is correct");
+        }
+        else
+        {
+          testStepFail("Chk","Response data length is not correct");
+        }
+      }
+      break;
+      
+      case 0xFF00:  //Erase Memory
+      {
+        if(5 == ecuResp.Packet.Length)
+        {
+          testStepPass("Chk","Response data length is correct");
+        }
+        else
+        {
+          testStepFail("Chk","Response data length is not correct");
+        }
+      }
+      break;
+    }
+  }
+}
+///**********************************SID 34**********************************/
+void SID34_RequestDownload(struct RequestDownload SID34_Package, struct ServiceVars txPackage)
+{
+  
+  txPackage.SID36_Counter = 0;
+  SID34_Package.SID = 0x34;
+  txPackage.Req_SPRMIB = SID34_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID34_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID34_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  //txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID34(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  //testerReq.MaxNumberOfBlockLength = (ecuResp.Packet.Payload[2]<<8) + ecuResp.Packet.Payload[3] - 2;//
+  
+  if(0x20 == ecuResp.Packet.Payload[1]) //lengthFormatIdentifier
+  {  
+    testStepPass("Chk","PositiveResponselengthFormatIdentifier n %x",ecuResp.Packet.Payload[1]);
+  }
+  else
+  {
+    testStepFail("Chk","Unexpect PositiveResponselengthFormatIdentifier %x",ecuResp.Packet.Payload[1]);    
+  }
+  
+  if(4==ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+//
+///**********************************SID 35**********************************/
+//void SID35_RequestUpload(struct RequestUpload SID35_Package, struct ServiceVars txPackage)
+//{
+//
+//  txPackage.Req_SPRMIB = SID35_Package.GW_SPRMIB;
+//  txPackage.Packet.Length = SID35_Package.Length;
+//  memcpy_off(txPackage.Packet.Payload, 0, SID35_Package, PDU_Offset, txPackage.Packet.Length);
+//  
+//  txPackage.Flag = 1;
+//}
+//
+void CheckPosResponse_SID35(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  //testerReq.MaxNumberOfBlockLength = (ecuResp.Packet.Payload[2]<<8) + ecuResp.Packet.Payload[3] - 2;//
+  
+  if(ecuResp.Packet.Payload[1]==testerReq.Packet.Payload[1])
+  {  
+    testStepPass("Chk","PositiveResponselengthFormatIdentifier n %x",ecuResp.Packet.Payload[1]);
+  }
+  else
+  {
+    testStepFail("Chk","Unexpect PositiveResponselengthFormatIdentifier %x",ecuResp.Packet.Payload[1]);
+  }
+  
+  if(4==ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+//
+///**********************************SID 36**********************************/
+void SID36_TransferData(struct TransferData SID36_Package, struct ServiceVars txPackage)
+{
+  SID36_Package.SID=0x36;
+  //SID36_Package.BS_Counter=txPackage.SID36_Counter;
+
+  txPackage.Req_SPRMIB = SID36_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID36_Package.Length;
+  txPackage.SID36_Counter = 0x1;
+  memcpy_off(txPackage.Packet.Payload, 0, SID36_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID36(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  //testerReq.SID36_Counter++;
+  if(ecuResp.Packet.Payload[1]==testerReq.SID36_Counter)
+  {  
+    testStepPass("Chk","PositiveResponseblockSequenceCounter  n %x",ecuResp.Packet.Payload[1]);
+  }
+  else
+  {
+    testStepFail("Chk","Unexpect PositiveResponseblockSequenceCounter %x except %x",ecuResp.Packet.Payload[1],testerReq.SID36_Counter);   
+  }
+  
+  if(2==ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+//
+///**********************************SID 37**********************************/
+void SID37_RequestTransferExit(struct RequestTransferExit SID37_Package, struct ServiceVars txPackage)
+{
+  txPackage.SID36_Counter = 0;
+  
+  SID37_Package.SID=0x37;
+  SID37_Package.Length=0x1;
+  txPackage.Req_SPRMIB = SID37_Package.GW_SPRMIB;
+  txPackage.Packet.Length = SID37_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID37_Package, PDU_Offset, txPackage.Packet.Length);
+  
+ // txPackage.Flag = 1;
+}
+void CheckPosResponse_SID37(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  //testerReq.TransferRespParaRec = ecuResp.Packet.Payload[1]<<8 + ecuResp.Packet.Payload[2];
+  
+  if(1 == ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+
+/**********************************SID 3E**********************************/
+void SID3E_TesterPresent(struct TesterPresent SID3E_Package, struct ServiceVars txPackage)
+{
+  txPackage.Req_SPRMIB = (SID3E_Package.SubFunction & 0x80) >> 7;
+  txPackage.Packet.Length = SID3E_Package.Length;
+  memcpy_off(txPackage.Packet.Payload, 0, SID3E_Package, PDU_Offset, txPackage.Packet.Length);
+  
+  txPackage.Flag = 1;
+}
+
+void CheckPosResponse_SID3E(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(2==ecuResp.Packet.Length)
+  {
+    testStepPass("Chk","Response data length is correct");
+  }
+  else
+  {
+    testStepFail("Chk","Response data length is not correct");
+  }
+}
+

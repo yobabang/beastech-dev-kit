@@ -1,0 +1,513 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  float V_Ch1_Top=0.0;
+  float V_Ch2_Top=0.0;
+  float V_Math_Top=0.0;
+  float V_Ch1_Base=0.0;
+  float V_Ch2_Base=0.0;
+  float V_Math_Base=0.0;
+  char picpath[200];
+  char sharepath[200];
+  char picname[150];
+  int seq;  
+  long t1[9],t2[9];
+  char t3[50]="";  
+  char nodename[200];
+  double  V_Ch1_ID;
+  
+  char PCS_SendData[100]="";
+  dword PCS_Socket ;
+  char Rcv_Begin = 1;
+  long Rcv_Size = 0;
+  char PCS_RecvData[400000] = "";
+}
+
+void SendTcpData(char cmd[])
+{
+  strncpy(PCS_SendData,cmd,100);
+  
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::PCS_Socket;//使用的socket
+  sysSetVariableString(sysvar::DeviceControl::IPClient::SendEvent::SendData, PCS_SendData);//发送的数据
+  write("[PCS]SendTcpData:%s",PCS_SendData);
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend = 1;//发送数据, 触发事件
+}
+
+void OSC_InitConfig()
+{
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PCS,DeviceName);
+  SendTcpData("*CLS\n");
+  SendTcpData(":RUN\n");
+  SendTcpData(":TRIGger:EDGE:LEVel 3.10 \n"); 
+
+}
+
+void OSC_CAN_Init()
+{
+  SendTcpData(":RUN\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel1:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel2:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:MODE CAN\n");
+  testWaitForTimeout(10);
+  SendTcpData("CHANnel1:OFFSet 1\n");
+  testWaitForTimeout(10);
+  SendTcpData("CHANnel2:OFFSet 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel1:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel2:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel3:DISPlay 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel4:DISPlay 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:SCALe 0.000002\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:POSition 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:SWEep NORMAL\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:MODE EDGE\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:SLOPe POSitive\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:SOURce CHAN1 \n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:LEVel 3.1 \n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SOURCE1 CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SOURCE2 CHANnel2\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:OPERation SUBTract\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:OFFSet 3\n");
+  testWaitForTimeout(10);
+}
+
+void OSC_CANFD_Init()
+{
+    
+  SendTcpData(":RUN\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel1:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel2:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData("CHANnel1:OFFSet 1\n");
+  testWaitForTimeout(10);
+  SendTcpData("CHANnel2:OFFSet 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel1:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel2:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel3:DISPlay 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel4:DISPlay 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:MODE CAN\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:FDSTandard ISO\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:SOURce CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:SIGNal:DEFinition CANH\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:TRIGger SOF\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:SIGNal:BAUDrate 500000\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:SIGNal:FDBaudrate 2000000\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:SAMPlepoint 80.0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:CAN:FDSPoint 80\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:SCALe 0.000002\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:POSition 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:SWEep NORMAL\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:MODE EDGE\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:SLOPe POSitive\n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:SOURce CHAN1 \n");
+  testWaitForTimeout(10);
+  SendTcpData(":TRIGger:EDGE:LEVel 3.00 \n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:DISPlay 1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SOURCE1 CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SOURCE2 CHANnel2\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:OPERation SUBTract\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:SCALe 1V\n");
+  testWaitForTimeout(10);
+  SendTcpData(":FUNCtion:OFFSet 3\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:STATistics:DISPlay 0\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:STATistics OFF\n");
+  testWaitForTimeout(10);
+}
+
+
+void OSC_LIN_Init()
+{
+  SendTcpData(":RUN\n");
+  testWaitForTimeout(10);
+  SendTcpData(":CHANnel1:SCALe 5V\n");
+  SendTcpData("CHANnel1:OFFSet 1\n");
+  SendTcpData(":CHANnel1:DISPlay 1\n");
+  SendTcpData(":CHANnel2:DISPlay 0\n");
+  SendTcpData(":CHANnel3:DISPlay 0\n");
+  SendTcpData(":CHANnel4:DISPlay 0\n");
+  SendTcpData(":FUNCtion:DISPlay 0\n");
+  SendTcpData(":TIMebase:SCALe 0.0002\n");
+  SendTcpData(":TIMebase:POSition 0\n");
+  SendTcpData(":TRIGger:SWEep AUTO\n");
+}
+
+//初始化
+void OSC_initSerialCAN()
+{
+  OSC_SetTimebasePosition(0);
+  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:DELay 0.000000\n");
+  testWaitForTimeout(10);
+  SendTcpData(":SBUS1:DISPlay 1\n");
+  testWaitForTimeout(5);
+  SendTcpData(":SBUS1:MODE CAN\n");
+  testWaitForTimeout(5);
+  SendTcpData(":SBUS1:CAN:SOURce Channel1\n");
+  testWaitForTimeout(5);
+  SendTcpData(":TRIGger:EDGE:LEVel 3.0 \n");
+  testWaitForTimeout(5);
+  SendTcpData(":TRIGger:MODE SBUS1\n");
+  testWaitForTimeout(5);
+  SendTcpData(":SBUS1:CAN:TRIGger IDData\n");
+  testWaitForTimeout(5);
+  SendTcpData(":MEASure:WINDow AUTO\n");
+  testWaitForTimeout(5);
+  SendTcpData(":FUNCtion:OPERation SUBTract\n");
+  testWaitForTimeout(5);
+  
+//  SendTcpData(":SBUS1:CAN:TRIGger SOF\n");
+//  testWaitForTimeout(10);
+  SendTcpData(":TIMebase:DELay 0.000050\n");
+  testWaitForTimeout(10);
+  
+}
+
+void OSC_Reset()
+{
+  SendTcpData("*RST\n");
+}
+
+void Save_Picture()
+{
+  char path[512];
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::PicPath,path,elcount(path));
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  SendTcpData(":DISPlay:DATA? PNG\n");
+  testWaitForTimeout(10000);
+  write("示波器保存数据，大小：%d",Rcv_Size);
+  dllpicConvert(Rcv_Size,PCS_RecvData,path);
+}
+
+void OSC_Singel_Trigger()
+{
+  SendTcpData(":SINGle\n");
+}
+
+
+void OSC_IDTrigger()
+{
+  char c1[200]="";
+  char id[20]="";
+  char cmd[200]="";
+  long res;
+  char buf[20];
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,buf,20);
+  snprintf(id,20,"0x%s", buf);
+  write("Id is %s",id);
+  strncpy(c1,":SBUS1:CAN:TRIGger:PATTern:ID \"Parameter1\"\n",200);
+  str_replace_regex(c1,"Parameter1",id);
+  strncpy(cmd,c1,200);
+  SendTcpData(cmd);
+}
+
+void OSC_Meas_Clear()
+{
+  SendTcpData(":MEASure:CLEar\n");
+}
+
+
+////////////////////////////////////
+//void Function_Add()
+//{
+//  SendTcpData(":FUNCtion:OPERation ADD\n");
+//  SendTcpData(":FUNCtion:SCALe 5V\n");
+//  SendTcpData(":FUNCtion:OFFSet 3\n");
+//}
+
+//void Function_Sub()
+//{
+//  SendTcpData(":FUNCtion:OPERation SUBTract\n");
+//  SendTcpData(":FUNCtion:SCALe 1V\n");
+//  SendTcpData(":FUNCtion:OFFSet 3\n");
+//}
+
+void OSC_CAN_THResholds()
+{
+  SendTcpData(":MEASure:SOURce CHANnel1\n");
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n");
+  SendTcpData(":MEASure:SOURce CHANnel2\n");
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n");
+  SendTcpData(":MEASure:SOURce MATH\n");
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,90,50,10\n");
+}
+
+void OSC_LIN_THResholds()
+{
+  SendTcpData(":MEASure:SOURce CHANnel3\n");
+  SendTcpData(":MEASure:DEFine THResholds,PERCent,60,50,40\n");
+}
+
+void OSC_Cursor_Channel1()
+{
+  SendTcpData(":MARKer:X1Y1source CHANnel1\n");
+}
+
+void OSC_Cursor_Channel3()
+{
+  SendTcpData(":MARKer:X1Y1source CHANnel3\n");
+}
+
+void OSC_Cursor_Xdelta()
+{
+  double result;
+  
+  SendTcpData(":MARKer:XDELta?\n");
+  testWaitForTimeout(100);
+  SendTcpData(":Measure:TDELta\n");
+  testWaitForTimeout(100);
+  //SendTcpData(":MARKer:MODE Measurement\n");
+  SendTcpData(":DISPlay:SIDebar CURSors\n");
+  
+  testWaitForTimeout(100);
+  strtod(PCS_RecvData,result);
+  //write("%5.9f",result);
+  
+  sysSetVariableFloat(sysvar::DeviceControl::PCS::Cursors::CursorValue,result);
+}
+
+void OSC_Cursor_Ydelta()
+{
+  SendTcpData(":MARKer:YDELta?\n");
+}
+
+
+void OSC_Meas_Add()
+{
+  char CMD[100];
+  char source[20],type[20];
+  Rcv_Begin=1;
+  Rcv_Size=0;
+   
+  sysGetVariableString(sysvar::DeviceControl::DSOX3034A::Parameters::Meas_Type,type,elcount(type));
+  sysGetVariableString(sysvar::DeviceControl::DSOX3034A::Parameters::Meas_Sour,source,elcount(source));
+  snprintf(CMD,elcount(CMD),":MEASure:%s %s\n",type,source);
+  WRITE(CMD);
+  SendTcpData(CMD);
+}
+
+void OSC_SBUS_Display(int n)
+{
+  char cmd[100];
+  snprintf(cmd,elcount(cmd),":SBUS%d:DISPlay 1\n",n);
+  SendTcpData(cmd);
+}
+
+void OSC_SBUS_Mode(char mode[])
+{
+  char cmd[100];
+  int n;
+  n=@sysvar::DeviceControl::PCS::Parameter::Serial::Display;
+  snprintf(cmd,elcount(cmd),":SBUS%d:MODE %s\n",n,mode);
+  SendTcpData(cmd);
+}
+
+void OSC_SBUS_Source(char source[])
+{
+  char cmd[100],mode[100];
+  int n;
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::Serial::Mode,mode,elcount(mode));
+  n=@sysvar::DeviceControl::PCS::Parameter::Serial::Display;
+  snprintf(cmd,elcount(cmd),":SBUS%d:%s:SOURce %s\n",n,mode,source);
+  SendTcpData(cmd);
+}
+
+void OSC_SBUS_setThreshold(float Threshold)
+{
+  char cmd[100];
+  snprintf(cmd,elcount(cmd),":TRIGger:EDGE:LEVel %5.2f \n",Threshold);
+  SendTcpData(cmd);
+}
+
+void OSC_Trigger_Type(char mode[])
+{
+  char cmd[100];
+  snprintf(cmd,elcount(cmd),":TRIGger:MODE %s\n",mode);
+  SendTcpData(cmd);
+}
+
+void OSC_Trigger_Position(char Position[])
+{
+  char cmd[100],Type[100];
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::Trigger::Type,Type,elcount(Type));
+  
+  if(strncmp(Type,"SBUS",4)==0)
+  {
+    char sbusType[10];
+    sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::Serial::Mode,sbusType,elcount(sbusType));
+    snprintf(cmd,elcount(cmd),":%s:%s:TRIGger %s\n",Type,sbusType,Position);
+  }
+  SendTcpData(cmd);
+}
+
+void OSC_Trigger_setID(char id[])
+{
+  char c1[200]="";
+  char cmd[200]="";
+  long res;
+  char buf[20]; 
+  char Type[100],sbusType[10];  
+  
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::BusType,sbusType,elcount(sbusType));
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,buf,20);
+  snprintf(id,20,"0x%s", buf);
+  //write("Id is %s",id);
+  strncpy(c1,":SBUS1:CAN:TRIGger:PATTern:ID \"Parameter1\"\n",200);
+  str_replace_regex(c1,"Parameter1",id);
+//  str_replace_regex(c1,"SBUS1",Type);
+//  str_replace_regex(c1,"CAN",sbusType);
+  strncpy(cmd,c1,200);
+  if(strncmp(sbusType,"LIN",3)==0)
+  {
+    snprintf(cmd,elcount(cmd),":SBUS1:LIN:TRIGger:ID \"%s\"\n",id);
+  }
+  SendTcpData(cmd);
+}
+
+void OSC_Channel_setDisplay(int status[])
+{
+  char cmd[100];
+  int i;
+  for(i=0;i<elcount(status);i++)
+  {
+    if(status[i]==0)
+      snprintf(cmd,elcount(cmd),":CHANnel%d:DISPlay 0\n",i+1);
+    else
+      snprintf(cmd,elcount(cmd),":CHANnel%d:DISPlay 1\n",i+1);
+    SendTcpData(cmd);
+  }
+}
+
+
+void OSC_Channel_setScale(float status[])
+{
+  char cmd[100];
+  int i;
+  for(i=0;i<elcount(status);i++)
+  {
+    snprintf(cmd,elcount(cmd),":CHANnel%d:SCALe %5.3fV\n",i+1,status[i]);
+    SendTcpData(cmd);
+  }
+}
+
+void OSC_Channel_setOffset(float status[])
+{
+  char cmd[100];
+  int i;
+  for(i=0;i<elcount(status);i++)
+  {
+    snprintf(cmd,elcount(cmd),":CHANnel%d:OFFSet %5.3fV\n",i+1,status[i]);
+    SendTcpData(cmd);
+  }
+}
+
+void OSC_Function_Display(int status)
+{
+  char cmd[100];
+
+  snprintf(cmd,elcount(cmd),":FUNCtion:DISPlay %d\n",status);
+  SendTcpData(cmd);
+
+}
+
+void OSC_Function_setOeperation(char operation[])
+{
+  char cmd[100];
+
+  snprintf(cmd,elcount(cmd),":FUNCtion:OPERation %s\n",operation);
+  SendTcpData(cmd);
+}
+
+void OSC_Function_setScale(float scale)
+{
+  char cmd[100];
+
+  snprintf(cmd,elcount(cmd),":FUNCtion:SCALe %5.3f\n",scale);
+  SendTcpData(cmd);
+}
+
+void OSC_Function_setOffset(float offset)
+{
+  char cmd[100];
+
+  snprintf(cmd,elcount(cmd),":FUNCtion:OFFSet %5.3f\n",offset);
+  SendTcpData(cmd);
+}
+
+void OSC_Meas_Window(char type[])
+{
+  char cmd[100];
+
+  snprintf(cmd,elcount(cmd),":MEASure:WINDow %s\n",type);
+  SendTcpData(cmd);
+}
+
+
+/*----------------------------------------*/
+void OSC_SetTimebasePosition(float setPosition)
+{
+  char CMD[100];
+  snprintf(CMD,elCount(CMD),":TIMebase:POSition %5.9f\n",setPosition);
+  SendTcpData(CMD);
+}
+
+void OSC_SetTimebaseScale(float setScale)
+{
+  char CMD[100];
+  snprintf(CMD,elCount(CMD),":TIMebase:SCALe %5.9f\n",setScale);
+  SendTcpData(CMD);
+}

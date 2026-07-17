@@ -1,0 +1,219 @@
+/*@!Encoding:936*/
+
+variables
+{
+  enum PPS_OutputSts{PPS_On,PPS_Off};
+  char PPS_SendData[100]="";
+}
+
+void SendTcpData(char cmd[])
+{
+  strncpy(PPS_SendData,cmd,100);
+  
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::PPS_Socket;//使用的socket
+  sysSetVariableString(sysvar::DeviceControl::IPClient::SendEvent::SendData, PPS_SendData);//发送的数据
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend = 1;//发送数据, 触发事件
+}
+
+void PPS_initConfig()
+{
+  PPS_OutputStsSet(PPS_On);
+  testWaitForTimeout(20);
+  PPS_setVoltage(12);
+  testWaitForTimeout(20);
+  PPS_setCurrent(20);
+  testWaitForTimeout(20);
+}
+
+void SPPS_initConfig()
+{
+  SPPS_OutputStsSet(PPS_On);
+  testWaitForTimeout(20);
+  SPPS_setVoltage(0);
+  testWaitForTimeout(20);
+  SPPS_setCurrent(3);
+  testWaitForTimeout(20);
+}
+
+void PPS_OutputStsSet(enum PPS_OutputSts Sts)
+{
+  if(Sts==PPS_On)
+  {
+    SendTcpData("OUTP ON, (@2)\n");
+  }
+  else
+  {
+    SendTcpData("OUTP OFF, (@2)\n");
+  }
+}
+
+void SPPS_OutputStsSet(enum PPS_OutputSts Sts)
+{
+  if(Sts==PPS_On)
+  {
+    SendTcpData("OUTP ON, (@1)\n");
+  }
+  else
+  {
+    SendTcpData("OUTP OFF, (@1)\n");
+  }
+}
+
+void SPPS_setVoltage(float Volt)
+{
+  char c1[100]="";
+  char Voltage[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+  
+  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd);
+}
+
+void SPPS_setCurrent(float Curr)
+{
+  char c1[100]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  if(Curr>3)//10
+    iv=3;
+  else
+    iv=Curr;
+  strncpy(c1,"CURR:LIM Parameter1, (@1)\n",100);
+  snprintf(Current,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Current);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd);
+}
+
+void PPS_setVoltage(float Volt)
+{
+  char c1[100]="";
+  char Voltage[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  if(Volt>30)
+    iv=30;
+  else
+    iv=Volt;
+  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+  snprintf(Voltage,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Voltage);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd);
+}
+
+void PPS_setCurrent(float Curr)
+{
+  char c1[100]="";
+  char Current[10]="";
+  char cmd[100]="";
+  long res;
+  float iv;
+  if(Curr>20)
+    iv=20;
+  else
+    iv=Curr;
+  strncpy(c1,"CURR Parameter1, (@2)\n",100);
+  snprintf(Current,10,"%.2f", iv);
+  str_replace_regex(c1,"Parameter1",Current);
+  strncpy(cmd,c1,100);
+  SendTcpData(cmd);
+}
+
+void PPS_getVoltage()
+{
+  
+}
+
+//double PPS_CurrentMeasure()
+//{
+//  double Curr;
+//  SendTcpData("MEAS:CURR? (@2)\n");
+//  TestWaitForTimeout(500);
+//  strtod(PPS_RecvData,Curr);
+//  teststep("Info","Current:%fA",Curr);
+//  return(Curr);
+//}
+//
+//float PPS_VoltageMeasure()
+//{
+//  float Volt;
+//  SendTcpData("MEAS:VOLT? (@2)\n");
+//  TestWaitForTimeout(500);
+//  strtod(PPS_RecvData,Volt);
+//  teststep("Info","voltage:%fV",Volt);
+//  return(Volt);
+//}
+
+//void PPS_Shift_PowerSet(float Volt,float Curr)
+//{
+//  char c1[100]="";
+//  char c2[100]="";
+//  char Voltage[10]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv,ic;
+//  if((Volt>6))
+//    iv=6;
+//  else
+//    iv=Volt;
+//  if(Curr>3)
+//    ic=3;
+//  else
+//    ic=Curr;
+//  writeToLog("Voltage = %f Current Limit = %f",iv,ic);
+//  strncpy(c1,"VOLT Parameter1, (@1)\n",100);
+//  strncpy(c2,"CURR:LIM Parameter2, (@1)\n",100);
+//  snprintf(Voltage,10,"%.2f", iv);
+//  snprintf(Current,10,"%.2f", ic);
+//  str_replace_regex(c1,"Parameter1",Voltage);
+//  str_replace_regex(c2,"Parameter2",Current); 
+//  strncpy(cmd,c2,100);
+//  SendTcpData(cmd);
+//  testWaitForTimeout(100);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd);
+//}
+//
+//void PPS_PowerSet(float Volt,float Curr)
+//{
+//  char c1[100]="";
+//  char c2[100]="";
+//  char Voltage[10]="";
+//  char Current[10]="";
+//  char cmd[100]="";
+//  long res;
+//  float iv,ic;
+//  if(Volt>30)
+//    iv=30;
+//  else
+//    iv=Volt;
+//  if(Curr>3)
+//    ic=3;
+//  else
+//    ic=Curr;
+//  strncpy(c1,"VOLT Parameter1, (@2)\n",100);
+//  strncpy(c2,"CURR Parameter2, (@2)\n",100);
+//  snprintf(Voltage,10,"%.2f", iv);
+//  snprintf(Current,10,"%.2f", ic);
+//  str_replace_regex(c1,"Parameter1",Voltage);
+//  str_replace_regex(c2,"Parameter2",Current);
+//  strncpy(cmd,c2,100);
+//  SendTcpData(cmd);
+//  testWaitForTimeout(100);
+//  strncpy(cmd,c1,100);
+//  SendTcpData(cmd);
+//}

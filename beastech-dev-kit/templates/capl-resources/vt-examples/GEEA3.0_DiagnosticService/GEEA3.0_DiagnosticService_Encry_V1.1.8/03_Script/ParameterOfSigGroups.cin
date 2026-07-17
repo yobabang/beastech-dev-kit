@@ -1,0 +1,121 @@
+
+/*@!Encoding:936*/
+includes
+{
+
+}
+variables
+{
+
+  struct e2eSignal
+  {
+    char sigName[100];//信号名称
+    int sigLength;//长度
+    int startBit;//起始位
+    qword sigValue;//初始值
+    long sigUsed;//测试用途标识
+    int sigValue_Fulfilled;//满足要求的值
+    int sigValue_NotFulfilled;//不满足要求的值
+  };
+  
+  struct EthPacketInfo
+  {
+    char srcMac[20];//arxml无此信息
+    char dstMac[20];//arxml无此信息
+    char srcIp[20];
+    char dstIp[20];
+    word srcPort;
+    word dstPort;
+    word vid;
+    byte ttl;//SWRS需求组播TTL为1
+  };
+
+  struct e2eSigGroup
+  {
+    char sigGroupName[100];//信号组名称
+    int dataId;//data id 信息
+    int E2ELength; //数据长度
+    int uBit;// update bit
+    int ubValue;//默认值1
+    int sigNum;//信号个数
+    int pduStartBit;//
+    struct e2eSignal e2eSignalList[100];
+    int aliveCnt;
+    int chks;
+    int cntErrFlg;
+    int chksErrFlg;
+    byte nrc;
+  };
+  struct e2eFrame
+  {
+    char frName[100];//帧名
+    char cluster[100];//组
+    char busType[100];//总线类型
+    int fdFlg;//是否为CAN FD
+    dword msgId;// 信号ID
+    int msgCyc;//信号帧发送周期
+    dword msgDataLgth;//信号帧长度
+    struct e2eSigGroup e2eSigGroupList[100];//信号组的结构体
+    int simFrFlg;
+    int simFrImtFlg;
+    struct EthPacketInfo ethInfo; 
+  };
+
+    const int Max_LIN_ID=0;
+    const int Num_Of_LIN_ID=0;
+    byte LIN_ID_Info[10];//这里直接定义成0 防止没有找到E2E 报错
+    const int CLUSTER_NUM_CAN=2;
+    char gClusterName[10][100]={"ZCU_CANFD1","ZCU_CANFD1"};//这里直接定义成0 防止没有找到E2E 报错
+    int gNmMsgCyc=500;
+    const int E2E_FRAME_NUM=2;
+    struct e2eFrame e2eFrameList[E2E_FRAME_NUM]=
+    {
+        {
+    "BcmZCUCANFD1Fr18","ZCU_CANFD1","CAN",1,0x82,50,64,
+    {
+      {
+      "igVehSpdLgt_0",55,40,383,1,4,0,
+        {
+          {"isVehSpdLgtChks_0",8,399,0,0,0,0},
+          {"isVehSpdLgtCntr_0",4,407,0,0,0,0},
+          {"isVehSpdLgtA_0",15,382,0,3,0X00,0XFF},
+          {"isVehSpdLgtQf_0",2,403,0,3,0X03,0X01}
+        },
+        0,0,0,0,0xF0
+      }
+    },
+
+        0,0,
+        {
+        "AA:BB:CC:DD:EE:FF","AA:BB:CC:DD:EE:FF","198.18.32.1","198.18.32.2",0,0,0,0
+        }
+       },
+
+    {
+    "ZcudZCUCANFD1Fr01","ZCU_CANFD1","CAN",1,0x61,50,64,
+    {
+      {
+      "igVehModMngtGlbSafe1_0",116,48,479,1,10,0,
+        {
+          {"isVehModMngtGlbSafe1Chks_0",8,79,0,0,0,0},
+          {"isVehModMngtGlbSafe1Cntr_0",4,87,0,0,0,0},
+          {"isVehModMngtGlbSafe1CarModSts1_0",3,111,0,0,0,0},
+          {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp_0",3,108,0,0,0,0},
+          {"isVehModMngtGlbSafe1EgyLvlElecMai_0",4,83,0,0,0,0},
+          {"isVehModMngtGlbSafe1EgyLvlElecSubtyp_0",4,95,0,0,0,0},
+          {"isVehModMngtGlbSafe1FltEgyCnsWdSts_0",1,105,0,0,0,0},
+          {"isVehModMngtGlbSafe1PwrLvlElecMai_0",4,91,0,0,0,0},
+          {"isVehModMngtGlbSafe1PwrLvlElecSubtyp_0",4,103,0,0,0,0},
+          {"isVehModMngtGlbSafe1UsgModSts_0",4,99,0,3,0X02,0X0D}
+        },
+        0,0,0,0,0xF1
+      }
+    },
+
+        0,0,
+        {
+        "AA:BB:CC:DD:EE:FF","AA:BB:CC:DD:EE:FF","198.18.32.1","198.18.32.2",0,0,0,0
+        }
+       }
+  };
+}

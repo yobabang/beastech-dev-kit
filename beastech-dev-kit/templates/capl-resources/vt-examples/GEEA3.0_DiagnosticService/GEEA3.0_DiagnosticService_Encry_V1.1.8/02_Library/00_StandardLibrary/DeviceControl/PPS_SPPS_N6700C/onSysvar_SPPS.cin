@@ -1,0 +1,37 @@
+/*@!Encoding:936*/
+/* 勿修改此文件 */
+variables
+{
+
+}
+
+on sysvar_update sysvar::DeviceControl::SPPS::InitConfig
+{
+  testSupplyTextEvent("SPPS_InitConfig");
+}
+
+on sysvar_update sysvar::DeviceControl::SPPS::settingVoltage
+{
+  float v;
+  v = @this;
+  SPPS_setVoltage(v);
+}
+
+on sysvar_update sysvar::DeviceControl::SPPS::settingCurrent
+{
+  float c;
+  c = @this;
+  SPPS_setCurrent(c);
+}
+
+on sysvar_update sysvar::DeviceControl::SPPS::output
+{
+  if(@this > 0)
+  {
+    SPPS_OutputStsSet(PPS_On);
+  }
+  else
+  {
+    SPPS_OutputStsSet(PPS_Off);
+  }
+}

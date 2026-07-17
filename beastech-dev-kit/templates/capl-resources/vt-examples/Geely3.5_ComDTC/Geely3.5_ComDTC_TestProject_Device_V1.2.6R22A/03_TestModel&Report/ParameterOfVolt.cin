@@ -1,0 +1,33 @@
+
+/*@!Encoding:936*/
+variables
+{
+  struct voltDTC
+  {
+    dword dtc;
+    float volt;
+    int CofrmLmt;
+    int agedLmt;
+    
+    int UnCofrmLmt;
+    int testProd;
+    int SUValue;
+    int SDValue;
+    
+    int usgMod;
+    int tstRlst;
+  };
+  struct voltDTC highVoltDTC=
+  {
+    0xEE0368,16,3,255,6,100,3,6,0,1
+  };
+  struct voltDTC lowVoltDTC=
+  {
+    0xEE0468,9,3,255,6,100,3,6,0,1
+  };
+  struct voltDTC batVoltDTC=
+  {
+    0xF00362,3,3,255,6,50,3,6,0xD,1
+  };
+}
+

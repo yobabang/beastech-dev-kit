@@ -1,0 +1,431 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: LIN_TP.cin
+|  Comment:   LIN network layer functions of ISO15765-2:2016
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY WRN           Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+
+ 
+}
+
+variables
+{
+  //enum AddressMode {physical,functional};
+  //enum ResponseState {Timeout,Pos,Neg};
+   
+  //byte TpRxData[4096];
+  //dword TpRxLength;
+  long LIN_RequestWasSentFunctionally;
+  long gOldScheduleTableIndex;
+  long gNodeAddress;
+  long gMasterRequestTableIndex=0;
+  long gSlaveResponseTableIndex=1;
+  msTimer tWaitForResponse;
+  Long ChkFunRespIndex;
+  long CFIndex,SFIndex;
+  const cLIN_FunctionalGroupNAD = 0x7E;
+  msTimer TWait;
+  byte PreCount;
+  int SeqCount;
+  byte Data_3E[8]={0x7E,0x2,0x3e,0x80,0x7F,0X7F,0X7F,0X7F};
+  
+  int  LIN_TP_NAD = 0x72;
+  int  LIN_TP_STmin = 20;
+}
+
+
+void LIN_TP_Init()
+{
+  LINtp_SetFillByteValue(0xFF);//0~255
+  LINtp_SetMaximumReceiveLength(255);
+  LINtp_SetSTmin(LIN_TP_STmin);
+  LINtp_SetWaiting(0);
+  LIN_RequestWasSentFunctionally=0;
+  ChkFunRespIndex=0;
+  CFIndex=0;
+  SFIndex=0;
+  gNodeAddress=LIN_TP_NAD;
+  gMasterRequestTableIndex=0;
+  gSlaveResponseTableIndex=1;
+//  LINtp_ActivateFCTransmission(250);
+//  LINtp_FCPreTransmit(Data_3E);
+//0: Deactivate waiting 1: Activate waiting 
+//LINtp_SetNAD(LIN_NAD);  //Set Slave Node
+}
+
+void LIN_TP_Release()
+{
+  
+}
+
+on preStart
+{
+   LINtp_InitAsMaster();
+}
+void LINtp_FCPreTransmit(BYTE  fcData[])
+{
+  write( "FlowControl to be sent: %02x %02x %02x %02x (%d byte)"
+  , fcData[0] , fcData[1] , fcData[2] , fcData[3], elcount(fcData));
+}
+
+On linFrame  0x3D
+{
+  write("Receive 0x3d message!");
+  SeqCount=0;
+  if(this.byte(0)==gNodeAddress&&this.dir==rx)
+  {
+    if((this.byte(1)>>4==1)||(this.byte(1)<=0x6))
+    {
+      TestSupplyTextEvent("LINTPFirstCFrecived");
+      write("%02x,%02x,%02x",this.byte(0),this.byte(1),this.byte(2));
+    }
+
+  }
+}
+
+On linFrame 0x3C
+{
+
+  PreCount=0;
+  if(this.byte(0)==gNodeAddress&&this.dir==tx)
+  {
+    if((this.byte(1)>>4)==1)
+    {
+      PreCount=1;
+      SeqCount=0;
+      
+    }
+    else if(this.byte(1)>>4==2)
+    {
+      
+      if((PreCount==1)&&(this.byte(2)<<4==1))
+      {
+        PreCount=0;
+        SeqCount=0;
+      }
+      else
+        SeqCount=SeqCount+1;
+    
+    }
+//    write("SeqCount14:%d",SeqCount);
+  }
+}
+
+Diag_SendFunctional( BYTE data[])
+{
+  long currentAddress;
+
+  currentAddress = gNodeAddress;
+  gNodeAddress = cLIN_FunctionalGroupNAD;
+  LIN_RequestWasSentFunctionally = (gNodeAddress == cLIN_FunctionalGroupNAD);
+  Diag_DataRequest( data, elcount(data));
+  gNodeAddress = currentAddress;
+  
+}
+
+Diag_DataRequest( BYTE data[], DWORD count)
+{
+  /* The diagnostics layer transports data via a CAPL callback interface. */
+   
+    gOldScheduleTableIndex = -1;
+    if( gMasterRequestTableIndex == -1)
+    {
+       CCILIN_GetTableIndices( gMasterRequestTableIndex, gSlaveResponseTableIndex);
+    }
+    if( gMasterRequestTableIndex < 0)
+    {
+      if( gMasterRequestTableIndex == -1)
+      {
+        writeEx( 1, 3, "\n: Master request table index not set!");
+        gMasterRequestTableIndex = -2; // only report the error once!
+      }
+    }
+    else
+      gOldScheduleTableIndex =linChangeSchedTable(gMasterRequestTableIndex);
+
+    // Store whether the request was sent to a functional group
+    if(gNodeAddress == 0x7e)
+     LIN_RequestWasSentFunctionally=1;
+    else
+      LIN_RequestWasSentFunctionally=0;
+ 
+  
+     gOldScheduleTableIndex = CCILIN_ChangeSchedTable(gMasterRequestTableIndex);
+     LINtp_DataReq(data, count, gNodeAddress);
+  
+} 
+
+LINtp_DataCon(long count)
+{
+    // Since we do not know if a response is expected, simply start P2 (LIN default: 500 ms)
+    tWaitForResponse.set( 500 + 5); // add some slack
+    // Switch to the response table for the slave's response, if one is expected
+//    if(gRequestWasSentFunctionally==1&&ChkFunRespIndex==0)
+   
+    if(LIN_RequestWasSentFunctionally==1)
+    {
+      CCILIN_ChangeSchedTable (gMasterRequestTableIndex);  // no response on functional requests!
+    }
+    else if(gSlaveResponseTableIndex==1)
+    {
+      CCILIN_ChangeSchedTable(gSlaveResponseTableIndex); // expect a response on a physical request
+      ChkFunRespIndex=0;
+      
+    }
+    else if( gSlaveResponseTableIndex < 0)
+    {
+      if( gSlaveResponseTableIndex == -1)
+      {
+        writeEx( 1, 3, "\n: Slave response table index not set!");
+        gSlaveResponseTableIndex = -2; // only report the error once!
+      }   
+    }
+    
+    write( "sent %d byte--Confirm:%f", count,timeNow()/100000.0);
+    testSupplyTextEvent("SendMsg");
+}
+
+LINtp_FirstFrameIndication(long sender, long receiver, long announcedLen)
+{
+  // A response is about to be received, therefore the watchdog timer can be cancelled.
+  // When the data has finally arrived, the schedule will be changed too.
+    tWaitForResponse.cancel();
+    CFIndex=1;
+    linChangeSchedTable(gSlaveResponseTableIndex);
+}
+
+LINtp_DataInd(long count, DWORD nad)
+{
+  /* This function forwards the data to the diagnostics layer */
+  
+  LINtp_GetRxData(TpRxData, count);
+  TpRxLength=count;
+
+  tWaitForResponse.cancel();
+  if( count == 3 && TpRxData[0] == 0x7F && TpRxData[2] == 0x78)
+  {
+    // A response pending was received, therefore restart the timer with P2ex
+    tWaitForResponse.set(UDS_P2ClientDelay*10);
+    write( "gSlaveResponseTableIndex3: %d", gSlaveResponseTableIndex);
+    CCILIN_ChangeSchedTable( gSlaveResponseTableIndex );
+  } 
+  else
+  {
+    CCILIN_ChangeSchedTable( gMasterRequestTableIndex );
+  }
+  TWait.set(2);
+
+}
+
+LINtp_ErrorInd(int error)
+{
+  writeEx( 1, 3, "\nCCILIN [%.3f ] LINtp_ErrorInd(%d)", timenow()/100000.0,  error);
+}
+
+on timer tWaitForResponse
+{
+  if(CFIndex!=1)
+      CCILIN_ChangeSchedTable( gMasterRequestTableIndex);
+  write("Do not response ");
+}
+
+on timer TWait
+{
+  TestSupplyTextEvent("LINTPreciveData");
+}
+CCILIN_RestoreTableIndex()
+{
+  if( gOldScheduleTableIndex >= 0)
+  {
+    CCILIN_ChangeSchedTable( gOldScheduleTableIndex);
+    gOldScheduleTableIndex = -1;
+  }
+}
+
+long CCILIN_ChangeSchedTable(long newTableIndex)
+{
+  long previousIndex;
+  previousIndex = linChangeSchedTable(newTableIndex);
+  if( previousIndex != newTableIndex)
+  {
+    writeDbgLevel( 1,"CCILIN [%.3f] Changing schedule table from %d to %d", timenow()/100000.0,previousIndex, newTableIndex);
+  }
+  return previousIndex;
+}
+
+CCILIN_GetTableIndices( long& masterRequestTableIndex, long& slaveResponseTableIndex)
+{
+  // In a tester (=LIN master), change these values to the actual table indices!
+  // In an ECU simulation (=LIN slave), these values will be ignored.
+//  masterRequestTableIndex = -1;
+//  slaveResponseTableIndex = -1;
+}
+
+enum ResponseState LIN_ECU_Response(int P2,int P6)
+{
+
+ if(testWaitForTextEvent("LINTPFirstCFrecived",P2)==0)
+ 
+    return Timeout;
+ 
+if(testWaitForTextEvent("LINTPreciveData",P6)==1)
+{
+ 
+  if(TpRxData[0]==0x7f)
+  {
+    switch(TpRxData[2])
+    {
+      case 0x78:
+        CCILIN_ChangeSchedTable(gSlaveResponseTableIndex);
+        return ECU_Response(5000);
+      default:
+        NRC_Info(TpRxData[2]);
+        break;
+    }
+    return Neg;
+  }
+  else
+    return Pos;
+}
+else
+{
+
+  testStepFail("Chk","The CF is not incomplete");
+  return Timeout;
+}
+
+}
+
+enum ResponseState LIN_ECU_Response(int P6)
+{
+  if(testWaitForTextEvent("LINTPFirstCFrecived",P6)==0)
+    return Timeout;
+  if(testWaitForTextEvent("LINTPreciveData",P6)==1)
+  {
+    if(TpRxData[0]==0x7f)
+    {
+      switch(TpRxData[2])
+      {
+        case 0x78:
+          CCILIN_ChangeSchedTable(gSlaveResponseTableIndex);
+          return ECU_Response(5000);
+        default:
+          NRC_Info(TpRxData[2]);
+          break;
+      }
+      return Neg;
+    }
+    else
+      return Pos;
+}
+else
+{
+  testStepFail("Chk","The CF is not incomplete");
+  return Timeout;
+}
+   
+ 
+}
+
+int LIN_TP_Send(byte Data[],int length,enum AddressMode Mode)
+{
+  if(length>elcount(Data))
+  {
+    if(Mode==Physical)
+    {
+       Diag_DataRequest(Data,elCount(Data));
+       //setBusContext(getBusNameContext("LIN"));
+       testWaitForTextEvent("SendMsg",5000);
+//       write("SendMsg:%f",timeNow()/100000.0);
+    }
+    else
+    {
+       ChkFunRespIndex=1;
+       Diag_SendFunctional(Data);
+       testWaitForTextEvent("SendMsg",5000);
+//       write("SendMsg:%f",timeNow()/100000.0);
+    }
+    write("Worning tp send data size small than given length");
+  }
+  else if(length<elcount(Data))
+  {
+    if(Mode==Physical)
+    {
+       Diag_DataRequest(Data,length);
+       //setBusContext(getBusNameContext("LIN"));
+       testWaitForTextEvent("SendMsg",5000);
+//       write("SendMsg:%f",timeNow()/100000.0);
+       
+    }
+    else
+    {
+       ChkFunRespIndex=1;
+       Diag_SendFunctional(Data);
+       //setBusContext(getBusNameContext("LIN"));
+       testWaitForTextEvent("SendMsg",5000);
+    }
+  }
+  else
+  {
+     if(Mode==Physical)
+    {
+       Diag_DataRequest(Data,elCount(Data));
+       setBusContext(getBusNameContext("LIN"));
+       testWaitForTextEvent("SendMsg",5000);
+    }
+    else
+    {
+       ChkFunRespIndex=1;
+       Diag_SendFunctional(Data);
+       testWaitForTextEvent("SendMsg",5000);
+    }
+    write("Worning tp send data size small than given length");
+  }
+    
+  return 1;
+}
+
+int LIN_TP_Send(byte Data[],enum AddressMode Mode)
+{
+    if(Mode==Physical)
+    {
+       Diag_DataRequest(Data,elCount(Data));
+       //setBusContext(getBusNameContext("LIN1"));
+       testWaitForTextEvent("SendMsg",5000);
+//       write("SendMsg:%f",timeNow()/100000.0);
+    }
+    else
+    {
+       ChkFunRespIndex=1;
+       Diag_SendFunctional(Data);
+       testWaitForTextEvent("SendMsg",5000);
+//       write("SendMsg:%f",timeNow()/100000.0);
+    }
+    
+  return 1;
+}
+
+

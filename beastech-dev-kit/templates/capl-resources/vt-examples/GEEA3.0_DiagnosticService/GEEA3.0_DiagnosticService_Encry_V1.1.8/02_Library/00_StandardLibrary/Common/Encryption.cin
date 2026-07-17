@@ -1,0 +1,46 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #pragma library("CodeMeter.dll") 
+}
+
+variables
+{
+  
+}
+
+on preStart
+{
+  TimeCheck();
+//  CodeMeter();
+}
+
+void TimeCheck()
+{
+  long tmnow[9];
+  
+  getlocaltime(tmnow);
+  if((tmnow[5]+1900) > 2027)
+  {
+    write("Data is expired!");// ±º‰º”√‹
+    stop();
+  }
+}
+
+void CodeMeter()
+{
+  char authorName[100];
+  dllGetPcCode(authorName);
+  testWaitForTimeout(2000);
+  if((strncmp(authorName,"Polelink",100)==0) || (strncmp(authorName,"Geely",100)==0))
+  {
+    write("License(%s) is avaliable!",authorName); 
+  }
+  else
+  {
+    write("No license! Please check dongle is available");
+    stop();
+  }
+}
+

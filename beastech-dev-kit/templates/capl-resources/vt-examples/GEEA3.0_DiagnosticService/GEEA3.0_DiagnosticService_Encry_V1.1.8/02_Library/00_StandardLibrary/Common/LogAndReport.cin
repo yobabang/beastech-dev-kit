@@ -1,0 +1,209 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: TestInformation.cin
+|  Comment:   Print Test Information
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| RXQ              Ranxuqing         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20191111     1.0  RXQ               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+includes
+{
+  
+}
+
+variables
+{
+  char gPrjctVersion[100]="V1.0.0";
+  char gDesigner[500]="Polelink Information Technology Co., Ltd.";
+  char gOwner[500]="";
+  
+  char gReportLogPath[500]="";//报告路径
+  char gLogpath[500]="";//log路径
+  char gPicPath[500]="";//图片路径
+  
+  long gStepIndex ,gRepetitionIndex;//测试Step索引
+  char reportName[500]="";
+  
+}
+
+//打印权限信息
+void PrjInfoPrint()
+{
+  char absPath[500];
+  char logoPath[500];
+  
+  getAbsFilePath("",absPath,500);
+  snprintf(logoPath,500,"%s02_Library\\00_StandardLibrary\\Common\\Logo.png",absPath);
+  testReportAddImage("",logoPath);
+  testReportAddSUTInfo("Designer",gDesigner);
+  testReportAddSUTInfo("Owner",gOwner);
+  testReportAddSUTInfo("Version",gPrjctVersion);
+}
+
+//自动增加step索引
+void TestStep(char descriptipn[])
+{
+  char step[20];
+  char tempDescription[500];
+  gStepIndex++;
+
+  if(boldMainStepFlag==1)
+  {
+    strncpy(tempDescription, "[B]", 500);
+    strncat(tempDescription,descriptipn,500);
+    strncat(tempDescription,"[/B]",500);
+    
+    snprintf(step,20,"[B]Step%d[/B]",gStepIndex);
+    teststep(step,tempDescription);
+  }
+  else
+  {
+    snprintf(step,20,"Step%d",gStepIndex);
+    teststep(step,descriptipn);
+  }
+}
+void TestStep(char descriptipn[],dword StepIntervalTime)
+{
+  char step[20];
+  char tempDescription[500];
+  gStepIndex++;
+  
+  if(boldMainStepFlag==1)
+  {
+    strncpy(tempDescription, "[B]", 500);
+    strncat(tempDescription,descriptipn,500);
+    strncat(tempDescription,"[/B]",500);
+    
+    testWaitForTimeout(StepIntervalTime+1);//等待测试步骤间隔时间
+    
+    snprintf(step,20,"[B]Step%d[/B]",gStepIndex);
+    teststep(step,tempDescription);
+  }
+  else
+  { 
+    testWaitForTimeout(StepIntervalTime+1);//等待测试步骤间隔时间
+    
+    snprintf(step,20,"Step%d",gStepIndex);
+    teststep(step,descriptipn);
+  }
+
+}
+void TestStep(char descriptipn[],dword StepIntervalTime,int StepForJump)
+{
+  char step[20];
+  char tempDescription[500];
+  gStepIndex++;
+  if(boldMainStepFlag==1)
+  {
+    strncpy(tempDescription, "[B]", 500);
+    strncat(tempDescription,descriptipn,500);
+    strncat(tempDescription,"[/B]",500);
+    
+    testWaitForTimeout(StepIntervalTime+1);//等待测试步骤间隔时间
+
+    snprintf(step,20,"[B]Step%d[/B]",gStepIndex);
+    teststep(step,tempDescription);
+  }
+  else
+  {
+    testWaitForTimeout(StepIntervalTime+1);//等待测试步骤间隔时间
+
+    snprintf(step,20,"Step%d",gStepIndex);
+    teststep(step,descriptipn);
+  }
+  
+  gStepIndex=StepForJump-1;
+    
+}
+
+//reset step索引
+void ResetStepIndex()
+{
+  gStepIndex = 0;
+}
+
+// save log without group
+void SetLog(char logname[])
+{
+  snprintf(gLogpath,400,"");
+  snprintf(gLogpath,400,"%s%s_{LocalTime}.blf",gReportLogPath,logname);
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+// save log without group
+void SetLog(char logname[],int format)
+{
+  snprintf(gLogpath,400,"");
+  if(format==0)
+  {
+    snprintf(gLogpath,400,"%s%s_{LocalTime}.asc",gReportLogPath,logname);
+  }
+  else
+  {
+    snprintf(gLogpath,400,"%s%s_{LocalTime}.blf",gReportLogPath,logname);
+  }
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+// save log with group
+void SetLog(char testgroup[], char logname[])
+{
+  snprintf(gLogpath,500,"");
+  snprintf(gLogpath,500,"%s%s\\%s_{LocalTime}.blf",gReportLogPath,testgroup,logname);
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+// save log with group. format can be changed.
+void SetLog(char testgroup[], char logname[], int format)
+{
+  snprintf(gLogpath,500,"");
+  if(format==0)
+  {
+    snprintf(gLogpath,500,"%s%s\\%s_{LocalTime}.asc",gReportLogPath,testgroup,logname);    
+  }
+  else
+  {
+    snprintf(gLogpath,500,"%s%s\\%s_{LocalTime}.blf",gReportLogPath,testgroup,logname);
+  }
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+//设置log和报告的路径
+void SetLogReportPath(char nodeName[])
+{
+  int k;
+  int index;
+  long tmnow[9];
+  char absPath[500];//absolutely path of test project
+  
+  
+  getlocaltime(tmnow);
+  
+  getAbsFilePath("",absPath,500);
+  snprintf(gReportLogPath,400,"%s06_LogAndReport\\Log&Report_%d-%d-%d_%d-%d-%d\\",absPath,tmnow[5]+1900,tmnow[4]+1,tmnow[3],tmnow[2],tmnow[1],tmnow[0]);
+  snprintf(reportName,400,"%s00_%s_Report",gReportLogPath,nodeName);
+  testReportFileName(reportName);
+  snprintf(gPicPath,400,"%sPicture\\",gReportLogPath);
+}

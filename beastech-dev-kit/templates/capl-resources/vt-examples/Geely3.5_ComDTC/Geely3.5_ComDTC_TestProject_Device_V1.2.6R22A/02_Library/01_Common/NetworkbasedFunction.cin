@@ -1,0 +1,12 @@
+/*@!Encoding:936*/
+
+on sysvar_update sysvar::Communication::SetLinkStatus
+{
+  int status;
+  ethernetport testPort;
+  
+  status = @this;
+  testPort = lookupEthernetPort(LinkDownDTCTemp[gDTCIndex].cluster);
+  ethSetLinkStatus(testPort,status);
+}
+

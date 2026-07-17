@@ -1,0 +1,245 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{
+//  const long  INVALID_SOCKET =    ~0;
+//  const long  WSA_IO_PENDING =   997;
+//  const dword INVALID_IP     = 0xffffffff;
+
+//  char        gIpLastErrStr[1024]  = "";
+//  int         gIpLastErr           = 0;
+//  long        gUdpSocket    = INVALID_SOCKET;
+
+
+//  dword       gTcpPort          = 0;
+//  long        gTcpDataSocket    = INVALID_SOCKET;
+////  char        gTcpRxBuffer[8192];
+//  char        gTcpRxBuffer[65535];
+//  //////////////////////////////////////////////////
+//  dword PPS_Socket ;
+//  dword PMM_Socket ;
+
+//  dword TEH_CAN0_Socket ;
+//  dword TEH_CAN1_Socket ;
+  
+//  char PCS_IP[100] = "192.168.7.125";
+//  char PPS_IP[100] = "192.168.7.140";
+//  char PMM_IP[100] = "192.168.7.180";
+//  char TEH_CAN_IP[100] = "192.168.7.160";
+//  char RT_IPC_IP[100] = "192.168.7.1";
+////  char IPC_IP[100] = "192.168.7.100";
+//  dword PCS_Port = 5025;
+//  dword PPS_Port = 5025;
+//  dword PMM_Port = 8846;
+//  dword TEH_CAN0_Port = 40001;
+//  dword TEH_CAN1_Port = 40002;
+//  dword IPC_Port1 = 12000;
+//  dword IPC_Port2 = 12100;
+//  dword IPC_Port3 = 12200;
+//  char PPS_RecvData[400] = "";
+
+//  char PMM_RecvData[400] = "";
+//  char TEH_CAN_RecvData[400] = "";
+    
+
+}
+
+//void OnTcpReceive( dword socket, long result, dword address, dword port, char buffer[], dword size)
+//{
+//  int i=0;
+//  int j=0;
+//  char  addressString[64] = "";
+  
+//  if (0 != result)
+//  {
+//    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+//    writelineex( 0, 2, "OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+
+//    return;
+//  }
+ 
+//  IpGetAddressAsString(address, addressString, elcount(addressString));
+
+//  if (socket == PPS_Socket)
+//  {
+//    strncpy(PPS_RecvData,buffer,400);
+//    //write ("%5.3fs:Data = %s,socket = %d",timeNowNS()/1000000000,PPS_RecvData,socket );
+//  }
+
+//  if (socket == PCS_Socket)
+//  {
+//      writelineex( 0, 2, "Rcv_Size:%d",Rcv_Size);
+//      writelineex( 0, 2, "size:%d",size);
+//      if(Rcv_Begin == 1)
+//      {
+//        memcpy(PCS_RecvData,buffer,size);
+//        Rcv_Begin = 0;
+//        Rcv_Size = size;
+//      }
+//      else
+//      {
+//        memcpy_off(PCS_RecvData,Rcv_Size,buffer,0,size);
+//        Rcv_Size = Rcv_Size + size;
+//      }
+//  }
+//  if (socket == PMM_Socket)
+//  {
+//    i++;
+//    if(!((buffer[0]=='\r')&&(buffer[1]=='\n')))
+//    {
+//      strncpy(PMM_RecvData,buffer,400);
+//      //write ("%d:Data = %s,socket = %d",i,PMM_RecvData,socket);
+//    }
+//  }
+  
+//  TcpRecv(socket);
+//}
+
+
+
+//void OnTcpConnect( dword socket, long result)
+//{
+//  if (0 != result)
+//  {
+//    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+//    writelineex( 0, 2, "OnTcpConnect error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+
+//    return;
+//  }
+//  else
+//  {
+//    writelineex(0, 1, "Successfully connected to server via Tcp");
+
+//    TcpRecv( socket);
+//  }
+//}
+
+//void SendTcpData(char TcpClientData[],dword TcpDataSocket)
+//{
+//  char buffer[100];
+//  //write("[OSC]%s[socket%d]",TcpClientData,TcpDataSocket);
+//  strncpy(buffer,TcpClientData,100);
+ 
+//  if (INVALID_SOCKET == TcpDataSocket)
+//  {
+//    writelineex( 0, 2, "Tcp socket is invalid!");
+
+//    return;
+//  }
+  
+//  if (0 != TcpSend( TcpDataSocket, buffer, strlen(buffer)))
+//  {
+//    gIpLastErr = IpGetLastSocketError(TcpDataSocket);
+
+//    if ( WSA_IO_PENDING != gIpLastErr)
+//    {
+//      IpGetLastSocketErrorAsString( TcpDataSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+//      writelineex( 0, 2, "Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+//    }
+//  }
+//  else
+//  {
+//    writelineex( 0, 1, "Tcp data sent successfully!");
+//  }
+//}
+
+
+//void SendTcpData_BYTE(byte TcpClientData[],dword TcpDataSocket)
+//{
+  
+//  if (INVALID_SOCKET == TcpDataSocket)
+//  {
+//    writelineex( 0, 2, "Tcp socket is invalid!");
+
+//    return;
+//  }
+  
+//  if (0 != TcpSend( TcpDataSocket, TcpClientData, elcount(TcpClientData)))
+//  {
+//    gIpLastErr = IpGetLastSocketError(TcpDataSocket);
+
+//    if ( WSA_IO_PENDING != gIpLastErr)
+//    {
+//      IpGetLastSocketErrorAsString( TcpDataSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+//      writelineex( 0, 2, "Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+//    }
+//  }
+//  else
+//  {
+//    writelineex( 0, 1, "Tcp data sent successfully!");
+//  }
+//}
+
+//dword ConnectTcp(char TcpServerIp[],char CliIp[],dword ServerPort,dword CliPort)
+//{ 
+//  char buffer[64];
+//  char buffer2[64];
+//  dword serverIp;
+//  dword Ip;
+////  dword Socket;
+
+//  strncpy(buffer,TcpServerIp,64);
+
+//  strncpy(buffer2,CliIp,64);
+  
+//  serverIp = IpGetAddressAsNumber(buffer);
+  
+//  Ip = IpGetAddressAsNumber(buffer2);
+
+//  if (INVALID_IP == serverIp)
+//  {
+//    writelineex(0, 1, "Error: invalid server Ip address!");
+    
+//    return ~0;
+//  }
+  
+//  gTcpDataSocket = TcpOpen(Ip, CliPort);
+
+//  if ( INVALID_SOCKET == gTcpDataSocket)
+//  {
+//    writelineex(0, 1, "Error: could not open Tcp socket!");
+
+//    return ~0;
+//  }
+//  else
+//  {
+//    writelineex(0, 1, "Tcp socket opened.");
+//  }
+
+//  if (0 == TcpConnect(gTcpDataSocket, serverIp, ServerPort))
+//  {
+//    writelineex(0, 1, "Successfully connected to server %s:%d", buffer, ServerPort);
+
+//    TcpRecv( gTcpDataSocket);
+//  }
+//  return gTcpDataSocket ;
+//}
+
+//long TcpRecv( dword socket)
+//{
+//  int result = 0;
+
+//  result = TcpReceive( socket, gTcpRxBuffer, elcount( gTcpRxBuffer));
+
+//  if ( 0 != result)
+//  {
+//    gIpLastErr = IpGetLastSocketError( socket);
+
+//    if ( WSA_IO_PENDING != gIpLastErr)
+//    {
+//      IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+//      writelineex( 0, 2, "TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+//    }
+//  }
+
+//  return result;
+//}

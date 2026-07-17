@@ -1,0 +1,247 @@
+/*@!Encoding:936*/
+/*
+PCS接口调用步骤：
+1.调用初始化接口，配置示波器参数
+2.触发波形，设置时基（缩放、移动）
+3.Add Measure 选择添加测量接口
+4.Result 选择测试结果接口
+5.调用保存图片log接口
+*/
+variables
+{
+  enum PCS_Measure_Type{DEBUG=0,BUSVOLTAGE,COMMVOLT,BITTIME,EDGETIME};
+//  enum e_PCS_Location{PCS_Arb = 0, PCS_Data = 1}; 
+}
+
+/// <c_AddMeasure>
+void PCS_BusVoltageMeasure()
+{    
+  @sysvar::DeviceControl::PCS::Command::MEAS_TYPE=BUSVOLTAGE;
+  @sysvar::DeviceControl::PCS::Command::Measure=1;
+}
+
+/// <c_AddMeasure>
+void PCS_CommVoltMeasure()
+{ 
+  @sysvar::DeviceControl::PCS::Command::MEAS_TYPE=COMMVOLT;
+  @sysvar::DeviceControl::PCS::Command::Measure=1;
+}
+
+/// <d_Result/Query>
+float PCS_MeasureResultQuery(Char Type[],char Source[])
+{
+  testWaitForTimeout(200);
+  
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Type,Type);
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Sour,Source);
+  @sysvar::DeviceControl::PCS::Command::MeasResult_Query++;
+  testWaitForSysVar(sysvar::DeviceControl::PCS::Parameter::Meas_Result,5000);
+  return @sysvar::DeviceControl::PCS::Parameter::Meas_Result;
+}
+
+/// <d_Result>
+void PCS_BusVoltageResult(float& BitVoltage_CANH_Dom,float& BitVoltage_CANH_Res,float& BitVoltage_CANL_Res,float& BitVoltage_CANL_Dom,float& BitVoltage_Diff_Dom,float& BitVoltage_Diff_Res)
+{
+  BitVoltage_CANH_Dom= PCS_MeasureResultQuery("Vtop","Channel1");
+  BitVoltage_CANH_Res= PCS_MeasureResultQuery("Vbase","Channel1");
+  BitVoltage_CANL_Res= PCS_MeasureResultQuery("Vtop","Channel2");
+  BitVoltage_CANL_Dom= PCS_MeasureResultQuery("Vbase","Channel2");
+  BitVoltage_Diff_Dom= PCS_MeasureResultQuery("Vtop","MATH");
+  BitVoltage_Diff_Res= PCS_MeasureResultQuery("Vbase","MATH");  
+}
+
+/// <d_Result>
+void PCS_CommVoltResult(float& BitVoltage_Comm_Dom,float& BitVoltage_Comm_Res)
+{
+  BitVoltage_Comm_Dom= PCS_MeasureResultQuery("Vtop","MATH");
+  BitVoltage_Comm_Res= PCS_MeasureResultQuery("Vbase","MATH");  
+}
+
+/// <c_AddMeasure>
+void PCS_BitLengthMeasure()
+{
+  @sysvar::DeviceControl::PCS::Command::MEAS_TYPE=BITTIME;
+  @sysvar::DeviceControl::PCS::Command::Measure=1;
+}
+
+/// <d_Result>
+float PCS_BitLengthResult(int isDataField,int isBRS)
+{
+  float bitlength,Ntime;
+  Ntime = PCS_XCursorQuery();
+  if(Ntime != 0)
+  {
+    if(isDataField == 1 && (isBRS > 0))
+      bitlength = Ntime/(_round( Ntime /0.0000005) );//单位为ns
+    else
+      bitlength = Ntime/(_round( Ntime /0.000002) );
+  }
+  else
+    teststepwarning("","未捕捉到上升沿，请检查");
+  return bitlength * 1000000000;//ns
+}
+
+/// <c_AddMeasure>
+void PCS_BusEdgeTimeMeasure()
+{ 
+  @sysvar::DeviceControl::PCS::Command::MEAS_TYPE=EDGETIME;
+  @sysvar::DeviceControl::PCS::Command::Measure=1;
+}
+
+/// <d_Result>
+void PCS_BusEdgeTimeResult(float& FallTime_CANH,float& RiseTime_CANH,float& FallTime_CANL,float& RiseTime_CANL,float& FallTime_CANDiff,float& RiseTime_CANDiff)
+{
+  FallTime_CANH= PCS_MeasureResultQuery("falltime","Channel1")*1000000000;
+  RiseTime_CANH= PCS_MeasureResultQuery("risetime","Channel1")*1000000000;
+  FallTime_CANL= PCS_MeasureResultQuery("falltime","Channel2")*1000000000;
+  RiseTime_CANL= PCS_MeasureResultQuery("risetime","Channel2")*1000000000;
+  FallTime_CANDiff= PCS_MeasureResultQuery("falltime","MATH")*1000000000;
+  RiseTime_CANDiff= PCS_MeasureResultQuery("risetime","MATH")*1000000000;  
+}
+
+/// <c_AddMeasure>
+void PCS_BusVoltageMeasure_LIN()//信号电平测试
+{
+  
+  
+}
+
+/// <c_AddMeasure>
+void PCS_BusBitTimeMeasure_LIN()//主节点的波特率容差;从节点波特率测试
+{
+  
+
+}
+
+/// <c_AddMeasure>
+void PCS_BusEdgeTimeMeasure_LIN()//LIN信号斜率测试
+{
+  
+
+}
+
+/// <d_Result/Query>
+float PCS_XCursorQuery()
+{
+  float result;
+  @sysvar::DeviceControl::PCS::Cursors::XCursor++;
+  testWaitForTimeout(200);
+  result = sysGetVariableFloat("DeviceControl::PCS::Cursors","CursorValue");
+  return result;
+}
+
+/// <d_Result/Query>
+float PCS_YCursorQuery()
+{
+  float result;
+  @sysvar::DeviceControl::PCS::Cursors::YCursor++;
+  testWaitForTimeout(200);
+  result = sysGetVariableFloat("DeviceControl::PCS::Cursors","CursorValue");
+  return result;
+}
+
+//示波器一般可以设置窗口大小和偏移，可根据使用者需要修改
+/// <a_Configure>
+void PCS_SetTimebase(int isDataField,int isBRSEnable)
+{
+  
+    if(isDataField == 1 && (isBRSEnable > 0))//CANFD数据场,BRS=1,2M
+    {
+        @sysvar::DeviceControl::PCS::Timebase::Scale=0.0000005;//500ns
+        @sysvar::DeviceControl::PCS::Timebase::position=0.0000005 * 30;/*将波形向右移动30位，使数据场占据屏幕；一格是4位*/
+    }
+    else//500k
+    {
+      if(isDataField == 1 && isBRSEnable == 0)//CAN数据场，/canfd数据场且BRS=0
+      {
+        @sysvar::DeviceControl::PCS::Timebase::Scale=0.000002;//2us
+        @sysvar::DeviceControl::PCS::Timebase::position=0.000002 * 30;/*将波形向右移动30位，使数据场占据屏幕；一格是1位*/
+      }
+      else//CAN(FD)仲裁场
+      {
+        @sysvar::DeviceControl::PCS::Timebase::Scale=0.000005;
+        @sysvar::DeviceControl::PCS::Timebase::position=-0.000002 * 10;/*将波形向右移动10位，使仲裁场占据屏幕；一格是2.5位,移动4格*/
+      }    
+    }
+}
+
+/// <e_SavePicture>
+void PCS_SavePicture(char PicPath[],char PicName[])
+{
+  char path[256];
+  char picpath[512];
+  char userFileName[512],relFileName[512];
+  char fileNameRel2Xml[512];
+  teststep("OSC_SavePicture","");
+  snprintf(picpath,elcount(picpath),"%s\\%s",PicPath,PicName);
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::PicPath,picpath);
+  write("[picturepath]:%s",PicPath);
+  write("[picturefilepath]:%s",picpath);
+  testWaitForTimeout(10);
+  @sysvar::DeviceControl::PCS::Command::SavePicture = 1;
+  testWaitForTimeout(11000);
+  testReportAddImage(PicName,picpath);
+}
+
+///// <SavePicture>
+//void PCS_SavePicture(char PicName[])
+//{
+//  char path[256];
+//  char picpath[512];
+//  char userFileName[512],relFileName[512];
+//  char fileNameRel2Xml[512];
+//  teststep("OSC_SavePicture","");
+
+//  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::PicPath,PicName);
+//  write("111111111111[picturepath]:%s",PicName);
+//  testWaitForTimeout(10);
+//  @sysvar::DeviceControl::PCS::Command::SavePicture = 1;
+//  testWaitForTimeout(11000);
+//  testReportAddImage("",PicName);
+//}
+
+/// <a_Configure>
+void PCS_setTriggerID()//任意ID触发
+{
+  char TriggerID[256];
+  
+  snprintf(TriggerID,elcount(TriggerID),"XXX");
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,TriggerID);
+}
+
+/// <a_Configure>
+void PCS_setTriggerID(dword ID)//特定ID触发
+{
+  char TriggerID[256];
+  char IdBuff[10];
+  
+  snprintf(IdBuff,elcount(IdBuff),"%02x",ID);
+  snprintf(TriggerID,elcount(TriggerID),IdBuff);
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,TriggerID);
+}
+
+/// <b_Trigger>
+void PCS_Trigger_All()
+{
+  PCS_setTriggerID();
+  @sysvar::DeviceControl::PCS::Command::ID_Trigger++;
+}
+
+/// <b_Trigger>
+void PCS_Trigger_ID(dword ID)
+{
+  PCS_setTriggerID(ID);
+  @sysvar::DeviceControl::PCS::Command::ID_Trigger++;
+}
+
+/// <a_Configure>
+void PCS_PreTestConfig(char bustype[],int isDataField,int isBRSEnable)
+{
+  PCS_SetTimebase(isDataField,isBRSEnable);
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::BusType,bustype);
+  @sysvar::DeviceControl::PCS::Command::initSerial = 1;
+  testWaitForTimeout(2000);
+}
+
+
+

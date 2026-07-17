@@ -1,0 +1,141 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "KL_c.cin"
+  #include "Panel_c.cin"
+  #include "PPS_c.cin"
+  #include "SPPS_c.cin"
+  #include "VH6501_c.cin"
+  #include "PSRB_c.cin"
+  #include "DRB_c.cin"
+  #include "ENV_c.cin"
+  #include "PCS_c.cin"
+  #include "PMM_c.cin"
+//  #include "BOBS_c.cin"
+}
+
+variables
+{
+  enum DeviceType_t {PPS,SPPS,PCS,PMM,VH6501,ENV,KL};
+  
+  enum BusFaultType{NoneFault,H2L,H2G,H2B,L2G,L2B,HOpen,LOpen,H2TestSupply,L2TestSupply}; 
+  enum VH6501_FaultType{CANH_ShortTo_CANL,CANH_BAT,CANH_GND,CANL_BAT,CANL_GND,CANH_Swap_CANL,CANH_Open,CANL_Open};
+  
+  struct DeviceList_t
+  {
+    char Model[256];
+    long isConfigured;
+  };
+  struct DeviceList_t DeviceList[char[]];
+  
+  
+}
+
+void BusFault(enum BusFaultType type)
+{
+  Switch(type)
+  {
+    case(H2L):
+      VH6501_CANBusFaultSet(CANH_ShortTo_CANL);
+      break;
+    case(H2B):
+      PSRB_VH6501_In();
+      VH6501_CANBusFaultSet(CANH_BAT);
+      break;
+    case(H2G):
+      PSRB_VH6501_In();
+      VH6501_CANBusFaultSet(CANH_GND);
+      break;
+    case(L2B):
+      PSRB_VH6501_In();
+      VH6501_CANBusFaultSet(CANL_BAT);
+      break;
+    case(L2G):
+      PSRB_VH6501_In();
+      VH6501_CANBusFaultSet(CANL_GND);
+      break;
+    case(HOpen):
+      ENV_CanBusFaultSet(5);
+      VH6501_CANBusFaultSet(CANH_Open);
+      break;
+    case(LOpen):
+      ENV_CanBusFaultSet(6);
+      VH6501_CANBusFaultSet(CANL_Open);
+      break;
+    default:
+      break;
+  }
+}
+
+void FaultRemove()//如果调用此函数，需要重新设置ENV终端电阻
+{
+  PSRB_Reset();
+  testWaitForTimeout(100);
+  VH6501_Reset();
+  testWaitForTimeout(100);
+  ENV_Reset();
+  testWaitForTimeout(100);
+}
+
+//某些用例执行前确认是否有所需设备，若不满足条件则不执行该用例,返回值大于0则不满足测试条件
+int DEV_TestEnvConfirm( enum DeviceType_t DeviceType)//确认测试环境
+{
+  int res;
+  res = 0;
+  if(DeviceList.containsKey(DeviceType.name()) > 0 )
+  {
+    res = DeviceList[DeviceType.name()].isConfigured;
+    if(res == 0)
+      testStepWarning("","无【%s】类型设备",DeviceType.name());
+  }
+  else
+  {
+    testStepWarning("","未定义设备类型 %s",DeviceType.name());
+  }
+  return res;
+}
+
+on sysvar_update sysvar::DeviceControl::IPClient::InitCompleted
+{
+  if(@this == 1)
+  {
+    testSupplyTextEvent("InitCompleted");
+  }
+}
+
+//检查测试环境的设备配置
+void DeviceConfigCheck()
+{
+  if(gPowerTypeFlag != 0)
+  {
+    testWaitForTimeout(20);
+    if(@sysvar::DeviceControl::IPClient::InitCompleted == 0)//等待设备完成初始化
+    {
+      teststep("","检查测试系统中的程控设备…");
+      if(testWaitForTextEvent("InitCompleted",30000) == 0)
+      {
+        testwaitfortimeout(1000);
+        teststepwarning("","设备未完成初始化");
+      }
+    }
+    
+    testwaitfortimeout(1000);
+  }
+  
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::StressDevice, DeviceList["VH6501"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::PPS, DeviceList["PPS"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::KL, DeviceList["KL"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::PCS, DeviceList["PCS"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::PMM, DeviceList["PMM"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::ENV, DeviceList["ENV"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::DRB, DeviceList["DRB"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::PSRB, DeviceList["PSRB"].model,256);
+//  sysGetVariableString(sysvar::DeviceControl::DeviceList::PPSO, DeviceList["SPPS"].model,256);//地漂电源
+//  
+//  for(char[] Mykey : DeviceList)
+//  {
+//    testStep("","[%s]:[%s]",Mykey,DeviceList[Mykey].model);
+//    DeviceList[Mykey].isConfigured = strlen(DeviceList[Mykey].Model);
+//  }
+}
+

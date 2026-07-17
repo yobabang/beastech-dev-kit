@@ -1,0 +1,193 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "ENV_lower.cin"
+}
+
+
+on sysvar_update sysvar::DeviceControl::ENV::ENV_InitConfig
+{
+  if(@this)
+  {
+    ENV_Reset();
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Command::InsertFault
+{
+  int index;
+  
+  index = @sysvar::DeviceControl::ENV::Parameters::FaultType;
+  switch(index)
+  {
+    case(0):ENV_CANH_VB();break;
+    case(1):ENV_CANH_GND();break;
+    case(2):ENV_CANL_VB();break;
+    case(3):ENV_CANL_GND();break;
+    case(4):ENV_CANH_CANL();break;
+    case(5):CANHIN_CANHOUT();break;//待验证
+    case(6):CANLIN_CANLOUT();break;//待验证
+    case(7):CANOUT_OFF();break;//待验证
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Command::ResetFault
+{
+  if(@this)
+  {
+    testSupplyTextEvent("ResetFault");
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Parameters::Circuit
+{
+  switch(@this)  
+  {
+   case 1:
+     ENV_Circuit1(); // R_CANH_CANL=120Ω
+     break;
+   case 2:
+     ENV_Circuit2();  // R_CANH_CANL=60Ω
+     break;
+    default:
+     break;
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Parameters::R_CANH_CANL
+{
+  switch(@this)  //配置CANH与CANL之间电阻
+  {
+    case 1:
+      ENV_CANH_CANL_R1();  //R1=30KΩ
+      break;
+    case 2:
+      ENV_CANH_CANL_R2();  //R2=20KΩ
+      break;
+    case 3:
+      ENV_CANH_CANL_R3();  //R3=4KΩ
+      break;
+    case 4:
+      ENV_CANH_CANL_R4();  //R4=875Ω
+      break;
+    case 5:
+      ENV_CANH_CANL_R5();  //R5=60Ω
+      break;
+    case 6:
+      ENV_CANH_CANL_R6();  //R6=60Ω
+      break;
+    case 7:
+      ENV_CANH_CANL_R7();  //R7=60Ω
+      break;
+    case 8:
+      ENV_CANH_CANL_R8();  //R1=60Ω
+      break;
+    case 9:
+      ENV_CANH_CANL_R9();  //R9=120Ω
+      break;
+    case 10:
+      ENV_CANH_CANL_R10();  //R10=180Ω
+      break;
+    default:
+      break; 
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Parameters::C1
+{
+  switch(@this) //配置CANH与GND之间电容
+  {
+    case 1:
+      ENV_C1_1();  //C1_1=100pF
+      break;
+    case 2:
+      ENV_C1_2();  //C1_2=4.7nF
+      break;
+    case 3:
+      ENV_C1_3();  //C1_3=6.8nF
+      break;
+    case 4:
+      ENV_C1_4();  //C1_4=10nF
+      break;
+    default:
+      break;
+  }  
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Parameters::C2
+{
+  switch(@this) //配置CANL与GND之间电容
+  {
+    case 1:
+      ENV_C2_1();  //C2_1=100pF
+      break;
+    case 2:
+      ENV_C2_2();  //C2_2=4.7nF
+      break;
+    case 3:
+      ENV_C2_3();  //C2_3=6.8nF
+      break;
+    case 4:
+      ENV_C2_4();  //C2_4=100nF
+      break;
+    default:
+      break;
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::ENV::Parameters::C3
+{
+  switch(@this) //配置CANH与CANL之间电容
+  {
+    case 1:
+      ENV_C3_1();  //C3_1=1nF
+      break;
+    case 2:
+      ENV_C3_2();  //C3_2=1nF
+      break;
+    case 3:
+      ENV_C3_3();  //C3_3=1nF
+      break;
+    case 4:
+      ENV_C3_4();  //C3_4=1nF  
+      break;
+    case 5:
+      ENV_C3_5();  //C3_5=1nF
+      break;
+    case 6:
+      ENV_C3_6();  //C3_6=1nF
+      break;
+    case 7:
+      ENV_C3_7();  //C3_7=1nF
+      break;
+    case 8:
+      ENV_C3_8();  //C3_8=1nF 
+      break;
+    case 9:
+      ENV_C3_9();  //C3_9=1nF
+      break;
+    case 10:
+      ENV_C3_10();  //C3_10=1nF 
+      break;
+    case 11:
+      ENV_C3_11();  //C3_11=1nF
+      break;
+    case 12:
+      ENV_C3_12();  //C3_12=1nF
+      break;
+    case 13:
+      ENV_C3_13();  //C3_13=1nF
+      break;
+    case 14:
+      ENV_C3_14();  //C3_14=1nF 
+      break;
+    case 15:
+      ENV_C3_15();  //C3_15=1nF
+      break;
+    case 16:
+      ENV_C3_16();  //C3_16=3.3nF 
+      break;
+    default:
+      break;
+  }
+}

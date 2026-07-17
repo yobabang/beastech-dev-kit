@@ -1,0 +1,192 @@
+/*@!Encoding:936*/
+variables
+{
+  enum e_DRB_Status{DRB_Connect = 1, DRB_DisConnect = 0};
+}
+
+void DRB_InitConfig()
+{
+  @sysvar::DeviceControl::DRB::DRB_InitConfig=1;
+}
+
+void DRB_Reset()
+{
+  @sysvar::DeviceControl::DRB::DRB_InitConfig=1;
+}
+
+//连接ECU、VH6501和ENV到DRB CAN通道
+void DRB_CAN_Init(int channel)
+{
+  DRB_CAN_ECU(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_VH6501(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_CAN_ENV(channel, DRB_Connect);
+  testWaitForTimeout(100);
+}
+
+//连接ECU、VN到DRB LIN通道
+void DRB_LIN_Init(int channel)
+{
+  DRB_LIN_ECU(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_LIN_Tester(channel, DRB_Connect);
+  testWaitForTimeout(100);
+}
+
+//连接CAN通道和VN，使用VH6501作为CAN通道时不使用这个函数
+void DRB_CAN(int channel)
+{
+  DRB_CAN_ECU(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_CAN_Tester(channel, DRB_Connect);
+  testWaitForTimeout(100);
+}
+
+//连接LIN通道和VN
+void DRB_LIN(int channel)
+{
+  DRB_LIN_ECU(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_LIN_Tester(channel, DRB_Connect);
+  testWaitForTimeout(100);
+}
+
+//连接FR通道和VN
+void DRB_FR(int channel)
+{
+  DRB_FR_ECU(channel, DRB_Connect);
+  testWaitForTimeout(100);
+  DRB_FR_Tester(channel, DRB_Connect);
+  testWaitForTimeout(100);
+}
+
+//连接ECU端到DRB CAN通道，VN端不连接
+void DRB_CAN_ECU(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::ECU = status;
+}
+
+//连接VN端到DRB CAN通道，ECU端不连接
+void DRB_CAN_Tester(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::Tester = status;
+}
+
+//连接ECU端到DRB LIN通道，VN端不连接
+void DRB_LIN_ECU(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"LIN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+
+  @sysvar::DeviceControl::DRB::Command::ECU = status;
+}
+
+//连接VN端到DRB LIN通道，ECU端不连接
+void DRB_LIN_Tester(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"LIN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::Tester = status;
+}
+
+//连接ECU端到DRB FR通道，VN端不连接
+void DRB_FR_ECU(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"FR%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+
+  @sysvar::DeviceControl::DRB::Command::ECU = status;
+}
+
+//连接VN端到DRB FR通道，ECU端不连接
+void DRB_FR_Tester(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"FR%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::Tester = status;
+}
+
+//连接VH6501到DRB CAN通道
+void DRB_VH6501(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::VH6501 = status;  
+}
+
+//连接PMM到DRB CAN通道
+void DRB_PMM(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::PMM = status;  
+}
+
+//连接ENV到DRB CAN通道
+void DRB_CAN_ENV(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::ENV = status;
+}
+
+//连接ENV到DRB LIN通道
+void DRB_LIN_ENV(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"LIN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::ENV = status;
+}
+
+//连接ENV到DRB FR通道
+void DRB_FR_ENV(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"FR%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::ENV = status;
+}
+
+//连接PCS示波器到DRB CAN通道
+void DRB_CAN_PCS(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"CAN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::PCS = status;
+}
+
+//连接PCS示波器到DRB LIN通道
+void DRB_LIN_PCS(int channel, enum e_DRB_Status status)
+{
+  char channelName[20];
+  snprintf(channelName,elcount(channelName),"LIN%d",channel);
+  sysSetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, channelName);
+  
+  @sysvar::DeviceControl::DRB::Command::PCS = status;  
+}

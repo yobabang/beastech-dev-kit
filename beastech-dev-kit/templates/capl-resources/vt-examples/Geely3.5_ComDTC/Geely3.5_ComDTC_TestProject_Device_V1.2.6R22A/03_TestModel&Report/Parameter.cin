@@ -1,0 +1,203 @@
+
+/*@!Encoding:936*/
+includes
+{
+  #include "ParameterOfLin.cin"
+  #include "ParameterOfVolt.cin"
+  #include "ParameterOfIP.cin"
+  #include "ParameterofCAN.cin"
+  #include "ParameterOfBusFault.cin"
+  #include "ParameterOfMissFrame.cin"
+}
+variables
+{
+  dword ECUAddress_Temp = 0x1D01;
+  char TpBusType_Temp[20] = "CANFD";
+  char TpBusName_Temp[32] = "ZCU_CANFD2";
+  int gCEMFlg=1;
+  float gAsrVersion=4.03;
+  dword gSleepTime=400000;
+  byte gOcc2Or5=0x2;
+  char NodeName[100]="ZCUD5";
+  int gCndtnOfClrDtc=0;//0:normal;1:Active;2:VehSpeed<3;3:Active+VehSpeed;
+  int gUsgCndtnOfClrDtc=gUMActValue;
+  byte gAllPNC[4] = {0,0,0,34};
+  /*------------variables of warm up cycle--------------*/
+
+  struct signalStruct
+  {
+    char cluster[100];
+    int msgId;
+    int startBit;
+    int updateBit;
+    dword value;
+    char sgName[100];
+    int msgdatalen;
+  };
+  message * gPtActvnReqMsg;
+  msTimer t_PtActvnReq;  
+  
+  message * gEngN2Msg;
+  msTimer t_EngN2;
+  
+  message * gWrmUpCycMsg;
+  msTimer t_WrmUpCyc;
+  
+  message * gDrvgCycMsg={dlc=8};
+  msTimer t_DrvgCyc;
+  
+  message * gMonrCycCmpl={dlc=8};
+  msTimer t_MonrCycCmpl;
+  int gNxtOpCycCndtn=0;//0:sleep and wake up;1.DriverCycle and MonitorCycle
+
+  struct signalStruct DrvgAndMonrCyc[3];
+  
+  struct signalStruct PtActvnReq;
+
+  struct signalStruct EngN2;
+  struct signalStruct WrmUpCyc;
+
+  /*------------variables of CCP--------------*/
+  byte gCCPData[600];
+  byte gCCPDataExt[600];
+  byte gCCPDataExt2[600];
+
+  struct e2eSignal
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;////////////////
+  };
+  
+  struct VehModMng
+  {
+    char cluster[50];
+    char FrameName[32];
+    int FrameCycle;
+    int dlc;
+    char sigGroupName[64];
+    int slotID;
+    int baseCycle;
+    int RepetitionCycle;
+    word dataID;
+    int sigGroup_UB;
+    int sigNum;
+    int pduStartBit;//
+    struct e2eSignal e2eSignalList[100];
+  };
+
+  struct VehModMng VehModMngtGlbSafe[2]=
+  {
+    {    
+    "ZCU_CANFD1","ZcudZCUCANFD1Fr01",10,64,"igVehModMngtGlbSafe1_6",97,0,0,116,479,10,0,
+    {
+      {"isVehModMngtGlbSafe1Chks_6",8,79,0x0},
+      {"isVehModMngtGlbSafe1Cntr_6",4,87,0x0},
+      {"isVehModMngtGlbSafe1CarModSts1_6",3,111,0x0},
+      {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp_6",3,108,0x0},
+      {"isVehModMngtGlbSafe1EgyLvlElecMai_6",4,83,0x0},
+      {"isVehModMngtGlbSafe1EgyLvlElecSubtyp_6",4,95,0x0},
+      {"isVehModMngtGlbSafe1FltEgyCnsWdSts_6",1,105,0x0},
+      {"isVehModMngtGlbSafe1PwrLvlElecMai_6",4,91,0x0},
+      {"isVehModMngtGlbSafe1PwrLvlElecSubtyp_6",4,103,0x0},
+      {"isVehModMngtGlbSafe1UsgModSts_6",4,99,0x0}
+    }
+  
+    },
+    {
+     "ZCU_CANFD1","ZcudZCUCANFD1Fr09",10,64,"igVehBattU_0",931,0,0,0,59,2,0,
+      {
+        {"isVehBattUSysU_0",8,15,0x0},
+        {"isVehBattUSysUQf_0",2,1,0x0}
+      }
+    }
+  };
+  struct VehModMng VehMtnSt=
+  {
+    "ZCU_CANFD1","BcmZCUCANFD1Fr18",0,64,"igVehMtnSt_0",130,0,0,54,416,3,0,
+    {
+      {"isVehMtnStChks_0",8,415,0x0},
+      {"isVehMtnStCntr_0",4,423,0x0},
+      {"isVehMtnStVehMtnSt_0",3,419,0x0}
+    }
+  };
+  struct VehModMng VehSpdLgt=
+  {
+    "ChassisCANFD2","BbmChassisCANFD2Fr03_ALL",0,64,"igVehSpdLgt_0",159,0,0,55,471,4,0,
+    {
+      {"isVehSpdLgtChks_0",8,208,0x0},
+      {"isVehSpdLgtCntr_0",4,216,0x0},
+      {"isVehSpdLgtA_0",15,207,0x0},
+      {"isVehSpdLgtQf_0",2,228,0x0}
+    }
+  };
+  struct VehModMng EngSts[2]=
+  {
+    {
+    "PropulsionCAN","EcmPropFr11",0,8,"igEngSt1WdSts_0",75,0,0,137,8,3,0,
+      {
+        {"isEngSt1WdStsChks_0",8,23,0x1},
+        {"isEngSt1WdStsCntr_0",4,31,0x1},
+        {"isEngSt1WdStsEngSt1WdSts_0",4,27,0x1}
+      }
+    },
+    {
+    "PropulsionCAN","CddIgmPropFr02",0,8,"igIDcDcActLoSide_0",329,0,0,20,20,3,0,
+      {
+        {"isIDcDcActLoSideChks_0",8,31,0x0},
+        {"isIDcDcActLoSideCntr_0",4,19,0x0},
+        {"isIDcDcActLoSideIDcDcActLoSide_0",12,39,0x0}
+      }
+    }
+  };
+  struct VehModMng CCPConfigTemp[3]=
+  {
+    {
+      "ZCU_CANFD1","DhuZCUCANFD1Fr09",0,64,"igVehCfgPrm_0",501,0,0,0,199,8,0,
+      {
+       {"isVehCfgPrmCCPBytePosn6_0",8,47,0x0},
+        {"isVehCfgPrmCCPBytePosn8_0",8,63,0x0},
+        {"isVehCfgPrmBlkIDBytePosn1_0",8,7,0x0},
+        {"isVehCfgPrmCCPBytePosn5_0",8,39,0x0},
+        {"isVehCfgPrmCCPBytePosn4_0",8,31,0x0},
+        {"isVehCfgPrmCCPBytePosn7_0",8,55,0x0},
+        {"isVehCfgPrmCCPBytePosn2_0",8,15,0x0},
+        {"isVehCfgPrmCCPBytePosn3_0",8,23,0x0}
+      }
+    },
+    {
+      "ZCU_CANFD1","DhuZCUCANFD1Fr09",0,64,"igVehCfgPrmExt_0",501,0,0,0,198,8,0,
+      {
+        {"isVehCfgPrmExtBlkIDBytePosn1_0",8,71,0x0},
+        {"isVehCfgPrmExtCCPBytePosn2_0",8,79,0x0},
+        {"isVehCfgPrmExtCCPBytePosn3_0",8,87,0x0},
+        {"isVehCfgPrmExtCCPBytePosn4_0",8,95,0x0},
+        {"isVehCfgPrmExtCCPBytePosn5_0",8,103,0x0},
+        {"isVehCfgPrmExtCCPBytePosn6_0",8,111,0x0},
+        {"isVehCfgPrmExtCCPBytePosn7_0",8,119,0x0},
+        {"isVehCfgPrmExtCCPBytePosn8_0",8,127,0x0}
+      }
+    },
+    {
+      "ZCU_CANFD1","DhuZCUCANFD1Fr09",0,64,"igVehCfgPrmExt2_0",501,0,0,0,197,8,0,
+      {
+       {"isVehCfgPrmExt2CCPBytePosn5_0",8,167,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn2_0",8,143,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn7_0",8,183,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn8_0",8,191,0x0},
+        {"isVehCfgPrmExt2BlkIDBytePosn1_0",8,135,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn6_0",8,175,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn4_0",8,159,0x0},
+        {"isVehCfgPrmExt2CCPBytePosn3_0",8,151,0x0}
+      }
+    }
+  };
+  struct signalStruct SlaveSignal;
+  struct signalStruct CarTiGlb;
+  struct signalStruct BkpOfDstTrvld=
+  {
+    "ZCU_CANFD1",352,5,16,0,"BkpOfDstTrvld",64
+  };
+  struct VehModMng TiAndDateIndn;
+}

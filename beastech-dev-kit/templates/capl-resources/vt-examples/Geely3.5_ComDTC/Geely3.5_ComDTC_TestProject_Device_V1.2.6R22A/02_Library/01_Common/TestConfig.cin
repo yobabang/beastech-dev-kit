@@ -1,0 +1,583 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "..\02_Device\VH6501_null.cin"
+  
+//  #include "..\02_Device\VH6501.cin"
+  
+//  #include "..\02_Device\BOB\DeviceConfig_BOB.cin"
+  #include "..\02_Device\VH1150\DeviceConfig.cin"
+//  #include "..\02_Device\Bench\DeviceConfig_Bench.cin"
+  #if TOOL_MAJOR_VERSION > 11
+  #include "NetworkbasedFunction.cin"
+  #endif
+}
+
+variables
+{
+  long HardwareResetTime=80000;
+  long NetworkRequestWaitTime=0;//控制器重新唤醒后的等待时间
+  long TcpConnectWaitTime=0;//重新Link后等待TCP连接的时间
+  long TRCEndWaitTime=0;//UsageMode切换到Driving后的等待时间
+  /*------------wakeup TP CAN related variables--------------*/
+  message 0x53f gNmMsg_TPCAN;
+  msTimer gNMTimer_TPCAN;
+  
+  /*------------wakeup test CAN related variables--------------*/
+  message 0x53f gNmMsg_TestCAN;
+  msTimer gNMTimer_TestCAN;
+  
+  /*------------wakeup TRC CAN related variables--------------*/
+  message 0x53f gNmMsg_TRCCAN;
+  msTimer gNMTimer_TRCCAN;
+  
+  /*------------Busoff times related variables------------------*/
+  int gCanSMBorCounterL2Err=9;
+  
+  dword gCanSMBorTimeL2=1000;
+  dword gCanSMBorTimeL1=100;
+  
+    /*------------VehMod related var------------------*/
+  byte gEPLvl;
+  
+  byte gUagMode;
+  const byte gUMDrivValue=0xd;
+  const byte gUMActValue=0xb;
+  const byte gUMConValue=0x2;
+  const byte gUMInActValue=0x1;
+  const byte gUMAbanValue=0x0;
+  
+  byte gCarMode;
+  const byte gCMNrmlValue=0x0;
+  const byte gCMTsptValue=0x1;
+  const byte gCMFctyValue=0x2;
+  const byte gCMCrshValue=0x3;
+  
+//  byte gCarModeSubType;
+//  const byte gCMSTNrmlValue = 0x0;
+//  const byte gCMSTFctyDrivValue = 0x2;
+//  const byte gCMSTTsptDrivValue = 0x3;
+  
+  byte gVehManUB=1;
+  
+  int gVehBatVotg=0x82;
+  int gVehBatQf=3;
+  byte gUbat8=0x50;
+  byte gUbat12=0x78;
+  byte gUbat16=0xA0;
+  
+  
+  /*------------AutoSar configure related variables------------------*/
+  int gCanSMBorTimeTxEnsured=1000;//1s
+  
+  
+    /*------------Voltage related variables------------------*/
+  float gVoltHigh=18;
+  float gVoltLow=8;
+  float gVoltNorm=12;
+  
+  /*------------variables of read DTC mask--------------*/
+  int gRdDtcMsk=0x9;
+  
+  
+  /*------------variables of disturb position--------------*/
+  const int gDistrbPstn=1;//0:RTR;1:ACK del;
+  
+  /*------------variables of low power current--------------*/
+  float gLowPwrCur=10;
+  
+  /*------------variables of simulate CCP--------------*/
+  const int gSimCcpFlag=1;
+  
+  /*------------variables of DTC on IP-----------------*/
+  const int gVNmodeFlag=1;//1: Channel-based Mode; 2: Network-based Mode
+  
+  /*-------------Security Level 0x03 Pincode----------------*/
+  byte Pincode[16]={0x5E,0x40,0xDC,0x91,0xEC,0xA1,0x44,0xEC,0x66,0x3F,0xCC,0x2E,0x6E,0xD3,0x46,0xD8};
+  
+  /*------------variables of Snapshot Data--------------*/
+  int gSupportTs2021 = 0;//3.0不要求必须支持时间戳20、21扩展数据，如果需要测试将此变量赋值为1
+  /*-----------------DD00-----------------*/
+  int gCarTiGlbSimFlag = 0;
+  dword gCarTiGlb         = 0x12345678;
+  dword gCarTiGlb_min     = 0x00000000;
+  dword gCarTiGlb_valid   = 0x12345678;
+  dword gCarTiGlb_max     = 0xFFFFFFFE;
+  dword gCarTiGlb_invalid = 0xFFFFFFFF;
+  /*--------------------------------------*/
+  
+  /*-----------------DD01-----------------*/
+  int gBkpOfDstTrvldSimFlag = 0;
+  dword gBkpOfDstTrvld         = 0x012345;
+  dword gBkpOfDstTrvld_min     = 0x000000;
+  dword gBkpOfDstTrvld_valid   = 0x012345;
+  dword gBkpOfDstTrvld_max     = 0x1E8480;
+  dword gBkpOfDstTrvld_invalid = 0x1FFFFF;
+  /*--------------------------------------*/
+  
+  /*-----------------DD07-----------------*/
+  byte gTiAndDateIndn[6]         = {0x18,0xA,0x1,0xC,0x1E,0x1E};//2024.10.1 12:30:30
+  byte gTiAndDateIndn_min[6]     = {0x0,0x1,0x1,0x0,0x0,0x0};//2000.1.1 00:00:00
+  byte gTiAndDateIndn_valid[6]   = {0x18,0xA,0x1,0xC,0x1E,0x1E};//2024.10.1 12:30:30
+  byte gTiAndDateIndn_max[6]     = {0x63,0xC,0x1F,0x17,0x3B,0x3B};//2099.12.31 23:59:59
+  byte gTiAndDateIndn_invalid[6] = {0x64,0x0,0x0,0x18,0x3C,0x3C};
+  byte gNotAvailableArray[6]     = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+  /*--------------------------------------*/
+  
+  /*-----------------DD06-----------------*/
+  int gVehSpdSimFlag = 1;
+  word gVehSpd         = 0x00AA;//0.6647m/s≈2.4km/h<3km/h
+  word gVehSpd_min     = 0x0000;//0m/s
+  word gVehSpd_valid   = 0x00AA;//0.6647m/s≈2.4km/h<3km/h
+  word gVehSpd_max     = 0x7CE2;//125.0027m/s
+  word gVehSpd_invalid = 0x7EEE;
+  word gVehSpd_ECM     = 0x0BFF;//12m/s
+  /*--------------------------------------*/
+}
+
+
+void Precondition(int index)
+{
+  switch(index)
+  {
+    case 0:
+      kl30(T_off);
+      testWaitForTimeout(1000);///
+      kl15(T_off);
+      testWaitForTimeout(100);
+      #if TOOL_MAJOR_VERSION > 11
+        tcpAbort(gConnectionSocket);
+      #endif
+      SetBatteryVoltage(gVoltNorm);
+      testWaitForTimeout(1000);///
+      kl31(T_on);
+      testWaitForTimeout(1000);
+      kl30(T_on);
+      testWaitForTimeout(1000);
+      break;
+    case 1:
+      testStep("Step","define tester pre-condition");
+      break;
+    default:
+      testStepFail("Step","Unknown pre-condition");
+      break;
+  } 
+}
+
+void PostCondition()
+{
+  
+}
+
+/// <NetworkRequestAndRelease>
+void NetwrkRequestOnTPBus()
+{
+  int i,testChnl;
+  if(strncmp(TpBusType_Temp,"CAN",3)==0)
+  {
+    testStep("Step","NM request on TP bus %s",TpBusName_Temp);
+    gNmMsg_TPCAN.dlc=8;
+    gNmMsg_TPCAN.byte(0)=gNmMsg_TPCAN.id&0xff;
+    gNmMsg_TPCAN.byte(1)=0x40;
+    gNmMsg_TPCAN.byte(2)=0xff;
+    gNmMsg_TPCAN.byte(3)=0xff;
+    gNmMsg_TPCAN.byte(4)=0xff;
+    gNmMsg_TPCAN.byte(5)=0xff;
+    gNmMsg_TPCAN.byte(6)=0xff;
+    gNmMsg_TPCAN.byte(7)=0xff;
+    gNmMsg_TPCAN.msgChannel=getBusNameContext(TpBusName_Temp);
+    output(gNmMsg_TPCAN);
+    setTimerCyclic(gNMTimer_TPCAN,500);
+  }
+//  if(strncmp(TpBusType_Temp,"FR",3)==0)
+//  {
+//    testStep("Step","NM request on TP bus %s",TpBusName_Temp);
+//    StartSimFRNM();
+//  }
+  if(strncmp(TpBusType_Temp,"Ethernet",3)==0)
+  {
+    for(i=0;i<LinkDownDTCnum;i++)
+    {
+      testStep("Step","Set LinkStatus %s",LinkDownDTCTemp[i].cluster);
+      testChnl=getBusNameContext(LinkDownDTCTemp[i].cluster);
+      ethSetLinkStatus(testChnl,0);
+    }
+  }
+}
+
+/// <NetworkRequestAndRelease>
+void NetworkRelease(int index)
+{  
+  switch(index)
+  {
+    case 0:
+      if(gCEMFlg==0)
+      {
+        TRCSwitch(gCMNrmlValue,gUMAbanValue,0x0);
+      }
+      else
+      {
+        TRCSwitch(gCMNrmlValue,gUMInActValue,0x0);
+      }
+      testWaitForTimeout(1000);
+      testStep("Step","Network release by kl15 off and NM message");
+      if(gBusFlag==6)
+      {
+        DoIP_CloseConnection();
+        testWaitForTimeout(5000);
+      }
+      TesterPresentOnOff(P_off);
+      if(gCEMFlg==1)
+      {
+        gVehMngStop=1;
+        gVehSpdStop=1;
+        gEngStsStop=1;
+        gDcDcActvdStop=1;
+        gIDcDcActLoSideStop=1;
+        if(gCndtnOfClrDtc<2)
+        {
+          cancelTimer(T_VehSpd);
+        }
+        cancelTimer(T_EngSts);
+        cancelTimer(T_IDcDcActLoSide);
+      }
+      StopSimVehCPP();
+      StopSimVehBat();
+      TRC_Stop();
+      StopSimEngN2();
+      testWaitForTimeout(100);
+      NetwrkReleaseOnTrcCAN();
+      NetwrkReleaseOnTPBus();
+      
+      kl15(T_off);
+      testWaitForTimeout(2000);
+      break;
+    case 1:  
+      testStep("Step","Stop simulation of NM message!");
+      cancelTimer(NMCyc);
+      break;
+    case 2:
+//      testStep("Step","Network release by kl15 off");
+      kl15(T_off);
+      break;
+    case 3:
+//      testStep("Step","Network release by kl15 off");
+      kl15(T_off);
+      break;
+    case 4:  
+      testStep("Step","Stop simulation of NM message!");
+      cancelTimer(NMCyc);
+      break;
+    default:
+      testStepFail("Step","Unknown network release way");
+      break;
+  }
+}
+
+/// <NetworkRequestAndRelease>
+void NetworkRequest(int index)
+{
+  switch(index)
+  {
+    case 0:
+      testStep("Step","Network request by kl15 on and NM message received");
+      kl15(T_on);
+      
+      testWaitForTimeout(1000);
+      NetwrkRequestOnTPBus();
+      NetwrkRequestOnTrcCAN();
+      if(gBusFlag==6)
+      {
+        testWaitForTimeout(15000);//
+        DoIP_TP_init();
+      }
+      testWaitForTimeout(1000);
+      break;
+    case 1:
+      testStep("Step","Network request by NM message received");
+      SimASRnm(SimNMID,SimNMID & 0xff,0x40,CANNM_Cycle_Time); 
+      break;
+    case 2:
+//      testStep("Step","Network request by kl15 on");
+      kl15(T_on);
+      break;
+    case 3:
+//      testStep("Step","Network request by kl15 on");
+      kl15(T_on);
+      break;
+    case 4:
+      testStep("Step","Network request by NM message received");
+      SimASRnm(SimNMID,SimNMID & 0xff,0x00,CANNM_Cycle_Time); 
+      break;
+    default:
+      testStepFail("Step","Unknown network request way");
+      break;
+  }
+  if(NetworkRequestWaitTime>0)
+  {
+    testStepWarning("Warning","Wait NetworkRequestWaitTime=%dms",NetworkRequestWaitTime);
+    testWaitForTimeout(NetworkRequestWaitTime+1);
+  }
+  SimEngN2();
+}
+
+/// <NetworkRequestAndRelease>
+void NextOperation()
+{
+  if(gNxtOpCycCndtn==1)
+  {
+    SimDrvgCycAndWarmUpCyc(0,0);
+    testWaitForTimeout(5000);
+    SimDrvgCycAndWarmUpCyc(1,1);
+    testWaitForTimeout(5000);
+  }
+  else
+  {
+
+    NetworkRelease(0);
+
+    TestWaitForCurInRange(gLowPwrCur,gSleepTime);
+    testWaitForTimeout(2000);
+    #if TOOL_MAJOR_VERSION > 11
+      tcpAbort(gConnectionSocket);
+    #endif
+    
+    NetworkRequest(0);
+    
+    TRC();
+    testWaitForTimeout(1000);
+    TRCSwitch(gCMNrmlValue,gUMDrivValue,0x0);
+  }
+}
+
+/// <NetworkRequestAndRelease>
+void NextWarmUpCyc()
+{
+  if(gNxtOpCycCndtn==1)
+  {
+    SimDrvgCycAndWarmUpCyc(0,0);
+    testWaitForTimeout(5000);
+    SimDrvgCycAndWarmUpCyc(1,1);
+    testWaitForTimeout(5000);
+  }
+
+}
+
+
+/// <TRC>
+void TRCSwitch(byte carmode,byte usgmode, byte EIPwrLvl)
+{
+  testStep("Step","Switch the carmode to 0x%X, usgmode to 0x%X, EIPowerlevel to 0x%X",carmode,usgmode,EIPwrLvl);
+  gCarMode=carmode;
+  if((gCEMFlg==1) && (gUagMode != gUMDrivValue))//can't switch carmode when usage mode is driving
+  {
+    CarModSwtich(gCarMode);
+    testWaitForTimeout(100);
+  }
+  
+  gUagMode=usgmode;
+//  if(gCEMFlg == 0)
+//  {
+//    if(gUagMode == gUMDrivValue)
+//    {
+//      switch(gCarMode)
+//      {
+//        case gCMTsptValue:
+//          gCarMode = gCMNrmlValue;
+//          gCarModeSubType = gCMSTTsptDrivValue;
+//          testStep("","Switch the carmode to Normal and carmodesubtype to Tranport Driving");
+//          break;
+//        case gCMFctyValue:
+//          gCarMode = gCMNrmlValue;
+//          gCarModeSubType = gCMSTFctyDrivValue;
+//          testStep("","Switch the carmode to Normal and carmodesubtype to Factory Driving");
+//          break;
+//      }
+//    }
+//    else
+//    {
+//      gCarModeSubType = gCMSTNrmlValue;
+//    }
+//  }
+  
+  gEPLvl=EIPwrLvl;
+  if(gCEMFlg==1)
+  {
+    if(gUagMode == gUMDrivValue)
+    {
+      EPLvlSwitch(gEPLvl);
+      testWaitForTimeout(100);
+      UsgModSwtich(gUagMode);//判断usagemode切换是否为Driving,是则调整EPLvlSwitch切换在UsgModSwtich前
+    }
+    else
+    {
+     UsgModSwtich(gUagMode);
+     testWaitForTimeout(100);
+     EPLvlSwitch(gEPLvl); 
+    }          
+  }
+  if(carmode==gCMNrmlValue&&usgmode==gUMDrivValue&&EIPwrLvl==0x0)
+  {
+    if(TRCEndWaitTime>0)
+    {
+      testStep("Inf",">>>>>>>>>>>Wait TRCEndWaitTime=%d",TRCEndWaitTime);
+      testWaitForTimeout(TRCEndWaitTime+1);
+    }
+  }
+}
+
+/// <NetworkRequestAndRelease>
+void TestWaitForWriteNVM()
+{
+  NetworkRelease(0);
+  
+  TestWaitForCurInRange(gLowPwrCur,gSleepTime);
+  testWaitForTimeout(2000);
+  #if TOOL_MAJOR_VERSION > 11
+    tcpAbort(gConnectionSocket);
+  #endif
+}
+
+/// <TRC>
+void SimVehCPP()
+{
+  if(strncmp(CCPConfigTemp[0].cluster,"",50)==0)
+  {
+    return;
+  }
+  if(!gCCPfdFlag)
+  {
+    if(strncmp(TpBusType_Temp,CCPConfigTemp[0].cluster,50)!=0)
+    {
+      if(strncmp(VehModMngtGlbSafe[0].cluster,CCPConfigTemp[0].cluster,50)!=0)
+      {
+        NetworkRequest(CCPConfigTemp[0].cluster);
+      }
+    }
+//    if(strncmp(TpBusType_Temp,CCPConfigTemp[1].cluster,50)!=0)
+//    {
+//      if(strncmp(VehModMngtGlbSafe[0].cluster,CCPConfigTemp[1].cluster,50)!=0)
+//      {
+//        NetworkRequest(CCPConfigTemp[1].cluster);
+//      }
+//    }
+    setTimerCyclic(T_VehCCP_CAN,50);
+  }
+  else
+  {
+    setTimerCyclic(T_VehCCP_CANFD,50);
+  }
+//  if(strncmp(TpBusType_Temp, "CANFD", 20) == 0)
+//  {
+//    setTimerCyclic(T_VehCCP_CANFD,50);
+//  }
+//  
+//  if(strncmp(VehModMngtGlbSafe[0].cluster,"BackboneFR",20)==0)
+//  {
+//    SimVehCCPExtOnFR();
+//  }
+  testStep("Info","Simulate CCP signals.");
+}
+/// <TRC>
+void StopSimVehCPP()
+{
+  if(!gCCPfdFlag)
+  {
+    cancelTimer(T_VehCCP_CAN);
+    cancelTimer(NMCyc);
+  }
+  else
+  {
+    cancelTimer(T_VehCCP_CANFD);
+  }
+  
+  if(strncmp(VehModMngtGlbSafe[0].cluster,"ZCU_CANFD1",20)==0)
+  {
+    CancelListofNode();
+  }
+}
+
+/// <Disturb>
+void DisturbDUTToBusoff(int times,char network[])
+{
+  int i;
+  gresumCount=0;
+  canActivateTxSelfAck(gerrFrmChnl,1);
+  
+  for(i=0;i<busNum;i++)
+  {
+    if(strncmp(network,busFltDTCTemp[i].cluster,32)==0)
+    {
+      gDisturbIndex=i;
+    }
+  }
+  if(gDistrbPstn==1)
+  {
+    VH6501_AllAckDelimiterRxDisturbance(times,50);
+  }
+  else
+  {
+    VH6501_AllRTRRxDisturbance(times,50);
+  }
+  
+  @sysvar::`Busoff::ResumCount=0;
+  if(testWaitForSignalMatch(sysvar::`Busoff::ResumCount,times,200000)>0)
+  {
+    @sysvar::`Busoff::ResumFlg=0;
+    testStepPass("Pass","DUT busoff %d times",gresumCount);
+    VH6501_Reset();
+  }
+  else
+  {
+    VH6501_Reset();
+    testStepFail("Fail","DUT busoff %d times, expected is %d times",gresumCount,times);
+  }
+  if(strncmp(network,TpBusName_Temp,32)==0)
+  {
+    if(testWaitForSignalMatch(sysvar::`Busoff::ResumFlg,1,gCanSMBorTimeL2*2)>0)
+    {
+      testStepPass("Pass","DUT resume communication.");
+    }
+    else
+    {
+      testStepFail("Fail","DUT can't resume communication.");
+    }
+  }
+  canActivateTxSelfAck(gerrFrmChnl,0);
+}
+
+/// <Disturb>
+void DisturbDUTToBusoff(int times,int index)
+{
+  gresumCount=0;
+  gDisturbIndex=index;
+  canActivateTxSelfAck(gerrFrmChnl,1);
+  if(gDistrbPstn==1)
+  {
+    VH6501_AllAckDelimiterRxDisturbance(times,50);
+  }
+  else
+  {
+    VH6501_AllRTRRxDisturbance(times,50);
+  }
+//  VH6501_AllAckDelimiterRxDisturbance(times,50);
+  @sysvar::`Busoff::ResumCount=0;
+  if(testWaitForSignalMatch(sysvar::`Busoff::ResumCount,times,200000)>0)
+  {
+    @sysvar::`Busoff::ResumFlg=0;
+    testStepPass("Pass","DUT busoff %d times",gresumCount);
+    VH6501_Reset();
+  }
+  else
+  {
+    VH6501_Reset();
+    testStepFail("Fail","DUT busoff %d times, expected is %d times",gresumCount,times);
+  }
+  canActivateTxSelfAck(gerrFrmChnl,0);
+}
+
+on timer gNMTimer_TPCAN
+{
+  output(gNmMsg_TPCAN);
+}
+

@@ -1,0 +1,68 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+void TP_init()
+{
+
+}
+
+int TP_Send(byte Data[],enum AddressMode Mode)
+{
+  testJoinFrFrameEvent(87,0,1,1);
+  testJoinFrFrameEvent(88,0,1,1);
+  testJoinFrFrameEvent(37,0,1,1);
+  if(HandleFlag==1)
+  {
+     FrTP_DataRequest(ConnHandleAPP, Data, elCount(Data));
+  }
+    else
+  {  
+     FrTP_DataRequest(ConnHandleBL, Data, elCount(Data));
+  }
+  if(testWaitForAnyJoinedEvent(100)>0)
+  {
+//    t1 = timeNow()/100.0;
+//    testStep("Info","diag request received!");
+    return 1;
+  }
+  return 1;
+}
+
+int TP_Send(byte Data[],long length,enum AddressMode Mode)
+{
+  testJoinFrFrameEvent(87,0,1,1);
+  testJoinFrFrameEvent(88,0,1,1);
+  testJoinFrFrameEvent(37,0,1,1);
+  if(length>elcount(Data))
+  {
+    if(HandleFlag==1)
+    {
+       FrTP_DataRequest(ConnHandleAPP, Data, elCount(Data));
+    }
+    else
+    {  
+       FrTP_DataRequest(ConnHandleBL, Data, elCount(Data));
+    }
+    write("Worning tp send data size small than given length");
+  }
+  else
+  {
+    if(HandleFlag==1)
+    {
+       FrTP_DataRequest(ConnHandleAPP, Data, length);
+    }
+    else
+    {  
+       FrTP_DataRequest(ConnHandleBL, Data, length);
+    }
+  }
+  if(testWaitForAnyJoinedEvent(100)>0)
+  {
+//    t2 = timeNow()/100.0;
+    return 1;
+  }
+  return 1;;
+}

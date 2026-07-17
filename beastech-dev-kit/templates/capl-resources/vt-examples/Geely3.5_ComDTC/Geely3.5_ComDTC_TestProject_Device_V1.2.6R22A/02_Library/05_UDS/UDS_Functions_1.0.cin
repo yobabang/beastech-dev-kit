@@ -1,0 +1,469 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: UDS_Functions.cin
+|  Comment:   Function list for testing UDS services
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| YJ               YangJing          Polelink Information Technology Co., Ltd.
+| LRX              LiRunxiang        Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+variables
+{
+  enum SeedState {AllZero=0,NotAllZero=1,CheckRandom=2};
+  byte  seedTemp[3]={0x0,0x0,0x0};//seed初始化
+  enum testResult {Pass,Fail};
+  int  Ndtc;
+}
+
+void ChangeDTC(int NumDTC)
+{
+  int s;
+  byte MIDDTC[3];
+  
+  for(s=0;s<NumDTC;s++)
+  {
+    DTCNEW[s].DTCNumber[0]=StorageDTC[s].DTCNumber>>16;
+    DTCNEW[s].DTCNumber[1]=(StorageDTC[s].DTCNumber>>8)&0xFF;
+    DTCNEW[s].DTCNumber[2]=StorageDTC[s].DTCNumber&0xFF;
+  }
+  write("The DTC to be changed is %06x",StorageDTC[0].DTCNumber);
+  write("The DTC changed is %02x,%02x,%02x",DTCNEW[0].DTCNumber[0],DTCNEW[0].DTCNumber[1],DTCNEW[0].DTCNumber[2]);
+}
+
+void PID27_Parameters_Seeds_Chk(enum SeedState State,byte SeedArray[])
+{
+	int i;
+  int SeedFlag=0;
+  
+	if(TpRxData[0]!=0x67)
+	{
+		testStepFail("UDS_Fun","Not expect response");
+		return;
+	}
+  if(State==AllZero)
+  {
+    SeedFlag=0;
+    write("Flag is %d",SeedFlag);
+    for(i=0; i<elCount(SeedArray); i++)
+    {
+      write("seedarray %d is %02x",i,SeedArray[i]);
+      if(SeedArray[i]!=0)
+        SeedFlag=1;
+    }
+    write("Flag is %d",SeedFlag);
+    if(SeedFlag==1)
+    {
+      testStepFail("UDS_Fun","The seed is not all zero");
+    }
+    else
+    {
+      testStepPass("UDS_Fun","The seed is all zero");
+    }
+  }
+  else if(State==NotAllZero)
+  {
+    for(i=0; i<elCount(SeedArray); i++)
+    {
+      if(SeedArray[i]!=0)
+        SeedFlag=1;
+    }
+    if(SeedFlag==1)
+    {
+      testStepPass("UDS_Fun","The seed is not all zero");
+    }
+    else
+    {
+      testStepFail("UDS_Fun","The seed is all zero");
+    }
+  }
+  else if(State==CheckRandom)
+  {
+	CmpPID(seedTemp,SeedArray,Fail);
+	for( i = 0; i < elCount(SeedArray); i++ )
+	{
+		seedTemp[i] = SeedArray[i];
+	}
+  }
+  
+}
+
+int StorageDTC()
+{
+
+	int i=0;
+	if(TpRxData[0]!=0x59)
+	{
+		testStepFail("UDS_Fun","Error while processing DTCs");
+		return 0;
+	}
+	if(TpRxLength<4)
+	{
+		testStep("UDS_Fun","No avaliable DTC(TpRxLength<4)");
+		Ndtc = 0;
+		return 0;
+	}
+	for(i=0; i<(TpRxLength-3)/4; i++)
+	{
+
+		recdtc[i].DTCNumber[0]=TpRxData[i*4+3];
+		recdtc[i].DTCNumber[1]=TpRxData[i*4+4];
+		recdtc[i].DTCNumber[2]=TpRxData[i*4+5];
+		recdtc[i].DTCStatus =TpRxData[i*4+6];
+		if(i<2)
+		{
+			testdtc[i]=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+			TestDtc[i].DTCNumber[0]=TpRxData[i*4+3];
+			TestDtc[i].DTCNumber[1]=TpRxData[i*4+4];
+			TestDtc[i].DTCNumber[2]=TpRxData[i*4+5];
+			TestDtc[i].DTCStatus =TpRxData[i*4+6];
+		}
+	}
+  
+  
+	Ndtc= i;
+  write("Ndtc is %d",Ndtc);
+	return Ndtc;
+}
+
+int SearchDTC(dword dtc,byte mask)
+{
+	int i;
+	dword Temdtc;
+	for(i=0; i<Ndtc; i++)
+	{
+		Temdtc=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+		if(Temdtc==dtc)
+		{
+			testStep("UDS_Fun","Find DTC [%02x][%02x][%02x] with State [%02x]",recdtc[i].DTCNumber[0],recdtc[i].DTCNumber[1],recdtc[i].DTCNumber[2],recdtc[i].DTCStatus);
+			if((recdtc[i].DTCStatus&mask)>0)
+				return 1;
+			else
+				return 0;
+		}
+	}
+	return -1;
+}
+
+void CheckDTCState(byte expectState)//19 02读取DTC后检测DTC状态位
+{
+	int i;
+	dword Temdtc;
+	for(i=0; i<Ndtc; i++)
+	{
+		Temdtc=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+		if((recdtc[i].DTCStatus&expectState)<=0)
+			//testStepPass("Chk","DTC<%06x> with State 0x%02x",Temdtc,recdtc[i].DTCStatus);
+			testStepFail("UDS_Fun","DTC<%06x> with State 0x%02x",Temdtc,recdtc[i].DTCStatus);
+		if((recdtc[i].DTCStatus&(~AvailiableMask))!=0)
+			//testStepPass("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is coincident ",Temdtc,recdtc[i].DTCStatus);
+			testStepFail("UDS_Fun","DTC<%06x> with State 0x%02x and AvailiableMask is conflict",Temdtc,recdtc[i].DTCStatus);
+	}
+}
+
+void CheckAvalibleDTCState(byte expectState)//19 0A读取DTC后检测DTC状态位
+{
+	int i;
+	dword Temdtc;
+	for(i=0; i<Ndtc; i++)
+	{
+		Temdtc=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+//		if(recdtc[i].DTCStatus&expectState>0)
+//			//testStepPass("Chk","DTC<%06x> with State %02x",Temdtc,recdtc[i].DTCStatus);
+//			testStepFail("Chk","DTC<%06x> with State %02x",Temdtc,recdtc[i].DTCStatus);
+		if((recdtc[i].DTCStatus&(~AvailiableMask))!=0)
+			//testStepPass("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is coincident ",Temdtc,recdtc[i].DTCStatus);
+      
+			testStepFail("UDS_Fun","DTC<%06x> with State 0x%02x and AvailiableMask is conflict",Temdtc,recdtc[i].DTCStatus);
+	}
+}
+
+int Cmpwithsupdtc(int NumofExpctSupDTC)
+{
+  char ExportQue[10400];
+	char Question[10400];
+	char tempDTC[20];
+  int  Flag0=0;
+  int  Flag1=0;
+  
+	int i , j,flagi=-1,flagj=-1,unsupdtccount=0,supdtccount=0,omitdtccount=0;
+	if( Ndtc == NumofExpctSupDTC )
+	{
+		testStepPass("UDS_Fun","Ndtc of ECU equals to Number of Supported DTC of standard=%d",NumofExpctSupDTC);
+	}
+	else
+	{
+		testStepFail("UDS_Fun","Ndtc of ECU is %d rather than Number of Supported DTC of standard %d ",Ndtc,NumofExpctSupDTC);
+	}
+ write("NumofExpctSupDTC is %d",NumofExpctSupDTC);
+	for(j = 0; j < Ndtc; j++)
+	{
+		//circulation in ECU reported DTC to match a Standard supported DTC
+		flagi=-1;
+		for( i = 0; i < NumofExpctSupDTC; i++)
+		{
+			//circulation in Standard supported DTCs
+			if(recdtc[j].DTCNumber[0]==DTCNEW[i].DTCNumber[0]  &&
+			       recdtc[j].DTCNumber[1]==DTCNEW[i].DTCNumber[1]&&
+			        recdtc[j].DTCNumber[2]==DTCNEW[i].DTCNumber[2]
+        
+			  )
+			{
+				flagi=1;
+				supdtccount++;
+				continue;
+			}
+      //write("Now i is %d and j is %d",i,j);
+		}
+		if(flagi!=1)
+		{
+      if(Flag0==0)
+			{
+				strncat(ExportQue,"\r\nECU包含了诊断数据表中不支持的DTC：",10400);
+			}
+			//testStepFail("Chk","ECU contains unsupported DTC 0x%2x 0x%2x 0x%2x",recdtc[j].DTCNumber[0],recdtc[j].DTCNumber[1],recdtc[j].DTCNumber[2]);
+			unsupdtccount++;
+      snprintf(tempDTC,elcount(tempDTC),"0x%02x%02x%02x，",DTCNEW[j].DTCNumber[0],DTCNEW[j].DTCNumber[1],DTCNEW[j].DTCNumber[2]);
+			strncat(ExportQue,tempDTC,10400);
+			Flag0=1;
+		}
+	}
+	for( i = 0; i < NumofExpctSupDTC; i++)
+	{
+		//circulation in Standard supported DTCs
+		flagj = -1;
+		for( j = 0; j < Ndtc; j++)
+		{
+			//circulation in ECU reported DTC to match a Standard supported DTC
+			if(recdtc[j].DTCNumber[0]==DTCNEW[i].DTCNumber[0]  &&
+			       recdtc[j].DTCNumber[1]==DTCNEW[i].DTCNumber[1]&&
+			        recdtc[j].DTCNumber[2]==DTCNEW[i].DTCNumber[2]
+			  )
+			{
+				flagj=1;
+				continue;
+			}
+		}
+		if(flagj!=1)
+		{
+      if(Flag1==0)
+			{
+				strncat(ExportQue,"\r\nECU缺失了诊断数据表支持的DTC：",10400);
+			}
+			//testStepFail("Chk","ECU losts a supported DTC 0x%2x 0x%2x 0x%2x",supdtc[i*3],supdtc[i*3+1],supdtc[i*3+2]);
+			omitdtccount++;
+      snprintf(tempDTC,elcount(tempDTC),"0x%02x%02x%02x，",DTCNEW[i].DTCNumber[0],DTCNEW[i].DTCNumber[1],DTCNEW[i].DTCNumber[2]);
+			strncat(ExportQue,tempDTC,10400);
+			Flag1=1;
+		}
+	}
+	testStep("UDS_Fun","The Number of Unsupported, Supported and Losted DTC of ECU is %d, %d and %d",unsupdtccount,supdtccount,omitdtccount);
+	unsupdtccount=0;
+	supdtccount=0;
+	omitdtccount=0;
+  if(Flag0==1||Flag1==1)
+	{
+		testStepFail("UDS_Fun","%s",ExportQue);
+	}
+	return 1;
+}
+
+void CmpPID(byte DestData[],byte SourceData[],enum testResult tR)
+{
+	int i;
+	int Flag;
+	Flag=0;
+	if(elCount(DestData)!=elCount(SourceData))
+		testStepFail("UDS_Fun","Length of sourceData is not equal to destData");
+	else
+	{
+		for(i=0; i<elCount(SourceData); i++)
+		{
+			if(DestData[i]!=SourceData[i])
+			{
+				Flag=1;
+			}
+		}
+	}
+	if(tR==Pass && Flag==1)
+		testStepFail("UDS_Fun","The value of Seed is random");
+	else if(tR==Pass && Flag==0)
+		testStepPass("UDS_Fun","The value of Seed is not random");
+	else if(tR==Fail && Flag==1)
+		testStepPass("UDS_Fun","The value of Seed is random");
+	else if(tR==Fail && Flag==0)
+		testStepFail("UDS_Fun","The value of Seed is not random");
+}
+
+int CheckDataType(int DataTypeCode,byte InputData[],int lenth)
+{
+  int Flag=1;
+  int m;
+  int DataLenth;
+  byte PID[2];
+  
+  DataLenth=lenth;
+  switch(DataTypeCode)
+  {
+    case 1://ASCII
+    {
+      for(m=0;m<DataLenth;m++)
+        if((InputData[m])>0x7F)
+        {
+          //testStep("","The InputData is %02x",InputData[m]);
+          Flag=0;
+        }
+      break;
+    }
+    case 2://BCD
+    {
+      for(m=0;m<DataLenth;m++)
+      {
+        PID[0]=InputData[m]>>8;
+        PID[1]=InputData[m]&0x0F;
+        if((PID[0]>9)||(PID[1]>9))
+          Flag=0;
+      }  
+      break;
+    }
+    case 3://State Encoded(one byte hex)
+    {
+      if(DataLenth>1)
+        Flag=0;
+      break;
+    }
+    case 4://Bit-mapped
+      break;
+    case 5://Unsigned numeric
+      break;
+    case 6://Signed numeric
+      break;
+    case 7://Binary floating point
+      break;
+    case 8://Hexadecimal
+      break;
+    default:
+        ;
+  } 
+  //testStep("","The datatype is %d and The Flag is %d",DataTypeCode,Flag);
+  return Flag;
+}
+
+void CheckPeriodicID(int InputID,int WaitTime)
+{
+  int result=0;
+  testJoinMessageEvent(InputID);
+  //testWaitForAnyJoinedEvent(InputID);
+  result=testWaitForAnyJoinedEvent(WaitTime);
+  if(result>0)
+  {
+    testStepPass("UDS_Fun","Periodic message received");
+  }
+  else
+  {
+    testStepFail("UDS_Fun","Periodic message not received");
+  }
+}
+
+//void ReadECUVehicleIdentification()
+//{
+//	byte ED20[2]= {0xED,0x20};
+//	int  Lenth;
+//	int DataType1[8];
+//	int DataType2[4];
+//	int  i,j;
+//	char AppDiagDBPN[100];
+//
+//	SID22_ReadDataByIdentifier(ED20,Physical);
+//	CheckPosResponse_SID22(ED20);
+//
+//	if(Rss!=Pos)
+//	{
+//		testWaitForTesterConfirmation("Error when requesting ED20, please read the information manually");
+//		return;
+//	}
+//	for(i=0; i<8; i++)
+//		DataType1[i]=TpRxData[i+5];
+//	snprintf(AppDiagDBPN,100,"%02x%02x%02x%02x%02x%c%c%c",DataType1[0],DataType1[1],DataType1[2],DataType1[3],DataType1[4],DataType1[5],DataType1[6],DataType1[7]);
+//	testReportAddSUTInfo("Application Diagnostic Database Part Number",AppDiagDBPN);
+//	write("Application Diagnostic Database Part Number is %s",AppDiagDBPN);
+//	for(i=0; i<8; i++)
+//		DataType1[i]=TpRxData[i+15];
+//	snprintf(AppDiagDBPN,100,"%02x%02x%02x%02x%02x%c%c%c",DataType1[0],DataType1[1],DataType1[2],DataType1[3],DataType1[4],DataType1[5],DataType1[6],DataType1[7]);
+//	testReportAddSUTInfo("Hardware Part Number",AppDiagDBPN);
+//	write("Hardware Part Number is %s",AppDiagDBPN);
+//	for(i=0; i<8; i++)
+//		DataType1[i]=TpRxData[i+15];
+//	snprintf(AppDiagDBPN,100,"%02x%02x%02x%02x%02x%c%c%c",DataType1[0],DataType1[1],DataType1[2],DataType1[3],DataType1[4],DataType1[5],DataType1[6],DataType1[7]);
+//	testReportAddSUTInfo("ECU delivery Assembly Part Number",AppDiagDBPN);
+//	write("ECU delivery Assembly Part Number is %s",AppDiagDBPN);
+//	for(i=0; i<4; i++)
+//		DataType2[i]=TpRxData[i+35];
+//	snprintf(AppDiagDBPN,100,"%02x%02x%02x%02x",DataType2[0],DataType2[1],DataType2[2],DataType2[3]);
+//	testReportAddSUTInfo("ECU Serial Number",AppDiagDBPN);
+//	write("ECU Serial Number is %s",AppDiagDBPN);
+//	Lenth=  TpRxData[41] ;
+//	for(j=0; j<Lenth; j++)
+//	{
+//		for(i=0; i<8; i++)
+//			DataType1[i]=TpRxData[i+42+j*8];
+//		snprintf(AppDiagDBPN,100,"%02x%02x%02x%02x%02x%c%c%c",DataType1[0],DataType1[1],DataType1[2],DataType1[3],DataType1[4],DataType1[5],DataType1[6],DataType1[7]);
+//		testReportAddSUTInfo("Software Part Number",AppDiagDBPN);
+//		write("Software Part Number is %s",AppDiagDBPN);
+//	}
+//}
+
+//void LoadFdvFile()
+//{ 
+//  
+//  writeLineEx(4,1,"Load gsFdvFilePath:%s",gsFdvFilePath);
+//  
+//  if(FdvFilesp==s19file)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    write("The flash driver path is %s",FDRFilepath);
+//    LoadS19(FDRFilepath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(FdvFilesp==hexfile)
+//  {
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(gsFdvFilePath);
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//} 
+
+//void LoadAppFile(char FilePath[])
+//{
+//  writeLineEx(4,1,"Load gsAppFile:%s",FilePath);
+//  
+// if(AppFilesp==s19file)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    LoadS19(FilePath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(AppFilesp==hexfile)
+//  { 
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(FilePath);
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//}

@@ -1,0 +1,92 @@
+/*@!Encoding:936*/
+//20200423 ¸üÐÂ
+
+includes
+{
+  #include "VH1150_Lower.cin"
+  #include "onSysvar_KL.cin"
+  #include "onSysvar_PPS.cin"
+
+}
+
+variables
+{
+  char DeviceName[256] = "VH1150";
+}
+
+testcase VH1150()
+{
+  PPS_initConfig();
+  while(1)
+  {
+    int res;
+    testJoinTextEvent("PPS_getVoltage");
+    testJoinTextEvent("PPS_setVoltage");
+    testJoinTextEvent("PPS_getCurrent");
+    res=testWaitForAnyJoinedEvent(100000000);
+    if(res>0)
+    {
+      CMD(res);
+    }
+  }
+}
+
+void MainTest ()
+{
+  VH1150();
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):VH1150_VoltageGet();break;
+    case(2):VH1150_VoltageSet(@sysvar::DeviceControl::PPS::settingVoltage);break;
+    case(3):VH1150_CurrentGet();break;
+  }
+}
+
+void PPS_initConfig()
+{
+  @sysvar::DeviceControl::VH1150::InitConfig = 1;
+  VH1150_InitConfig();
+  
+  @sysvar::DeviceControl::PPS::settingVoltage = 12;
+  @sysvar::DeviceControl::PPS::output = 1;
+}
+
+void PPS_setVoltage(float V)
+{
+//  testSupplyTextEvent("PPS_setVoltage");
+  VH1150_VoltageSet(V);
+}
+
+void PPS_setCurrent(float C)
+{
+  
+}
+
+void PPS_getVoltage()
+{
+  testSupplyTextEvent("PPS_getVoltage");
+}
+
+void PPS_getCurrent()
+{
+  testSupplyTextEvent("PPS_getCurrent");
+}
+
+void KL30(enum T_mode sw)
+{
+  VH1150_Relay30(sw);
+}
+
+void KL31(enum T_mode sw)
+{
+  VH1150_Relay31();
+}
+
+void KL15(enum T_mode sw)
+{
+  VH1150_Relay15(sw);
+}

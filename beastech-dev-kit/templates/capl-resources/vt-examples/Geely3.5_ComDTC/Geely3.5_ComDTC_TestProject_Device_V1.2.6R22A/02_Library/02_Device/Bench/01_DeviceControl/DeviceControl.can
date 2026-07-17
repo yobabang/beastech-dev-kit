@@ -1,0 +1,33 @@
+/*@!Encoding:936*/
+includes
+{
+  
+//  #include "PPS_SysVar.cin"
+////  #include "ENV_SysVar.cin"//这个库文件不在设备控制模块里使用。
+//  #include "PSRB_SysVar.cin"
+//  #include "DRB_SysVar.cin"
+//  #include "PCS_SysVar.cin"//这个库文件里使用了较多自定义函数，如precondition，不够独立，因此部分函数不在设备控制模块里使用。
+//  #include "PreCmd_SysVar.cin"
+
+  #include "..\02_PreCmd\PPS_SysVar.cin"
+  #include "..\02_PreCmd\DRB_SysVar.cin"
+  #include "..\02_PreCmd\PCS_SysVar.cin"
+  #include "..\02_PreCmd\PreCmd_SysVar.cin"
+  
+}
+
+variables
+{
+  
+}
+
+void MainTest ()
+{
+  dword count;
+  IPClient_Init();
+  for(count=1;count<1000;count++)
+  {
+    testWaitForTimeout(100000000);
+  }
+}
+

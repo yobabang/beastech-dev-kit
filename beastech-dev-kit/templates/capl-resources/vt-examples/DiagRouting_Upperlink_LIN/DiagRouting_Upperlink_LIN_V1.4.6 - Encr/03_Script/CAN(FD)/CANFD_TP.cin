@@ -1,0 +1,283 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{
+  struct ECU_SDU
+  {
+    dword Length;
+    word  SourceID;
+    word  TargetID;
+    byte  Payload[65536];
+  };
+  struct ECU_SDU rxBuffer;
+  double TimerReqTrans[EcuSum];
+  double TimerResp[EcuSum];
+      
+  long  EcuConnHandle[EcuSum]; 
+
+  byte  TxConfirmationInd = 1;
+  msTimer tClearWaiting;
+  int  P2Client = 500;      //P2Client
+  int  P2Clientdelay = 5000; //P2*Client
+  int  P2Server = 500;      //P2Client
+  int  P2Serverdelay = 5000; //P2*Client
+  int P6Clientdelay = 5000;
+
+}
+
+on sysvar_update GW::Resp_Send  
+{
+  if(@this==1)
+  {
+    int i,x;
+    byte Sendbuf[4095];
+    long copiedBytes;
+    sysGetVariableData(sysvar::GW::RespSendBuffer,Sendbuf,copiedBytes);
+    x=@GW::connHandle_resp;
+    if(Sendbuf[0]==0x76)
+    {
+      rxBuffer.Length=copiedBytes;
+      rxBuffer.SourceID = EcuAddressTable[x].TargetID;
+      rxBuffer.TargetID = EcuAddressTable[x].SourceID;
+      memcpy(rxBuffer.Payload, Sendbuf, copiedBytes);
+      Parallel_Queue_36CheckResponse(rxBuffer);
+    }
+    else
+    {
+      ResponseTrans[x].Packet.Length   = copiedBytes;
+      memcpy(ResponseTrans[x].Packet.Payload, Sendbuf, copiedBytes);
+      ResponseTrans[x].flag = 1;      
+    }
+  }
+}
+/*
+**保存所有节点激活的Slots
+*/
+void CanTp_ConnHandleSave()
+{
+  byte i;
+    
+  //Phy
+  for(i=1; i<EcuSum; i++) 
+  {
+    if(strncmp(EcuAddressTable[i].RoutingNet,"Routing_NoDiag",strlen(EcuAddressTable[i].RoutingNet))!=0)
+      EcuConnHandle[i] = Phys_SlotsConfig(EcuAddressTable[i].SourceID, EcuAddressTable[i].TargetID);
+  }
+  //Functional
+  EcuConnHandle[0] = Func_SlotsConfig(EcuAddressTable[0].SourceID, EcuAddressTable[0].TargetID);
+  
+}
+
+void CanTp_ConnHandleClose()
+{
+  byte i;    
+  //Phy
+  for(i=2; i<EcuSum; i++) 
+  {
+    if(strncmp(EcuAddressTable[i].RoutingNet,"Routing_NoDiag",strlen(EcuAddressTable[i].RoutingNet))!=0)
+      CanTpCloseConnection(EcuConnHandle[i]);
+  }
+  //Functional
+  CanTpCloseConnection(EcuConnHandle[0]);
+}
+
+long Phys_SlotsConfig(word remoteAddress, word localAddress)
+{
+  int DiagMode=0;
+  int BlockSize=0;
+  int STmin=0;
+  int AddressingMode=0;
+  int N_AS=1000;
+  int N_AR=1000;
+  int N_BS=1000;
+  int N_BR=50;
+  int N_CS=1000;
+  int N_CR=1000;
+  long connHandle;
+  word SourcesID,TargetID;
+  SourcesID = (localAddress & 0x00FF) | 0x0600;
+  TargetID  = (localAddress & 0x00FF) | 0x0700;
+  
+  connHandle = CanTpCreateConnection(DiagMode);    //配置诊断模式 0
+  CanTpSetTxIdentifier(connHandle, TargetID);     //发送ID
+  CanTpSetRxIdentifier(connHandle, SourcesID);      //目标ID
+  CanTpUseFlowControlFrames(connHandle, 1);        //使用流控制
+  CanTpSetFlowControlDelay( connHandle, 1);     //流控制延迟发送
+  CanTpSetMaximumReceiveLength(connHandle,0xFFFF);
+  CanTpSetMaxCANFDFrameLength(connHandle, 64);
+  
+  CanTpUseFlowControlSTmin( connHandle, 1);
+  CanTpSetSTmin(connHandle, STmin);                //流控制的时间间隔
+  CanTpFI_Disable(connHandle);
+  
+  CanTpSetBlockSize( connHandle, BlockSize);       //流控制的包数
+  CanTpSetAddressType(connHandle, AddressingMode);//Set the addressing type, where 1 indicates functional, 0 physical. 
+  CanTpSetTimeoutAs(connHandle,N_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(connHandle,N_AR);//
+  CanTpSetTimeBr(connHandle,N_BR);   //This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(connHandle,N_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(connHandle,N_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(connHandle,N_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  
+  return connHandle;
+}
+
+long Func_SlotsConfig(dword remoteAddress, dword localAddress)
+{
+  int DiagMode=0;
+  int BlockSize=0;
+  int STmin=0;
+  int AddressingMode=1;
+  int N_AS=1000;
+  int N_AR=1000;
+  int N_BS=1000;
+  int N_BR=800;
+  int N_CS=800;
+  int N_CR=1000;
+  
+  long connHandle;
+  word SourcesID,TargetID;
+  SourcesID = 0x6ff;
+  TargetID =  0x7ff;
+  
+  connHandle = CanTpCreateConnection(0);
+  CanTpSetTxIdentifier(connHandle, TargetID );  //发送ID
+  CanTpSetRxIdentifier(connHandle, SourcesID );   //目标ID
+  CanTpUseFlowControlFrames(connHandle, 1);        //使用流控制
+  CanTpSetFlowControlDelay( connHandle, 1);     //流控制延迟发送
+  CanTpSetMaximumReceiveLength(connHandle,0xFFFF);
+  CanTpSetMaxCANFDFrameLength(connHandle, 64);
+  
+  CanTpUseFlowControlSTmin( connHandle, 1);
+  CanTpSetSTmin(connHandle, STmin);                //流控制的时间间隔
+  CanTpFI_Disable(connHandle);
+  
+  CanTpSetBlockSize( connHandle, BlockSize);       //流控制的包数
+  CanTpSetTimeoutAs(connHandle,N_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(connHandle,N_AR);//
+  CanTpSetTimeBr(connHandle,N_BR);//This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(connHandle,N_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(connHandle,N_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(connHandle,N_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  
+  return connHandle;
+}
+
+
+/*
+**根据Slot Handle获取ECU ID
+*/
+int GetEcuSNByconnHandle(long connHandle)
+{
+  int i = 0;
+  
+  for(i=0;i<EcuSum;i++)
+	{
+    if(EcuConnHandle[i] == connHandle)  //物理寻址
+		{
+			return i;
+		}
+	}
+  return -1;
+}
+
+/*
+**Receive FR data
+*/
+void CanTp_ReceptionInd(long connHandle, byte data[])
+{
+  int  x,i;
+  
+  x = GetEcuSNByconnHandle(connHandle);
+  //write("ecusn=%x",x);
+  if(-1 == x)
+  {
+    
+  }
+  else if(1 == x)
+  {
+    GatewayResp.Packet.Length   = elCount(data);
+    GatewayResp.Packet.SourceID = EcuAddressTable[1].TargetID;
+    GatewayResp.Packet.TargetID = EcuAddressTable[1].SourceID;
+    memcpy(GatewayResp.Packet.Payload, data, elCount(data));
+    TestSupplyTextEvent("The gateway's diagnostic response was received.");
+  }
+  else  //判断为需要的应答
+  {
+    if(data[0] == 0x76)
+    {
+//      ResponseTrans[x].Packet.Length = elCount(data);
+//      memcpy(ResponseTrans[x].Packet.Payload, data, elCount(data));
+//      ResponseTrans[x].flag = 1;
+      rxBuffer.Length=elCount(data);
+      rxBuffer.SourceID = EcuAddressTable[x].TargetID;
+      rxBuffer.TargetID = EcuAddressTable[x].SourceID;
+      memcpy(rxBuffer.Payload, data, elCount(data));
+      Parallel_Queue_36CheckResponse(rxBuffer);
+    }
+    else
+    {    
+      ResponseTrans[x].Packet.Length   = elCount(data);
+      memcpy(ResponseTrans[x].Packet.Payload, data, elCount(data));
+      ResponseTrans[x].flag = 1;      
+    }
+  }
+} 
+
+void Send_DiagRequest(struct SDU_Data txBuffer)
+{ 
+  long connHandle,sn;
+  sysvarData * svData2;
+  
+  //发送诊断请求
+  TxConfirmationInd = 0;
+  //write("txBuffer.TargetID=%x",txBuffer.TargetID);
+  sn = GetEcuSN(txBuffer.TargetID);
+  if(-1 != sn) 
+  {
+    //发送诊断请求
+    if((@Configure::Routing_NoDiag_flag==1)&&(sn==0))
+    {
+      sysSetVariableData(sysvar::GW::ReqSendBuffer,txBuffer.Payload,txBuffer.Length);
+      @sysvar::GW::connHandle_req=sn;
+      @sysvar::GW::Req_Send=1;
+      connHandle = EcuConnHandle[sn];
+      CanTpSendData(connHandle, txBuffer.Payload, txBuffer.Length);          
+    }
+    else
+    {
+      if(strncmp(EcuAddressTable[sn].RoutingNet,"Routing_NoDiag",strlen(EcuAddressTable[sn].RoutingNet))==0)
+      {
+        sysSetVariableData(sysvar::GW::ReqSendBuffer,txBuffer.Payload,txBuffer.Length);
+        @sysvar::GW::connHandle_req=sn;
+        @sysvar::GW::Req_Send=1;
+        testWaitForTimeout(1);
+      }
+      else
+      {
+        connHandle = EcuConnHandle[sn];
+        CanTpSendData(connHandle, txBuffer.Payload, txBuffer.Length);          
+      }
+    }
+  }
+  else
+  {
+    write("CAN Send EcuAddress is Incorrect"); 
+  }
+}
+/*
+** 发送完成指示函数
+*/
+void CanTp_SendCon( long connHandle, dword count)
+{
+  int x;
+  x = GetEcuSNByconnHandle(connHandle);
+  if(x==0)
+    t_CAN_tx[x]=timeNow()/100.0;
+  TestSupplyTextEvent("The diagnostic request was sent successfully.");
+}
+

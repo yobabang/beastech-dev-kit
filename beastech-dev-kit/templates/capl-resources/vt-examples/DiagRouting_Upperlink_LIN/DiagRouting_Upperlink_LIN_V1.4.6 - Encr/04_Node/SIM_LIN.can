@@ -1,0 +1,22 @@
+/*@!Encoding:936*/
+includes
+{ 
+ 
+
+}
+variables
+{
+  msTimer gchecktimer;
+}
+
+on preStart
+{
+  setTimer(gchecktimer,100);
+  linChangeWakeupSettings(5,1);
+}
+
+on timer gchecktimer
+{
+    linWakeup(150,3,300);
+    setTimer(gchecktimer,100);
+}

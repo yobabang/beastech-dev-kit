@@ -1,0 +1,55 @@
+/*@!Encoding:936*/
+/* KL是指 电源通断设备，不包含电源电压值的设置 */
+/// <KL>
+variables
+{
+  //enum  T_mode{T_off,T_on};
+}
+
+//void kl30(enum T_mode sw)
+//{
+//  if(gPowerTypeFlag==0)// gPowerTypeFlag设置为0 时 采用弹框提示测试人员上下电
+//  {
+//    if(sw==T_on)
+//    {
+//      testWaitForTesterConfirmation("Please set KL30 ON");
+//    }
+//    else if(sw==T_off)
+//    {
+//      testWaitForTesterConfirmation("Please set KL30 OFF");
+//    }
+//  }
+//  else//设置为其他值时 默认采用VH1150的控制方式，也可以替换自己的供电控制代码
+//  {
+//    @sysvar::DeviceControl::KL::KL30 = sw;
+//  }
+//  
+//  teststep("","KL30 = %d",sw);
+//}
+//
+//void kl15(enum T_mode sw)
+//{
+//  if(gPowerTypeFlag==0)// gPowerTypeFlag设置为0 时 采用弹框提示测试人员上下电
+//  {
+//    if(sw==T_on)
+//    {
+//      testWaitForTesterConfirmation("Please set KL15 ON");
+//    }
+//    else if(sw==T_off)
+//    {
+//      testWaitForTesterConfirmation("Please set KL15 OFF");
+//    }
+//  }
+//  else//设置为其他值时 默认采用VH1150的控制方式，也可以替换自己的供电控制代码
+//  {
+//    @sysvar::DeviceControl::KL::KL15 = sw;
+//  }
+//  
+//  teststep("","KL15 = %d",sw);
+//}
+//
+////如果使用PSRB断地，需在PSRB模块中实现该接口
+//void kl31(enum T_mode sw)
+//{
+//  @sysvar::DeviceControl::KL::KL31 = sw;
+//}

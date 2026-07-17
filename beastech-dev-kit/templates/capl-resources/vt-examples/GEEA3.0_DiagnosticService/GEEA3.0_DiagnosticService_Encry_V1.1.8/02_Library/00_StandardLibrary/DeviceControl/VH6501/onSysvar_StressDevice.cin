@@ -1,0 +1,69 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "VH6501_lower.cin"
+}
+
+on sysvar_update sysvar::DeviceControl::VH6501::Command::Trigger
+{
+  if(@this>0)
+  {
+    dword id;
+    dword cycle,holdoffcycles;
+    dword repetitions,holdoffrepetitions;
+    char buff[20],buff1[20];
+    
+    holdoffcycles=@sysvar::DeviceControl::VH6501::Parameters::HoldOffCycles;
+    cycle=@sysvar::DeviceControl::VH6501::Parameters::Cycles;
+    repetitions=@sysvar::DeviceControl::VH6501::Parameters::Repetitions;
+    holdoffrepetitions=@sysvar::DeviceControl::VH6501::Parameters::HoldOffRepetitions;
+   
+    sysGetVariableString(sysvar::DeviceControl::VH6501::Parameters::Id,buff,20);
+    if(strncmp(buff,"XXX",3)==0)
+    {
+      switch(@sysvar::DeviceControl::VH6501::Parameters::DisturbBit)
+      {
+        case(0):VH6501_AllRTRDisturbance(cycle,repetitions);break;
+        case(1):VH6501_AllAckDelimiterDisturbance(cycle, repetitions);break;//新增
+        case(2):VH6501_AllIDEDisturbance(cycle, repetitions);break;//新增
+      }
+    }
+    else
+    {
+      snprintf(buff1,20,"0x%s",buff);
+      id= atol(buff1);
+      write("[VH6501]:id:0x%2x,cycle:%d,repetitions:%d",id,cycle,repetitions);
+      switch(@sysvar::DeviceControl::VH6501::Parameters::DisturbBit)
+      {
+        case(0):VH6501_RTRBitDisturbance(id,cycle,holdoffcycles, repetitions, holdoffrepetitions);break;
+        case(1):VH6501_AckDelimiterDisturbance(id,cycle,holdoffcycles, repetitions, holdoffrepetitions);break;
+      }
+    }
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::VH6501::Command::FaultSet
+{
+  if(@this>0)
+  {
+    enum VH6501_FaultType FaultType;
+    FaultType=(enum VH6501_FaultType)@sysvar::DeviceControl::VH6501::Parameters::FaultType;
+    VH6501_CANBusFaultSet(FaultType);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::VH6501::Command::Reset
+{
+  if(@this>0)
+  {
+    VH6501_Reset();
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::VH6501::Command::Sampling_Trigger
+{
+  if(@this)
+  {
+    testSupplyTextEvent("Sampling_Trigger");
+  }
+}

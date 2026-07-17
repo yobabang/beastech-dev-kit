@@ -1,0 +1,105 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  
+}
+//void MM_REMOTE_MODE()
+//{
+//  SendTcpData("SYSTem:REMote\n",PMM_Socket);
+//}
+
+void MM_REMOTE_MODE()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::MM_REMOTE_MODE=1;
+}
+
+//void CONFigure_CAPacitance()
+//{
+//  SendTcpData("CONFigure:CAPacitance\n",PMM_Socket);
+//}
+
+void CONFigure_CAPacitance()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::CONFigure_CAPacitance=1;
+}
+
+//void Auto_Zero()
+//{
+//  SendTcpData("ZERO:AUTO ON\n",PMM_Socket);
+//  SendTcpData("CALC:STAT ON\n",PMM_Socket);
+//}
+
+void Auto_Zero()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::Auto_Zero=1;
+}
+
+//void MM_RESistance_MEAS()
+//{
+//  SendTcpData("MEASure:RESistance?\n",PMM_Socket);
+//}
+
+
+void MM_RESistance_MEAS()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::MM_RESistance_MEAS=1;
+  write("MM Connect");
+}
+
+
+//void MM_VOLTage_MEAS()
+//{
+//  SendTcpData("MEASure:VOLTage:DC?\n",PMM_Socket);
+//}
+
+void MM_VOLTage_MEAS()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::MM_VOLTage_MEAS=1;
+}
+
+//void MM_CURRent_MEAS()
+//{
+//  SendTcpData("MEASure:CURRent:DC?\n",PMM_Socket);
+//}
+
+void MM_CURRent_MEAS()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::MM_CURRent_MEAS=1;
+}
+
+//void MM_CAPacitance_MEAS()
+//{
+//  SendTcpData("MEASure:CAPacitance?\n",PMM_Socket);
+//}
+
+void MM_CAPacitance_MEAS()
+{
+  @sysvar::PreCmd::Fluke_PMM_PreCmd::MM_CAPacitance_MEAS=1;
+}
+
+
+//void PMM_Test()
+//{
+//  float  i = 0;
+//  MM_REMOTE_MODE();
+//  MM_VOLTage_MEAS();
+//  
+//  strtod(PMM_RecvData,i);
+//  
+//  write ("I1 = %f",i);
+//  testWaitForTimeout(500);
+//  MM_CURRent_MEAS();
+//  strtod(PMM_RecvData,i);
+//
+//  write ("I2 = %f",i);
+//  testWaitForTimeout(500);
+//  MM_RESistance_MEAS();
+//  strtod(PMM_RecvData,i);
+//  write ("I3 = %f",i);
+//  testWaitForTimeout(500);
+//}

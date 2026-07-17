@@ -1,0 +1,64 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+
+variables
+{ 
+/*----------Save data and report related variables----------*/
+  char gDataDirectory[100]="";
+  char gAbsPath[300]="";
+  
+/*----        ----*/
+  
+}
+
+/// <DataSave>
+void DataPathInit()
+{
+  DataDirectoryInit();
+  SetReportPath(NodeName);
+}
+
+/// <DataSave>
+void DataDirectoryInit()
+{
+  long tTestStart[9];
+  getlocaltime(tTestStart);
+  snprintf(gDataDirectory,100,"");
+  snprintf(gDataDirectory,100,"06_LogAndReport\\%d-%d-%d_%d-%d-%d\\",tTestStart[5]+1900,tTestStart[4]+1,tTestStart[3],tTestStart[2],tTestStart[1],tTestStart[0]);
+//////  getAbsFilePath("Report&Log",gAbsPath,300);
+}
+
+/// <DataSave>
+void SetReportPath(char NodeName[])
+{
+  char ReportName[200]="";
+  snprintf(ReportName,200,"");
+  snprintf(ReportName,200,"%s00_%s_Report",gDataDirectory,NodeName);
+  testReportFileName(ReportName);  
+}
+
+/// <DataSave>
+void SetLogPath(char TestcaseName[],int format)
+{
+  char LogName[400]="";
+  stopLogging();
+  snprintf(LogName,elcount(LogName),"");
+  if(format==0)
+  {
+    snprintf(LogName,elcount(LogName),"%s%s_{LocalTime}.asc",gDataDirectory,TestcaseName);   
+  }
+  else if(format==1)
+  {
+    snprintf(LogName,elcount(LogName),"%s%s_{LocalTime}.blf",gDataDirectory,TestcaseName);   
+  }
+  else
+  {
+    testStepFail("Fail","Log file format index error! Onle 0(.asc) and 1(.blf) supported.");
+  }
+  setLogFileName(LogName);
+  startLogging(); 
+}

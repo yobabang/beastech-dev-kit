@@ -1,0 +1,85 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+
+variables
+{
+  frFrame MsgChannel1.(1,0,1) frVgmTemp={fr_PayloadLength=32};
+  frFrame MsgChannel1.(2,0,4) SimFRNM={fr_PayloadLength=32};//
+  
+  dword ECUAddress = 0x1411;
+  dword LocalAddress = 0x0E80;
+  dword FunAddress = 0x1FFF;
+  
+  dword AppSlot1 = 36;
+  dword AppSlot2 = 37;
+  dword AppSlot3 = 38;
+  dword BLSlot1 = 21;
+  dword BLSlot2 = 31;
+  
+  int KeySlot1 = 3;
+  int KeySlot2 = 7;
+}
+
+void FRconfig()
+{
+  frSetKeySlot(1,1,1,KeySlot1,3);
+  frSetKeySlot(1,1,2,KeySlot2,1);
+}
+
+on preStart
+{
+  SimFRNM.FR_ChannelMask = 1;
+  SimFRNM.fr_flags=0x20;//
+  frSetSendFrame(SimFRNM);////
+  
+//  frVgmTemp.FR_ChannelMask = 1;
+//  frVgmTemp.FR_Flags = 3;
+//  frSetSendFrame(frVgmTemp);/////
+
+  /*Diagnostic Initial*/
+  FrTP_ReserveSendSlots( 39, 4);
+  FrTP_ReserveSendSlots( 37, 26);
+  FrTP_ReserveReceiveSlots( AppSlot1, 1);
+  FrTP_ReserveReceiveSlots( AppSlot2, 1);
+  FrTP_ReserveReceiveSlots( AppSlot3, 1);
+  FrTP_ReserveReceiveSlots( BLSlot1, 1);
+  FrTP_ReserveReceiveSlots( BLSlot2,1);
+}
+
+
+void StopSimFRNM()
+{
+  frVgmTemp.fr_flags=0x80;//
+  FRUpdateStatFrame(frVgmTemp);
+  SimFRNM.fr_flags=0x80;//
+  frUpdateStatFrame(SimFRNM);
+}
+
+
+
+void StartSimFRNM()
+{
+
+  
+  frVgmTemp.byte(0)=0x0;
+  frVgmTemp.byte(1)=0x1;
+  frVgmTemp.fr_flags=0x20;//
+  
+  FRUpdateStatFrame(frVgmTemp);
+  
+  SimFRNM.byte(0)=0xC0;
+  SimFRNM.byte(1)=0x51;
+  SimFRNM.byte(2)=0xFF;
+  SimFRNM.byte(3)=0xFF;
+  SimFRNM.byte(4)=0xFF;
+  SimFRNM.byte(5)=0xFF;
+  SimFRNM.byte(6)=0xFF;
+  SimFRNM.byte(7)=0xFF;
+  
+  SimFRNM.fr_flags=0x20;//
+  frUpdateStatFrame(SimFRNM);
+}

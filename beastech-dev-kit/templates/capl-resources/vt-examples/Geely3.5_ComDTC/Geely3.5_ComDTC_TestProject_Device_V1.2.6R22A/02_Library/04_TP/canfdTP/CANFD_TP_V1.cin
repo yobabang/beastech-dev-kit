@@ -1,0 +1,286 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: CANFD_TP.cin
+|  Comment:   CANFD network layer functions of ISO15765-2:2016
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+
+}
+
+variables
+{      
+  //  int SoutcesID,TargetID,DiagMode,BlockSize,STmin,AddressingMode,N_AS,N_AR,N_BS,N_BR,N_CS,N_CR;
+  //SoutcesID:源物理地址，//TargetID：目标地址；//DiagMode：诊断模式 //BlockSize：流控分包数
+  //STmin：流控分包时间间隔 //AddressingMode：寻址模式  //N_AS,N_BS,N_BR,N_CS,N_CR：  时间参数
+  long  CANFD_handlefun;
+  long  CANFD_connHandle;
+  dword   CANFD_TP_PhyRequestID  = 0x700;
+  dword   CANFD_TP_FuncRequestID = 0x7DF;
+  dword   CANFD_TP_ResponseID    = 0x600;
+  
+  int   CANFD_TP_AS = 25;
+  int   CANFD_TP_AR = 25;
+  int   CANFD_TP_BS = 75;
+  int   CANFD_TP_BR = 10;
+  int   CANFD_TP_CS = 20;
+  int   CANFD_TP_CR = 150;
+  int   CANFD_TP_BlockSize = 0;
+  int   CANFD_TP_STmin = 0x14; 
+  int   CANFD_TP_MaxCANFDFrameLenth = 64;
+  int   CANFD_TP_BRSBit = 0;
+  
+  msTimer CANFD_TP_TesterPresentTimer;
+  message 0x000 CANFD_TP_TesterPresentFrame = {dlc = 8,FDF = 1,byte(0) = 0x02,byte(1) = 0x3E,byte(2) = 0x80};
+}
+
+on timer CANFD_TP_TesterPresentTimer
+{
+  output(CAN_TP_TesterPresentFrame);
+  write("CANFDTP:Send TesterPresent");
+}
+
+void CANFD_TP_Init()
+{
+  CANFD_TP_PhyRequestID = 0x700 + (ECUAddress_Temp & 0xff);
+  CANFD_TP_ResponseID = 0x600 + (ECUAddress_Temp & 0xff);
+  CANFD_TP_FuncRequestID = 0x7ff;
+}
+
+void CANFD_TP_Release()
+{
+  CanTpCloseConnection(CANFD_handlefun);
+  CanTpCloseConnection(CANFD_connHandle);
+}
+
+void CANFD_TP_CreatConnection(int InputReqID,int InputResID,int InputFuncReqID,char NowBusContext[])
+{
+  CANFD_TP_PhyRequestID = InputReqID ;
+  CANFD_TP_ResponseID = InputResID ;
+  CANFD_TP_FuncRequestID = InputFuncReqID ;
+  
+  CANFD_TP_Config(CANFD_TP_PhyRequestID,CANFD_TP_ResponseID);
+  CANFD_TP_Fun_Config(CANFD_TP_FuncRequestID,CANFD_TP_ResponseID);
+  
+  CANFD_TP_TesterPresentFrame.id = InputFuncReqID;
+  CANFD_TP_TesterPresentFrame.can = getBusNameContext(NowBusContext)-65536;
+}
+
+//void CANFD_TP_CreatConnection(long PhyHandle,long FuncHandle,int InputReqID,int InputResID,int InputFuncReqID,char NowBusContext[])
+//{
+//  CANFD_TP_PhyRequestID = InputReqID ;
+//  CANFD_TP_ResponseID = InputResID ;
+//  CANFD_TP_FuncRequestID = InputFuncReqID ;
+//  
+//  PhyHandle = CANFD_TP_Config(CANFD_TP_PhyRequestID,CANFD_TP_ResponseID);
+//  FuncHandle = CANFD_TP_Fun_Config(CANFD_TP_FuncRequestID,CANFD_TP_ResponseID);
+//  
+//  CANFD_TP_TesterPresentFrame.id = InputFuncReqID;
+//  CANFD_TP_TesterPresentFrame.can = getBusNameContext(NowBusContext)-65536;
+//}
+
+void CANFD_TP_ReleaseConnection(long PhyHandle,long FuncHandle)
+{
+  CanTpCloseConnection(FuncHandle);
+  CanTpCloseConnection(PhyHandle);
+}
+
+void CANFD_TP_SetTransportParameters(int AS,int AR,int BS,int BR,int CS,int CR,int BlockSize,int ST)
+{
+  CANFD_TP_AS = AS;
+  CANFD_TP_AR = AR;
+  CANFD_TP_BS = BS;
+  CANFD_TP_BR = BR;
+  CANFD_TP_CS = CS;
+  CANFD_TP_CR = CR;
+  CANFD_TP_BlockSize = BlockSize;
+  CANFD_TP_STmin = ST;
+}
+
+void CANFD_TP_SetCANFDParameters(int RxLenth,int BRSFlag)
+{
+  CANFD_TP_MaxCANFDFrameLenth = RxLenth;
+  CANFD_TP_BRSBit = BRSFlag;
+}
+
+long CANFD_TP_Config(int SoutcesID,int TargetID )
+{
+  int DiagMode=0;
+  int AddressingMode=0;
+
+  CANFD_connHandle =CanTpCreateConnection( DiagMode);   //配置诊断模式 0
+  CanTpSetTxIdentifier(CANFD_connHandle, SoutcesID);   //发送ID
+  CanTpSetRxIdentifier(CANFD_connHandle, TargetID);    //目标ID
+  CanTpUseFlowControlFrames(CANFD_connHandle, 1);     //使用流控制
+//  CanTpSetFlowControlDelay( connHandle, 50);   //流控制延迟发送
+  CanTpSetSTmin(CANFD_connHandle, CANFD_TP_STmin);  //流控制的时间间隔
+  CanTpSetBlockSize( CANFD_connHandle, CANFD_TP_BlockSize);   //流控制的包数
+  CanTpSetMaxCANFDFrameLength( CANFD_connHandle, CANFD_TP_MaxCANFDFrameLenth);
+  CanTpSetBitRateSwitch( CANFD_connHandle, CANFD_TP_BRSBit);
+  CanTpSetAddressType(CANFD_connHandle, AddressingMode);  //Set the addressing type, where 1 indicates functional, 0 physical.
+  
+  CanTpSetTimeoutAs(CANFD_connHandle,CANFD_TP_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(CANFD_connHandle,CANFD_TP_AR);//
+  CanTpSetTimeBr(CANFD_connHandle,CANFD_TP_BR);//This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(CANFD_connHandle,CANFD_TP_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(CANFD_connHandle,CANFD_TP_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(CANFD_connHandle,CANFD_TP_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  return CANFD_connHandle;
+}
+
+long CANFD_TP_Fun_Config(int SoutcesID,int TargetID )
+{
+  int DiagMode=0;
+  int AddressingMode=1;
+  
+  CANFD_handlefun =CanTpCreateConnection(0);
+  CanTpSetTxIdentifier(CANFD_handlefun, SoutcesID);   //发送ID
+  CanTpSetRxIdentifier(CANFD_handlefun, TargetID);    //目标ID
+  CanTpUseFlowControlFrames(CANFD_handlefun, 0);     //使用流控制
+//  CanTpSetFlowControlDelay( handlefun, 50);   //流控制延迟发送
+ 
+  CanTpSetSTmin(CANFD_handlefun, CANFD_TP_STmin);
+  CanTpSetBlockSize(CANFD_handlefun, CANFD_TP_BlockSize);
+  CanTpSetMaxCANFDFrameLength( CANFD_handlefun, CANFD_TP_MaxCANFDFrameLenth);
+  CanTpSetBitRateSwitch( CANFD_handlefun, CANFD_TP_BRSBit);
+  CanTpSetAddressType(CANFD_handlefun, AddressingMode);
+  
+  CanTpSetTimeoutAs(CANFD_handlefun,CANFD_TP_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(CANFD_handlefun,CANFD_TP_AR);//
+  CanTpSetTimeBr(CANFD_handlefun,CANFD_TP_BR);//This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(CANFD_handlefun,CANFD_TP_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(CANFD_handlefun,CANFD_TP_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(CANFD_handlefun,CANFD_TP_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  return CANFD_handlefun;
+}
+
+int CANFD_TP_Send(byte Data[],enum AddressMode Mode)
+{
+ // CanTpSendData(connHandle,{0x19,0x10,0x23},elcount({0x19,0x10,0x23});
+  
+  
+  if(Mode==0)
+    CanTpSendData(CANFD_connHandle,Data,elcount(Data));//
+  else
+    CanTpSendData(CANFD_handlefun,Data,elcount(Data));//
+  return 1;
+}
+
+int CANFD_TP_Send(byte Data[],int length,enum AddressMode Mode)
+{
+  if(length>elcount(Data))
+  {
+    if(Mode==0)
+      CanTpSendData(CANFD_connHandle,Data,elcount(Data));//
+    else
+      CanTpSendData(CANFD_handlefun,Data,elcount(Data));//
+    write("Worning tp send data size small than given length");
+  }
+  else
+  {
+    if(Mode==0)
+      CanTpSendData(CANFD_connHandle,Data,length);//
+    else
+      CanTpSendData(CANFD_handlefun,Data,length);//
+  }
+  return 1;
+}
+
+enum ResponseState CANFD_ECU_Response(int P6)
+{
+  if(P6 != UDS_P2ClientDelay)
+  {
+    gNRC78Flag = 0;
+  }
+  if(testWaitForTextEvent("CANFDTPreciveFirstData",P6)==0)
+    return Timeout;
+  if(testWaitForTextEvent("CANFDTPreciveData",P6)==0)
+  {
+    testStep("CANFDTP_Err","Don't receive complete data");
+    return Timeout;
+  }
+    
+  if(TpRxData[0]==0x7f)
+  {
+    switch(TpRxData[2])
+    {
+      case 0x78:
+        gNRC78Flag = 1;
+        return CANFD_ECU_Response(UDS_P2ClientDelay);
+      case 0x22:
+        break;
+      default:
+        break;
+    }
+    return Neg;
+  }
+  else
+    return Pos;
+}
+
+enum ResponseState CANFD_ECU_Response(int P2,int P6)
+{
+  if(P2 != UDS_P2ClientDelay)
+  {
+    gNRC78Flag = 0;
+  }
+  if(testWaitForTextEvent("CANFDTPreciveFirstData",P2)==0)
+  {
+    testStep("CANFDTP_Err","CANFD_TP:ECU doesn't give response");
+    return Timeout;
+  }
+  if(testWaitForTextEvent("CANFDTPreciveData",P6)==0)
+  {
+    testStep("CANFDTP_Err","CANFD_TP:Don't receive complete data");
+    return Timeout;
+  }
+    
+  if(TpRxData[0]==0x7f)
+  {
+    switch(TpRxData[2])
+    {
+      case 0x78:
+        gNRC78Flag = 1;
+        return CANFD_ECU_Response(UDS_P2ClientDelay);
+      default:
+        break;
+    }
+    return Neg;
+  }
+  else
+    return Pos;
+}
+
+void CANFD_TP_TesterPresentSet(enum TP_Switch PresentSwitch)
+{
+  if(PresentSwitch == TP_On)
+  {
+    setTimerCyclic(CANFD_TP_TesterPresentTimer,UDS_S3Client);
+  }
+  else
+  {
+    cancelTimer(CANFD_TP_TesterPresentTimer);
+  }
+}

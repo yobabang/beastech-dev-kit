@@ -1,0 +1,32 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{  
+  int DomainID = 1;
+  
+  struct  SDU_Data
+  {
+    word   SourceID;
+    word   TargetID;
+    dword  Length;
+    byte   Payload[65536];
+  };
+  struct ServiceVars
+  {
+    word   Flag;
+    word   Network_num;
+    word   Req_SPRMIB;
+    word   SID36_Counter;
+    word   SID2A_Response;
+    double TimeStamp;
+    word   QueueOrder;
+    struct SDU_Data Packet;
+  };
+  
+  struct ServiceVars  Response[EcuSum];
+  
+}

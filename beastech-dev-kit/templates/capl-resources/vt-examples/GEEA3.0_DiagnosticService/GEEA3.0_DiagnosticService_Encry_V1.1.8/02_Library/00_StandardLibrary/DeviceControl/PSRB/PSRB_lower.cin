@@ -1,0 +1,244 @@
+/*@!Encoding:936*/
+
+variables
+{
+  byte PSRB_SendData[13] = {0x08,0x00,0x00,0x00,0x80,0x02,0x00,0x00,0x00,0x55,0x55,0x55,0x55} ;
+}
+
+void SendTcpData_BYTE()
+{
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::ETH_CAN0_Socket;//使用的socket
+  sysSetVariableData(sysvar::DeviceControl::IPClient::SendEvent::SendDataByte, PSRB_SendData, elcount(PSRB_SendData));//发送的数据
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend_Byte = elcount(PSRB_SendData);//发送数据的长度，也是触发的事件
+}
+
+void PSRB_RESET()
+{
+  PSRB_SendData[5] = 0x03;
+  PSRB_SendData[6] = 0x01;
+  PSRB_SendData[7] = 0x55;
+  PSRB_SendData[8] = 0x55;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay1_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x01;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay1_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x02;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay2_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x10;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay2_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x20;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay3_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x01;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+
+void PSRB_Relay3_Disable()
+{
+  PSRB_SendData[5] = 0x02; 
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x02;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+
+void PSRB_Relay4_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x04;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay4_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x08;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+
+void PSRB_Relay5_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x40;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay5_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x80;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay6_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x04;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay6_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x08;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay7_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x10;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay7_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x20;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay8_Enable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x01;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay8_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x02;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay9_Enable()
+{
+  PSRB_SendData[5] = 0x02; 
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x10;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay9_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x20;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay10_Enable()
+{
+  PSRB_SendData[5] = 0x02;  
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x40;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay10_Disable()
+{
+  PSRB_SendData[5] = 0x02;  
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x80;
+  PSRB_SendData[8] = 0x00;
+  SendTcpData_BYTE();
+}
+
+
+void PSRB_Relay11_Enable()
+{
+  PSRB_SendData[5] = 0x02;  
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x04;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay11_Disable()
+{
+  PSRB_SendData[5] = 0x02; 
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x08;
+  SendTcpData_BYTE();
+}
+
+
+void PSRB_Relay12_Enable()
+{ 
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x40;
+  SendTcpData_BYTE();
+}
+
+void PSRB_Relay12_Disable()
+{
+  PSRB_SendData[5] = 0x02;
+  PSRB_SendData[6] = 0x00;
+  PSRB_SendData[7] = 0x00;
+  PSRB_SendData[8] = 0x80;
+  SendTcpData_BYTE();
+}
+

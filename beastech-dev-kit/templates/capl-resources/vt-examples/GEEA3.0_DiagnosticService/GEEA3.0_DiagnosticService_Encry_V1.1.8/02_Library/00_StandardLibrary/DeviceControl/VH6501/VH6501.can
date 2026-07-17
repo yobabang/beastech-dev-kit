@@ -1,0 +1,41 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_StressDevice.cin"
+}
+
+void MainTest ()
+{
+  VH6501();
+}
+
+testcase VH6501()
+{
+  VH6501_Init();
+  while(1)
+  {
+    int res;
+    testJoinTextEvent("Sampling_Trigger");//1
+    res=testWaitForAnyJoinedEvent(999999999);
+    //write("res=%d",res);
+    CMD(res);
+  }
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):VH6501_SamplePointTestTriggerSet();
+      break;
+    case(2):
+      break;
+    default:
+      break;
+  }
+}
+
+on busOff
+{
+  resetCan();
+}

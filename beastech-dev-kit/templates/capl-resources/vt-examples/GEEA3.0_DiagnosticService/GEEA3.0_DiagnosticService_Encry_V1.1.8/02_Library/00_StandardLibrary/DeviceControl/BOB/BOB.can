@@ -1,0 +1,259 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #include "onSysvar_KL.cin"
+}
+
+variables
+{
+  message CAN2.0x2 msg={dlc=8};
+}
+
+
+void BOBReset()
+{
+  msg.dlc=8;
+  msg.byte(0)=0x5;
+  output(msg);
+}
+
+
+void KL30(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x04;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x01;
+  }
+  else
+  {
+    msg.byte(0)=0x4;
+    msg.byte(1)=0x01;
+    msg.byte(2)=0x01;
+  }
+  output(msg);
+//  testStep("Step","KL30 = %d [0=off,1=on]",sw);
+}
+
+void KL15(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x04;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x04;
+  }
+  else
+  {
+    msg.byte(0)=0x04;
+    msg.byte(1)=0x04;
+    msg.byte(2)=0x04;
+  }
+  output(msg);
+//  testStep("Step","KL15 = %d [0=off,1=on]",sw);
+}
+
+void KL31(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x04;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x10;
+  }
+  else
+  {
+    msg.byte(0)=0x04;
+    msg.byte(1)=0x10;
+    msg.byte(2)=0x10;
+  }
+  output(msg);
+//  testStep("Step","KL31 = %d [0=off,1=on]",sw);
+}
+
+void BusBreak(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x03;
+    msg.byte(2)=0x03;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x03;
+  }
+  
+  output(msg);
+//  testStep("Step","Bus Break= %d [0=off,1=on]",sw);
+}
+//
+void CANH_Open(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x01;
+    msg.byte(2)=0x01;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x01;
+  }
+  output(msg);
+//  testStep("Step","CANH Open= %d [0=off,1=on]",sw);
+}
+void CANL_Open(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x1;
+    msg.byte(1)=0x02;
+    msg.byte(2)=0x02;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x02;
+  }
+  output(msg);
+//  testStep("Step","CANL Open= %d [0=off,1=on]",sw);
+}
+
+void CANHShortGND(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x10;
+    msg.byte(2)=0x10;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x10;
+  }
+  output(msg);
+//  testStep("Step","CANH short to ground = %d [0=off,1=on]",sw);
+}
+
+void CANHShortBAT(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x04;
+    msg.byte(2)=0x04;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x04;
+  }
+  output(msg);
+//  testStep("Step","CANH short to Battery = %d [0=off,1=on]",sw);
+}
+
+void CANLShortGND(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x20;
+    msg.byte(2)=0x20;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x20;
+  }
+  output(msg);
+//  testStep("Step","CANL short to ground = %d [0=off,1=on]",sw);
+}
+void CANLShortBAT(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x08;
+    msg.byte(2)=0x08;
+  }
+  else
+  {
+    msg.byte(0)=0x01;
+    msg.byte(1)=0x00;
+    msg.byte(2)=0x08;
+  }
+  output(msg);
+//  testStep("Step","CANL short to battery = %d [0=off,1=on]",sw);
+}
+
+void CANHShortCANL(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x1;
+    msg.byte(1)=0x40;
+    msg.byte(2)=0x40;
+  }
+  else
+  {
+    msg.byte(0)=0x1;
+    msg.byte(1)=0x0;
+    msg.byte(2)=0x40;
+  }
+  output(msg);
+//  testStep("Step","CANH short to CANL = %d [0=off,1=on]",sw);
+}
+void LIN2BAT(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x3;
+    msg.byte(1)=0x02;
+    msg.byte(2)=0x00;
+  }
+  else
+  {
+    msg.byte(0)=0x3;
+    msg.byte(1)=0x0;
+    msg.byte(2)=0x00;
+  }
+  output(msg);
+//  testStep("Step","LIN 2 BAT = %d [0=off,1=on]",sw);
+}
+void LIN2GND(enum T_mode sw)
+{
+  if(sw==T_on)
+  {
+    msg.byte(0)=0x3;
+    msg.byte(1)=0x4;
+    msg.byte(2)=0x00;
+  }
+  else
+  {
+    msg.byte(0)=0x3;
+    msg.byte(1)=0x0;
+    msg.byte(2)=0x0;
+  }
+  output(msg);
+//  testStep("Step","LIN 2 GND = %d [0=off,1=on]",sw);
+}
+void MainTest ()
+{
+  while(1)
+  {
+    testWaitForTimeout(5000);
+  }
+}
+

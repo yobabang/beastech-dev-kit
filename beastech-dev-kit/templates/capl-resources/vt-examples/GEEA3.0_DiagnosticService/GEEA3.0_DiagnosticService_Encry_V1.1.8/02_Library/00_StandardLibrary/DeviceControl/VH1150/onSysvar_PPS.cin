@@ -1,0 +1,67 @@
+/*@!Encoding:936*/
+/* 勿修改此文件 */
+variables
+{
+  long PPS_Socket;
+  msTimer Timer_read;
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::InitConfig
+{
+  testSupplyTextEvent("PPS_InitConfig");
+}
+
+on timer Timer_read
+{
+  @sysvar::DeviceControl::PPS::getVoltage ++;
+//  @sysvar::DeviceControl::PPS::getCurrent ++;
+}
+
+on sysvar_update DeviceControl::IPClient::Sockets::PPS_Socket /* 以太网连接 */
+{
+  if(@this > 0)
+  {
+    sysSetVariableString(sysvar::DeviceControl::DeviceList::PPS,DeviceName);/*  */
+    PPS_Socket = @THIS;
+    PPS_initConfig();
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::settingVoltage/* 只要设置电压，就开始读电压、电流 */
+{
+  PPS_setVoltage(@this);
+  if(Timer_read.isRunning() == 0)
+    setTimerCyclic(Timer_read,50,50);
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::settingCurrent
+{
+  PPS_setCurrent(@this);
+}
+
+
+on sysvar_update sysvar::DeviceControl::PPS::getVoltage
+{
+  PPS_getVoltage();
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::getCurrent
+{
+  VH1150_CurrentGet();
+//  if(@this)
+//    PPS_getCurrent();
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::output
+{
+  if(@this > 0)
+  {
+    //VH1150_Open();
+    //PPS_OutputStsSet(VH1150_On);
+  }
+  else
+  {
+    //VH1150_Close();
+    //PPS_OutputStsSet(VH1150_Off);
+  }
+}

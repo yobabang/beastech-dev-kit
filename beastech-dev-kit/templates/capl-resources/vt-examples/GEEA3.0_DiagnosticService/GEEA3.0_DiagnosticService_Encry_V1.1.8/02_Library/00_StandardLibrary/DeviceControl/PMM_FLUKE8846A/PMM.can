@@ -1,0 +1,36 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_PMM.cin"
+  #include "PMM_lower.cin"
+}
+
+variables
+{
+  char DeviceName[256] = "PMM";
+}
+
+
+void MainTest ()
+{
+  PMM();
+}
+
+testcase PMM()
+{
+  int res;
+  while(1)
+  {
+    testJoinTextEvent("PMM_InitConfig");
+    res= testWaitForAnyJoinedEvent(1000000);
+    CMD(res);
+  }
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):PMM_InitConfig();break;
+  }
+}

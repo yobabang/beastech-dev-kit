@@ -1,0 +1,49 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #include "VH1150_Lower.cin"
+}
+
+variables
+{
+  mstimer Timer_Display;
+}
+
+on timer Timer_Display
+{
+  testSupplyTextEvent("VH1150_Display");
+}
+
+on sysvar_update sysvar::VH1150::gDevHandle
+{
+  gDevHandle=@this;
+  write("[Display.can]gDevHandle=%d",gDevHandle);
+}
+
+void MainTest ()
+{
+  setTimerCyclic(Timer_Display,2000,600);
+  VH1150_Display();
+}
+
+testcase VH1150_Display()
+{
+  while(1)
+  {
+    int res;
+    testJoinTextEvent("VH1150_Display");
+    res=testWaitForAnyJoinedEvent(4000);
+    CMD(res);
+  }
+}
+
+void CMD(int index)
+{
+  if(index==1)
+  {
+    write("[Display.can]ZJYZJY");
+    VH1150_VoltageGet();
+//    VH1150_CurrentGet();
+  }
+}

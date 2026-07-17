@@ -1,0 +1,185 @@
+/*@!Encoding:936*/
+
+variables
+{
+  enum DRB_Relay_State{Connect,DisConnect};
+  enum DRB_CH_Number{CH1 = 1,CH2,CH3,CH4,CH5,CH6,CH7,CH8};
+  enum DRB_Stress_State{Stress_Connect,Stress_DisConnect,Stress_Input_Connect,Stress_Output_Connect,Stress_Input_Output_Connect};
+  enum DRB_OSC_State{OSC_Single,OSC_Diff,OSC_DisConnect};
+  enum DRB_ENV_State{ENV_Connect,ENV_IN_Connect,ENV_OUT_Connect,ENV_DisConnect};
+  enum DRB_PMM_State{PMM_CANH_VOL,PMM_CANL_VOL,PMM_CANH_CANL_Res,PMM_DisConnect};
+  enum DRB_REFGND_State{DEV_GND,Node_GND};
+  byte DRB_SendData[13] = {0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x55,0x55,0x55,0x55,0x55};
+}
+void DRB1_Cmd()
+{
+  DRB_SendData[0] = 0x08 ;
+  //ID
+  DRB_SendData[1] = 0x00 ;
+  DRB_SendData[2] = 0x00 ;
+  DRB_SendData[3] = 0x01 ;
+  DRB_SendData[4] = 0x00 ;
+  ///数据
+  DRB_SendData[8] = 0x55 ;
+  DRB_SendData[9] = 0x55 ;
+  DRB_SendData[10] = 0x55 ;
+  DRB_SendData[11] = 0x55 ;
+  DRB_SendData[12] = 0x55 ;
+  
+}
+void DRB2_Cmd()
+{
+  DRB_SendData[0] = 0x08 ;
+  //ID
+  DRB_SendData[1] = 0x00 ;
+  DRB_SendData[2] = 0x00 ;
+  DRB_SendData[3] = 0x01 ;
+  DRB_SendData[4] = 0x01 ;
+  ///数据
+  DRB_SendData[8] = 0x55 ;
+  DRB_SendData[9] = 0x55 ;
+  DRB_SendData[10] = 0x55 ;
+  DRB_SendData[11] = 0x55 ;
+  DRB_SendData[12] = 0x55 ;
+}
+
+void SetDRBId(long id)
+{
+  //byte3, byte4
+  DRB_SendData.word(3) = swapWord( (word)id );
+}
+
+void SendTcpData_BYTE()
+{
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::ETH_CAN0_Socket;//使用的socket
+  sysSetVariableData(sysvar::DeviceControl::IPClient::SendEvent::SendDataByte, DRB_SendData, elcount(DRB_SendData));//发送的数据
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend_Byte = elcount(DRB_SendData);//发送数据的长度，也是触发的事件
+}
+
+void DRB_Reset()
+{ 
+  DRB_SendData[5] = 0x01 ;//byte0
+  DRB_SendData[6] = 0x09 ;//byte1
+  DRB_SendData[7] = 0x00 ;//byte2
+  DRB_SendData[8] = 0x00 ;//byte3
+  DRB_SendData[9] = 0x00 ;//byte4
+  DRB_SendData[10] = 0x00 ;//byte5
+  DRB_SendData[11] = 0x00 ;//byte6
+  DRB_SendData[12] = 0x00 ;//byte7
+  SendTcpData_BYTE();
+}
+
+void DRB_ECU(enum DRB_CH_Number ch,enum DRB_Relay_State sw)
+{
+  DRB_SendData[5] = 0x01 ;
+  if(sw == Connect)
+  {
+    DRB_SendData[7]=0x01;
+  }
+  else
+  {
+    DRB_SendData[7]=0x00;
+  }
+  switch(ch)
+  {
+    case(CH1):DRB_SendData[6]=0x01;break ;
+    case(CH2):DRB_SendData[6]=0x02;break ;  
+    case(CH3):DRB_SendData[6]=0x03;break ;  
+    case(CH4):DRB_SendData[6]=0x04;break ;  
+    case(CH5):DRB_SendData[6]=0x05;break ;  
+    case(CH6):DRB_SendData[6]=0x06;break ;
+    case(CH7):DRB_SendData[6]=0x07;break ;
+    case(CH8):DRB_SendData[6]=0x08;break ;
+    default :Break;
+  }
+  SendTcpData_BYTE();
+}
+void DRB_Dev(enum DRB_CH_Number ch,enum DRB_Relay_State sw)
+{
+  DRB_SendData[5] = 0x02;
+  if(sw == Connect)
+  {
+    DRB_SendData[7]=0x01;
+  }
+  else
+  {
+    DRB_SendData[7]=0x00;
+  }
+  switch(ch)
+  {
+    case(CH1):DRB_SendData[6]=0x01;break ;
+    case(CH2):DRB_SendData[6]=0x02;break ;  
+    case(CH3):DRB_SendData[6]=0x03;break ;  
+    case(CH4):DRB_SendData[6]=0x04;break ;  
+    case(CH5):DRB_SendData[6]=0x05;break ;  
+    case(CH6):DRB_SendData[6]=0x06;break ;
+    case(CH7):DRB_SendData[6]=0x07;break ;
+    case(CH8):DRB_SendData[6]=0x08;break ;
+    default :Break;
+  }
+  SendTcpData_BYTE();
+}
+void DRB_Stress(enum DRB_Stress_State sw)
+{
+  DRB_SendData[5]=0x06;
+  switch (sw)
+  {
+    case(Stress_Connect):DRB_SendData[6]=0x01;break ;
+    case(Stress_DisConnect):DRB_SendData[6]=0x00;break ;  
+    case(Stress_Input_Connect):DRB_SendData[6]=0x02;break ;
+    case(Stress_Output_Connect):DRB_SendData[6]=0x03;break ;
+    case(Stress_Input_Output_Connect):DRB_SendData[6]=0x04;break ;
+    default :Break;
+  }
+  DRB_SendData[7]=0x55;
+  SendTcpData_BYTE();
+}
+void DRB_OSC(enum DRB_OSC_State sw)
+{
+  DRB_SendData[5]=0x04;
+  switch(sw)
+  {
+    case(OSC_DisConnect):DRB_SendData[6]=0x00;break ;
+    case(OSC_Diff):DRB_SendData[6]=0x01;break ;  
+    case(OSC_Single):DRB_SendData[6]=0x02;break ; 
+    default :Break;
+  }
+  SendTcpData_BYTE();
+}
+void DRB_ENV(enum DRB_ENV_State sw)
+{
+  DRB_SendData[5]=0x03;
+  switch(sw)
+  {
+    case(ENV_DisConnect):DRB_SendData[6]=0x00;break ;
+    case(ENV_Connect):DRB_SendData[6]=0x01;break ;  
+    case(ENV_IN_Connect):DRB_SendData[6]=0x02;break ; 
+    case(ENV_OUT_Connect):DRB_SendData[6]=0x03;break ;  
+    default :Break;
+  }
+  SendTcpData_BYTE();
+}
+void DRB_PMM(enum DRB_PMM_State sw)
+{
+  DRB_SendData[5]=0x07;
+  switch(sw)
+  {
+    case (PMM_CANH_VOL): DRB_SendData[6]=0x01; DRB_SendData[7]=0x01;break ;
+    case (PMM_CANL_VOL ):DRB_SendData[6]=0x01; DRB_SendData[7]=0x02;break ;
+    case (PMM_CANH_CANL_Res):DRB_SendData[6]=0x02; DRB_SendData[7]=0x01;break ;
+    case (PMM_DisConnect):DRB_SendData[6]=0x00; DRB_SendData[7]=0x55;break ;
+    default :break;
+  }
+  SendTcpData_BYTE();
+}
+void DRB_REFGND(enum DRB_REFGND_State sw)
+{
+  DRB_SendData[5]=0x05;
+  switch(sw)
+  {
+    case (DEV_GND): DRB_SendData[6]=0x01;break ;
+    case (Node_GND):DRB_SendData[6]=0x00; break ;
+    default :break;
+  }
+  SendTcpData_BYTE();
+}

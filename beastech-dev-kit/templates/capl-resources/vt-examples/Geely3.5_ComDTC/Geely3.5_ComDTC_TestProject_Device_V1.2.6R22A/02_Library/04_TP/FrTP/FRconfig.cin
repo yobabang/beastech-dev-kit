@@ -1,0 +1,221 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+
+variables
+{
+  frFrame MsgChannel1.(1,0,1) frVgmTemp={fr_PayloadLength=16};
+  frFrame MsgChannel1.(3,0,4) SimFRNM={fr_PayloadLength=16};//
+  
+  dword ECUAddress = 0x0;
+  dword LocalAddress = 0x0E80;
+  dword FunAddress = 0x1FFF;
+  
+  dword AppSlot1 = 61;
+  dword AppSlot2 = 62;
+  dword AppSlot3 = 63;
+  dword BLSlot1 = 13;
+  dword BLSlot2 = 14;
+  
+  int KeySlot1;
+  int KeySlot2;
+}
+
+void FRconfig()
+{
+  if(ECUAddress_Temp == 0x1201)
+  {
+    AppSlot1=61;
+    AppSlot2=62;
+    AppSlot3=63;
+    BLSlot1=13;
+    BLSlot2=14;
+    
+    KeySlot1=2;
+    KeySlot2=7;
+    
+    ECUAddress = 0x1201;
+  }
+  if(ECUAddress_Temp == 0x1401)
+  {
+    AppSlot1=73;
+    AppSlot2=79;
+    AppSlot3=85;
+    BLSlot1=21;
+    BLSlot2=31;
+    
+    KeySlot1=2;
+    KeySlot2=6;
+    
+    ECUAddress = 0x1401;
+  }
+  if(ECUAddress_Temp == 0x1301)//FX11 FT ADCU
+  {
+    AppSlot1=73;
+    AppSlot2=79;
+    AppSlot3=85;
+    BLSlot1=21;
+    BLSlot2=31;
+    
+    KeySlot1=2;
+    KeySlot2=6;
+    
+    ECUAddress = 0x1301;
+  }
+  if(ECUAddress_Temp == 0x1701)
+  {
+    AppSlot1=66;
+    AppSlot2=68;
+    AppSlot3=74;
+    BLSlot1=24;
+    BLSlot2=34;
+    
+    KeySlot1=2;
+    KeySlot2=6;
+    
+    ECUAddress = 0x1701;
+  }
+  if(ECUAddress_Temp == 0x1A01)
+  {
+    AppSlot1=71;
+    AppSlot2=77;
+    AppSlot3=83;
+    BLSlot1=19;
+    BLSlot2=29;
+    
+    KeySlot1=4;
+    KeySlot2=6;
+    
+    ECUAddress = 0x1A01;
+  }
+  if(ECUAddress_Temp == 0x1801)
+  {
+    AppSlot1=72;
+    AppSlot2=78;
+    AppSlot3=84;
+    BLSlot1=20;
+    BLSlot2=30;
+    
+    KeySlot1=2;
+    KeySlot2=7;
+    
+    ECUAddress = 0x1801;
+  }
+  if(ECUAddress_Temp == 0x1C01)
+  {
+    AppSlot1=70;
+    AppSlot2=76;
+    AppSlot3=82;
+    BLSlot1=18;
+    BLSlot2=28;
+    
+    KeySlot1=2;
+    KeySlot2=6;
+    
+    ECUAddress = 0x1C01;
+  }
+  if(ECUAddress_Temp == 0x1601)
+  {
+    AppSlot1=69;
+    AppSlot2=75;
+    AppSlot3=81;
+    BLSlot1=17;
+    BLSlot2=27;
+    
+    KeySlot1=6;
+    KeySlot2=7;
+    
+    ECUAddress = 0x1601;
+  }
+  if(ECUAddress_Temp == 0x1001)
+  {
+    AppSlot1=69;
+    AppSlot2=75;
+    AppSlot3=81;
+    BLSlot1=17;
+    BLSlot2=27;
+    KeySlot1=6;
+    KeySlot2=5;
+    
+    ECUAddress = 0x1001;
+  }
+  
+  frSetKeySlot(1,1,1,KeySlot1,3);
+  frSetKeySlot(1,1,2,KeySlot2,1);
+}
+
+on preStart
+{
+  SimFRNM.FR_ChannelMask = 1;
+  if(ECUAddress_Temp == 0x1001)
+  {
+    SimFRNM.fr_flags=0x80;//
+    SimFRNM.fr_slotID=8;
+  }
+  else
+  {
+    SimFRNM.fr_flags=0x20;//
+  }
+  
+  frSetSendFrame(SimFRNM);////
+  
+//  frVgmTemp.FR_ChannelMask = 1;
+//  frVgmTemp.FR_Flags = 3;
+//  frSetSendFrame(frVgmTemp);/////
+
+  /*Diagnostic Initial*/
+  FrTP_ReserveSendSlots( 87, 8);
+  FrTP_ReserveSendSlots( 37, 26);
+  FrTP_ReserveReceiveSlots( AppSlot1, 1);
+  FrTP_ReserveReceiveSlots( AppSlot2, 1);
+  FrTP_ReserveReceiveSlots( AppSlot3, 1);
+  FrTP_ReserveReceiveSlots( BLSlot1, 1);
+  FrTP_ReserveReceiveSlots( BLSlot2,1);
+  
+}
+
+
+void StartSimFRNM()
+{
+  if(ECUAddress_Temp == 0x1001)
+  {
+    SimFRNM.fr_slotID=8;
+  }
+  SimFRNM.byte(0)=0Xc0;
+  SimFRNM.byte(1)=0x51;
+  SimFRNM.byte(2)=0xFF;
+  SimFRNM.byte(3)=0xFF;
+  SimFRNM.byte(4)=0xFF;
+  SimFRNM.byte(5)=0xFF;
+  SimFRNM.byte(6)=0xFF;
+  SimFRNM.byte(7)=0xFF;
+  
+  frUpdateStatFrame(SimFRNM);
+  
+  if(ECUAddress_Temp == 0x1001)
+  {
+    frVgmTemp.fr_flags=0x80;//
+  }
+  else
+  {
+    frVgmTemp.fr_flags=0x20;//
+  }
+  frVgmTemp.byte(0)=0x0;
+  frVgmTemp.byte(1)=0x1;
+  frVgmTemp.byte(2)=0x18;
+  
+  FRUpdateStatFrame(frVgmTemp);
+  
+  SimFRNM.fr_flags=0x20;//
+  frUpdateStatFrame(SimFRNM);
+}
+void StopSimFRNM()
+{
+  frVgmTemp.fr_flags=0x80;//
+  FRUpdateStatFrame(frVgmTemp);
+  SimFRNM.fr_flags=0x80;//
+  frUpdateStatFrame(SimFRNM);
+}

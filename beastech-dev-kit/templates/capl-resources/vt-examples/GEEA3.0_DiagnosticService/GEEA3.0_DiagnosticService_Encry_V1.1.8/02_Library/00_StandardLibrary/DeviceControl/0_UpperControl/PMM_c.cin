@@ -1,0 +1,28 @@
+/*@!Encoding:936*/
+
+void PMM_InitConfig()
+{
+  @sysvar::DeviceControl::PMM::Command::InitConfig=1;
+  testWaitForTimeout(2000);
+}
+
+void PMM_RESistance_MEAS()
+{
+  @sysvar::DeviceControl::PMM::Command::RESistance_MEAS=1;
+}
+
+float PMM_getMeasuredValue_Resistance()
+{
+  float res;
+  res = 0;
+  PMM_RESistance_MEAS();
+  testWaitForTimeout(2000);
+  res = @sysvar::DeviceControl::PMM::Parameters::PMM_RecvDataValue;
+  write("res = %f",res);
+  return res;
+}
+
+void PMM_RESistance_Data_Recv()
+{
+   @sysvar::Panel::PMM::RES_Recv = PMM_getMeasuredValue_Resistance();
+}

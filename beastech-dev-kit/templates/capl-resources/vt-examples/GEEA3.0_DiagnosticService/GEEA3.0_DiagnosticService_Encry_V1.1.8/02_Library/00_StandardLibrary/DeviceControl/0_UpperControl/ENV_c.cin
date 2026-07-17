@@ -1,0 +1,122 @@
+/*@!Encoding:936*/
+
+void ENV_InitConfig()
+{
+  @sysvar::DeviceControl::ENV::ENV_InitConfig=1;
+}
+
+//适用于非CAN通信工作包，CAN通信工作包需要根据样件实际终端情况来配置
+void ENV_CAN_InitConfig()
+{
+  ENV_SetTerminal_R(1);
+}
+
+void ENV_Reset()
+{
+  @sysvar::DeviceControl::ENV::ENV_InitConfig=1;
+}
+
+//配置终端电阻
+void ENV_SetTerminal_R(long isTermNode)
+{
+  if(isTermNode > 0) //终端节点
+  {
+    @sysvar::DeviceControl::ENV::Parameters::Circuit = 1;
+    write("配置1个终端电阻");
+  }
+  else//非终端节点
+  {
+    @sysvar::DeviceControl::ENV::Parameters::Circuit = 2;
+    write("配置2个终端电阻");
+  }
+}
+
+/*
+case(0):ENV_CANH_VB()
+case(1):ENV_CANH_GND()
+case(2):ENV_CANL_VB()
+case(3):ENV_CANL_GND()
+case(4):ENV_CANH_CANL()
+case(5):CANHIN_CANHOUT()
+case(6):CANLIN_CANLOUT()
+case(7):CANOUT_OFF() */
+void ENV_CanBusFaultSet(int DUT_index)
+{
+  @sysvar::DeviceControl::ENV::Parameters::FaultType = DUT_index;
+  @sysvar::DeviceControl::ENV::Command::InsertFault = 1;
+}
+
+
+//for Geely2.0
+void ENV_CapacitanceMaxIn()
+{
+  ENV_C1(3);
+  testWaitForTimeout(100);
+  ENV_C2(3);
+  testWaitForTimeout(100);
+}
+
+//for Geely1.0
+void MinLoad_No_Rx()
+{
+  ENV_C1(1);
+  testWaitForTimeout(100);
+  ENV_C2(1);
+  testWaitForTimeout(100);
+}
+
+void MaxLoad_No_Rx()
+{
+  ENV_C1(2);
+  testWaitForTimeout(100);
+  ENV_C2(2);
+  testWaitForTimeout(100);
+  ENV_C3(16);
+  testWaitForTimeout(100);
+}
+
+void MinLoad_Rx()
+{
+  ENV_C1(1);
+  testWaitForTimeout(100);
+  ENV_C2(1);
+  testWaitForTimeout(100);
+  ENV_CANH_CANL_R_Set(10);
+  testWaitForTimeout(100);
+}
+
+void MaxLoad_Rx()
+{
+  ENV_C1(2);
+  testWaitForTimeout(100);
+  ENV_C2(2);
+  testWaitForTimeout(100);
+  ENV_C3(16);
+  testWaitForTimeout(100);
+  ENV_CANH_CANL_R_Set(10);
+  testWaitForTimeout(100);
+}
+
+//具体值见ENV_lower.cin
+void ENV_CANH_CANL_R_Set(int DUT_index)
+{
+  @sysvar::DeviceControl::ENV::Parameters::R_CANH_CANL = DUT_index;
+}
+
+//具体值见ENV_lower.cin
+void ENV_C1(long index)
+{
+  @sysvar::DeviceControl::ENV::Parameters::C1 =index;
+}
+
+//具体值见ENV_lower.cin
+void ENV_C2(long index)
+{
+  @sysvar::DeviceControl::ENV::Parameters::C2 = index;
+}
+
+//具体值见ENV_lower.cin
+void ENV_C3(long index)
+{
+  @sysvar::DeviceControl::ENV::Parameters::C3 = index;
+}

@@ -1,0 +1,72 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "BOBs_lower.cin"
+  #include "..\DevParameter.cin"
+
+}
+
+variables
+{
+//  enum DRB_CH_Number ch;
+}
+
+
+on sysvar_update sysvar::DeviceControl::BOBs::BOB_Reset
+{
+  BOB_SendData[0]=0x08;
+  BOB_SendData[1]=0x00;
+  BOB_SendData[2]=0x00;
+  BOB_SendData[3]=0x07;
+  BOB_SendData[4]=0xfe;
+  BOB_SendData[5]=0x01;
+  BOB_SendData[6]=0x00;
+  BOB_SendData[7]=0x00;
+  BOB_SendData[8]=0x00;
+  BOB_SendData[9]=0x00;
+  BOB_SendData[10]=0x00;
+  BOB_SendData[11]=0x00;
+  BOB_SendData[12]=0x00;
+  SendTcpData_BYTE();
+}
+
+on sysvar_update sysvar::DeviceControl::BOBs::BOBControl
+{
+  int i = 0;
+//  word BOB_ID;
+//  byte BOB_SendData[13];
+  BOB_SendData[0]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[0];
+  BOB_SendData[1]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[1];
+  BOB_SendData[2]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[2];
+  BOB_SendData[3]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[3];
+  BOB_SendData[4]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[4];
+  BOB_SendData[5]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[5];
+  BOB_SendData[6]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[6];
+  BOB_SendData[7]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[7];
+  BOB_SendData[8]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[8];
+  BOB_SendData[9]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[9];
+  BOB_SendData[10]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[10];
+  BOB_SendData[11]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[11];
+  BOB_SendData[12]=@sysvarMember::DeviceControl::BOBs::BOB_SendData[12];
+  
+//  BOB_ID = (BOB_SendData[3]<<8) + BOB_SendData[4];
+  SendTcpData_BYTE();
+  
+//  write("BOB_SendData[0]=0x%02x",BOB_SendData[0]);
+//  write("BOB_SendData[1]=0x%02x",BOB_SendData[1]);
+//  write("BOB_SendData[2]=0x%02x",BOB_SendData[2]);
+//  write("BOB_SendData[3]=0x%02x",BOB_SendData[3]);
+//  write("BOB_SendData[4]=0x%02x",BOB_SendData[4]);
+//  write("BOB_SendData[5]=0x%02x",BOB_SendData[5]);
+//  write("BOB_SendData[6]=0x%02x",BOB_SendData[6]);
+//  write("BOB_SendData[7]=0x%02x",BOB_SendData[7]);
+//  write("BOB_SendData[8]=0x%02x",BOB_SendData[8]);
+//  write("BOB_SendData[9]=0x%02x",BOB_SendData[9]);
+//  write("BOB_SendData[10]=0x%02x",BOB_SendData[10]);
+//  write("BOB_SendData[11]=0x%02x",BOB_SendData[11]);
+//  write("BOB_SendData[12]=0x%02x",BOB_SendData[12]);
+}
+on sysvar_update sysvar::DeviceControl::BOB::Query::BOBID
+{
+  @sysvar::DeviceControl::BOB::Parameters::BOBID = GetBOBId();
+}

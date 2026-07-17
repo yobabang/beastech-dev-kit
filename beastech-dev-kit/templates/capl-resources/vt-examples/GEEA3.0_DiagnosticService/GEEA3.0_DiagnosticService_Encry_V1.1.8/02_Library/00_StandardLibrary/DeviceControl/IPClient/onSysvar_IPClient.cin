@@ -1,0 +1,48 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #include "IPClient_lower.cin"
+}
+
+on preStart
+{
+  /* 初始化 */
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::DRB,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::ENV,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::KL,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PCS,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PMM,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PPS,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PPSO,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::PSRB,"");
+  sysSetVariableString(sysvar::DeviceControl::DeviceList::StressDevice,"");
+}
+
+on sysvar_update sysvar::DeviceControl::IPClient::RcvEvent::TcpRecData
+{
+  write("[%5.9f][IPClient][socket#%d]收到[%d]bytes数据",timeNowNS()/1000000000.0,
+  @sysvar::DeviceControl::IPClient::RcvEvent::Socket,
+  @sysvar::DeviceControl::IPClient::RcvEvent::Rcv_Size);
+}
+
+on sysvar_update sysvar::DeviceControl::IPClient::SendEvent::TCPSend
+{
+  char tcpData[100];
+  long tcpHandle;
+  tcpHandle = @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle;
+  sysGetVariableString(sysvar::DeviceControl::IPClient::SendEvent::SendData,tcpData,elcount(tcpData));
+  SendTcpData(tcpData, tcpHandle);
+}
+
+on sysvar_update sysvar::DeviceControl::IPClient::SendEvent::TCPSend_Byte
+{
+  byte tcpData[100];
+  long tcpHandle;
+  long dataLength;
+  
+  dataLength = @this;
+  tcpHandle = @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle;
+  sysGetVariableData(sysvar::DeviceControl::IPClient::SendEvent::SendDataByte,tcpData,dataLength);
+  SendTcpData_BYTE(tcpData, dataLength, tcpHandle);
+}

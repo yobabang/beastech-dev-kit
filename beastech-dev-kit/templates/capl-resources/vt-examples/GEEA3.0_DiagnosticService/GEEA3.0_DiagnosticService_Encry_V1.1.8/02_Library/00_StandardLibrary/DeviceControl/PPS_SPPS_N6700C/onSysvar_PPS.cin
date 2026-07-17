@@ -1,0 +1,42 @@
+/*@!Encoding:936*/
+/* 勿修改此文件 */
+variables
+{
+
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::InitConfig
+{
+  testSupplyTextEvent("PPS_InitConfig");
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::settingVoltage
+{
+  float v;
+  v = @this;
+  PPS_setVoltage(v);
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::settingCurrent
+{
+  float c;
+  c = @this;
+  PPS_setCurrent(c);
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::getVoltage
+{
+//  PPS_getVoltage();
+}
+
+on sysvar_update sysvar::DeviceControl::PPS::output
+{
+  if(@this > 0)
+  {
+    PPS_OutputStsSet(PPS_On);
+  }
+  else
+  {
+    PPS_OutputStsSet(PPS_Off);
+  }
+}

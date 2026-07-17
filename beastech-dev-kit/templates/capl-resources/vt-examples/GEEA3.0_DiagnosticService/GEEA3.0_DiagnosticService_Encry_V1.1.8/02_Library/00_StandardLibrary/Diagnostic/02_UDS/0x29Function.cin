@@ -1,0 +1,119 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+variables
+{
+  
+}
+
+long GetCertificateAsBinaryByName(char certificateName[], byte certificateOutByte[], dword& certificateByteLength,char errorMsg[] )
+{
+  /**
+  qword objectFactory;
+  qword pkiAccess; 
+  qword signerCert;
+  qword encoder;
+  
+  int ret = 1;
+ 
+  byte trustChainCert[2000];
+  dword trustChainCertByteLength;
+ 
+  objectFactory = GetX509ObjectFactory();
+    
+  ret = X509ObjectFactory_createX509PkiAccess(objectFactory,pkiAccess);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"GetCertificateAsBinaryByName error: X509ObjectFactory_createX509PkiAccess(code %i)",ret);
+    return ret;
+  }
+        
+  ret = X509PkiAccess_LoadCertificateByName(pkiAccess, certificateName, signerCert);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"GetCertificateAsBinaryByName error: X509PkiAccess_LoadCertificateByName(code %i)",ret);
+    return ret;
+  }
+  
+  ret = X509ObjectFactory_createX509Encoder(objectFactory,encoder);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"GetCertificateAsBinaryByName error: X509ObjectFactory_createX509Encoder(code %i)",ret);
+    return ret;
+  }
+  
+  trustChainCertByteLength = elcount(trustChainCert);
+  ret = X509Encoder_EncodeCertificate(encoder,signerCert,trustChainCert,trustChainCertByteLength);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"GetCertificateAsBinaryByName error: X509Encoder_EncodeCertificate(code %i)",ret);
+    return ret;
+  }
+  memcpy(certificateOutByte,trustChainCert,elcount(certificateOutByte));
+  certificateByteLength = trustChainCertByteLength;
+  **/
+  return 1;
+}
+
+long CreateOwnership(char certificateName[], char hashFunction[], byte challenge[], dword challengeLength, byte ownerShip[], dword& ownerShipLength, char errorMsg[]) 
+{
+/*
+  qword objectFactory;
+  long ret = 1;
+  qword pkiAccessHandle;
+  qword signerHandle;
+  
+  ownerShipLength=elcount(ownerShip);
+  
+  objectFactory = GetX509ObjectFactory();
+  
+  ret = X509ObjectFactory_createX509PkiAccess(objectFactory,pkiAccessHandle);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"CreateOwnership error: X509ObjectFactory_createX509PkiAccess(code %i)",ret);
+    return 0;
+  }
+  
+  ret = X509PkiAccess_LoadSignerByName(pkiAccessHandle, certificateName, "SHA-256", signerHandle);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"CreateOwnership error: X509PkiAccess_LoadSignerByName(code %i)",ret);
+    return 0;
+  }
+  write("signerHandle=%d",signerHandle);
+  ret = X509Signer_CreateDataSignature(signerHandle, challenge, challengeLength, ownerShip, ownerShipLength);
+  if(ret != 1) // error
+  {
+    snprintf(errorMsg,elcount(errorMsg),"CreateOwnership error: X509Signer_CreateDataSignature(code %i)",ret);
+    return 0;
+  }
+*/
+  return 1;
+}
+
+void ByteArrayToHexString(byte byteArrray[], long length, char hexStringOut[])
+{
+/*
+  char byteString[4];
+  long i;
+
+  hexStringOut[0] = 0;
+  if (elcount(hexStringOut) >= length* 2)
+  {
+    for (i = 0; i < length; i++)
+    {
+      snprintf(byteString, elcount(byteString), "%02X", byteArrray[i]);
+      strncat(hexStringOut, byteString, elcount(hexStringOut));
+    }
+  }
+  else
+  {
+    write("ByteArrayToHexString: target array is too small: target: 0x%x source: 0x%x",elcount(hexStringOut),length* 2);
+  }
+*/
+}
+
+

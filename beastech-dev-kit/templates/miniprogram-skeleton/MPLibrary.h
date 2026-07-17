@@ -1,0 +1,154 @@
+﻿#ifndef _MPLIBRARY_H
+#define _MPLIBRARY_H
+#include "TSMasterBaseInclude.h"
+#pragma pack(push)
+#pragma pack(1)
+
+typedef s32(__cdecl* Ttest_init)(const pnative_int Handle);
+typedef s32(__cdecl* Ttest_set_report_name)(const native_int Handle, const char* reportName);
+typedef s32(__cdecl* Ttest_title)(const native_int Handle, const char* testgroup, const char* testcase, const char* image, const char* testpurpose);
+typedef s32(__cdecl* Ttest_step)(const native_int Handle, const char* step, const char* AMsg);
+typedef s32(__cdecl* Ttest_pass)(const native_int Handle, const char* step, const char* AMsg);
+typedef s32(__cdecl* Ttest_fail)(const native_int Handle, const char* step, const char* AMsg);
+typedef s32(__cdecl* Ttest_warning)(const native_int Handle, const char* step, const char* AMsg);
+typedef s32(__cdecl* Ttest_final)(const native_int Handle);
+typedef s32(__cdecl* Ttest_openissue)(const native_int Handle, const char* openissueinfo);
+typedef s32(__cdecl* Ttest_testinfo)(const native_int Handle, const char* ProductName, const char* HWVersion, const char* SWVersion, const char* DUTVersion, const char* TestEngineer, const char* ManufacturerName);
+typedef s32(__cdecl* Ttest_set_watermark)(const native_int Handle, const char* AWaterMark);
+typedef s32(__cdecl* Ttest_set_html_name_and_logo)(const native_int Handle, const char* AHtmlName, const char* ALogoName);
+typedef s32(__cdecl* Tsddb_to_json)(const char* sddbfile, const char* jsonfile);
+typedef struct _TTest_Report {
+    Ttest_init test_init;
+    Ttest_set_report_name test_set_report_name;
+    Ttest_title test_title;
+    Ttest_step test_step;
+    Ttest_pass test_pass;
+    Ttest_fail test_fail;
+    Ttest_warning test_warning;
+    Ttest_final test_final;
+    Ttest_openissue test_openissue;
+    Ttest_testinfo test_testinfo;
+    Ttest_set_watermark test_set_watermark;
+    Ttest_set_html_name_and_logo test_set_html_name_and_logo;
+    Tsddb_to_json sddb_to_json;
+} Ttest_report;
+extern Ttest_report  test_report;
+
+typedef s32 (__cdecl* Ttsdiag_can_create)(ps32 pDiagModuleIndex, u32 AChnIndex, u8 ASupportFDCAN, u8 AMaxDLC,u32 ARequestID, bool ARequestIDIsStd, u32 AResponseID, bool AResponseIDIsStd, u32 AFunctionID, bool AFunctionIDIsStd);
+typedef s32 (__cdecl* Ttsdiag_can_delete)(s32 ADiagModuleIndex);
+typedef s32 (__cdecl* Ttsdiag_can_delete_all)();
+typedef s32 (__cdecl* Ttsdiag_set_p2_timeout)(s32 ADiagModuleIndex, s32 ATimeMs);
+typedef s32 (__cdecl* Ttsdiag_set_p2_extended)(s32 ADiagModuleIndex, s32 ATimeMs);
+typedef s32 (__cdecl* Ttsdiag_set_s3_servertime)(s32 ADiagModuleIndex, s32 ATimeMs);
+typedef s32 (__cdecl* Ttsdiag_set_s3_clienttime)(s32 ADiagModuleIndex, s32 ATimeMs);
+typedef s32 (__cdecl* Ttstp_send_functional)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize);
+typedef s32 (__cdecl* Ttstp_send_request)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize);
+typedef s32 (__cdecl* Ttstp_request_and_get_response)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize, pu8 AResponseDataArray, ps32 AResponseDataSize);
+typedef s32 (__cdecl* Ttstp_request_and_get_response_functional)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize, pu8 AResponseDataArray, ps32 AResponseDataSize);
+typedef s32 (__cdecl* Ttstp_can_send_functional)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize);
+typedef s32 (__cdecl* Ttstp_can_send_request)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize);
+typedef s32 (__cdecl* Ttstp_can_request_and_get_response)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize, pu8 AResponseDataArray, ps32 AResponseDataSize);
+typedef s32 (__cdecl* Ttstp_can_request_and_get_response_functional)(s32 ADiagModuleIndex, pu8 AReqDataArray, s32 AReqDataSize, pu8 AResponseDataArray, ps32 AResponseDataSize);
+typedef s32 (__cdecl* Ttsdiag_session_control)(s32 ADiagModuleIndex, u8 ASubSession);
+typedef s32 (__cdecl* Ttsdiag_communication_control)(s32 ADiagModuleIndex, u8 AControlType);
+typedef s32 (__cdecl* Ttsdiag_routine_control)(s32 ADiagModuleIndex, u8 ARoutineControlType, u16 ARoutintID);
+typedef s32 (__cdecl* Ttsdiag_security_access_request_seed)(s32 ADiagModuleIndex, s32 ALevel, pu8 ARecSeed, ps32 ARecSeedSize);
+typedef s32 (__cdecl* Ttsdiag_security_access_send_key)(s32 ADiagModuleIndex, s32 ALevel, pu8 AKeyValue, s32 AKeySize);
+typedef s32 (__cdecl* Ttsdiag_request_download)(s32 ADiagModuleIndex, u32 AMemAddr, u32 AMemSize);
+typedef s32 (__cdecl* Ttsdiag_request_upload)(s32 ADiagModuleIndex, u32 AMemAddr, u32 AMemSize);
+typedef s32 (__cdecl* Ttsdiag_transfer_data)(s32 ADiagModuleIndex, pu8 ASourceData, s32 ADataSize, s32 AReqCase);
+typedef s32 (__cdecl* Ttsdiag_request_transfer_exit)(s32 ADiagModuleIndex);
+typedef s32 (__cdecl* Ttsdiag_write_data_by_identifier)(s32 ADiagModuleIndex, u16 ADataIdentifier, pu8 AWriteData, s32 AWriteDataSize);
+typedef s32 (__cdecl* Ttsdiag_read_data_by_identifier)(s32 ADiagModuleIndex, u16 ADataIdentifier, pu8 AReturnArray, ps32 AReturnArraySize);
+typedef s32 (__cdecl* Ttsdiag_can_session_control)(s32 ADiagModuleIndex, u8 ASubSession);
+typedef s32 (__cdecl* Ttsdiag_can_communication_control)(s32 ADiagModuleIndex, u8 AControlType);
+typedef s32 (__cdecl* Ttsdiag_can_routine_control)(s32 ADiagModuleIndex, u8 ARoutineControlType, u16 ARoutintID);
+typedef s32 (__cdecl* Ttsdiag_can_security_access_request_seed)(s32 ADiagModuleIndex, s32 ALevel, pu8 ARecSeed, ps32 ARecSeedSize);
+typedef s32 (__cdecl* Ttsdiag_can_security_access_send_key)(s32 ADiagModuleIndex, s32 ALevel, pu8 AKeyValue, s32 AKeySize);
+typedef s32 (__cdecl* Ttsdiag_can_request_download)(s32 ADiagModuleIndex, u32 AMemAddr, u32 AMemSize);
+typedef s32 (__cdecl* Ttsdiag_can_request_upload)(s32 ADiagModuleIndex, u32 AMemAddr, u32 AMemSize);
+typedef s32 (__cdecl* Ttsdiag_can_transfer_data)(s32 ADiagModuleIndex, pu8 ASourceData, s32 ADataSize, s32 AReqCase);
+typedef s32 (__cdecl* Ttsdiag_can_request_transfer_exit)(s32 ADiagModuleIndex);
+typedef s32 (__cdecl* Ttsdiag_can_write_data_by_identifier)(s32 ADiagModuleIndex, u16 ADataIdentifier, pu8 AWriteData, s32 AWriteDataSize);
+typedef s32 (__cdecl* Ttsdiag_can_read_data_by_identifier)(s32 ADiagModuleIndex, u16 ADataIdentifier, pu8 AReturnArray, ps32 AReturnArraySize);
+typedef s32 (__cdecl* Ttsdiag_set_is_valid)(s32 ADiagModuleIndex, bool AIsValid);
+typedef s32 (__cdecl* Ttsdiag_set_fdmode)(s32 ADiagModuleIndex, bool AFDMode, bool ASupportBRS, s32 AMaxDLC);
+typedef s32 (__cdecl* Ttsdiag_lin_create)(ps32 pDiagModuleIndex, u32 AChnIndex, u8 ANad);
+typedef s32 (__cdecl* Ttstp_lin_set_run_with_normal_schedule_table)(s32 ADiagModuleIndex, bool ADiagRunWithNormalScheduleTable);
+typedef s32 (__cdecl* Ttstp_lin_tp_para_default)(s32 ADiagModuleIndex, u16 AReqIntervalMs, u16 AResIntervalMs, u16 AResRetryTime);
+typedef s32 (__cdecl* Ttstp_lin_tp_para_special)(s32 ADiagModuleIndex, u16 AReqIntervalMs, u16 AResIntervalMs, u16 AResRetryTime);
+typedef s32 (__cdecl* Ttsdiag_doip_create)(ps32 pDiagModuleIndex, s32 AToolType, u32 AChnIndex, char* ATesterIP, u16 ATesterPort, char* ADUTIP, u16 ADUTPort, u32 ARequestID, u32 AResponseID, u32 AFunctionID);
+typedef s32 (__cdecl* Ttsdiag_doip_connect)(s32 ADiagModuleIndex);
+typedef s32 (__cdecl* Ttsdiag_doip_routing_activation)(s32 ADiagModuleIndex, u8 AActivateType, bool ASendOEMSpecificData, u32 AOEMSpecificData);
+typedef s32 (__cdecl* Ttsdiag_doip_disconnect)(s32 ADiagModuleIndex);
+typedef s32 (__cdecl* Ttsdiag_set_filled_byte)(s32 ADiagModuleIndex,u8 AFilledByte);
+typedef struct _TrtlUIDiagnostics {
+    Ttsdiag_can_create tsdiag_can_create;
+    Ttsdiag_can_delete tsdiag_can_delete;
+    Ttsdiag_can_delete_all tsdiag_can_delete_all;
+    Ttsdiag_set_p2_timeout tsdiag_set_p2_timeout;
+    Ttsdiag_set_p2_extended tsdiag_set_p2_extended;
+    Ttsdiag_set_s3_servertime tsdiag_set_s3_servertime;
+    Ttsdiag_set_s3_clienttime tsdiag_set_s3_clienttime;
+    Ttstp_send_functional tstp_send_functional;
+    Ttstp_send_request tstp_send_request;
+    Ttstp_request_and_get_response tstp_request_and_get_response;
+    Ttstp_request_and_get_response_functional tstp_request_and_get_response_functional;
+    Ttstp_can_send_functional tstp_can_send_functional;
+    Ttstp_can_send_request tstp_can_send_request;
+    Ttstp_can_request_and_get_response tstp_can_request_and_get_response;
+    Ttstp_can_request_and_get_response_functional tstp_can_request_and_get_response_functional;
+    Ttsdiag_session_control tsdiag_session_control;
+    Ttsdiag_communication_control tsdiag_communication_control;
+    Ttsdiag_routine_control tsdiag_routine_control;
+    Ttsdiag_security_access_request_seed tsdiag_security_access_request_seed;
+    Ttsdiag_security_access_send_key tsdiag_security_access_send_key;
+    Ttsdiag_request_download tsdiag_request_download;
+    Ttsdiag_request_upload tsdiag_request_upload;
+    Ttsdiag_transfer_data tsdiag_transfer_data;
+    Ttsdiag_request_transfer_exit tsdiag_request_transfer_exit;
+    Ttsdiag_write_data_by_identifier tsdiag_write_data_by_identifier;
+    Ttsdiag_read_data_by_identifier tsdiag_read_data_by_identifier;
+    Ttsdiag_can_session_control tsdiag_can_session_control;
+    Ttsdiag_can_communication_control tsdiag_can_communication_control;
+    Ttsdiag_can_routine_control tsdiag_can_routine_control;
+    Ttsdiag_can_security_access_request_seed tsdiag_can_security_access_request_seed;
+    Ttsdiag_can_security_access_send_key tsdiag_can_security_access_send_key;
+    Ttsdiag_can_request_download tsdiag_can_request_download;
+    Ttsdiag_can_request_upload tsdiag_can_request_upload;
+    Ttsdiag_can_transfer_data tsdiag_can_transfer_data;
+    Ttsdiag_can_request_transfer_exit tsdiag_can_request_transfer_exit;
+    Ttsdiag_can_write_data_by_identifier tsdiag_can_write_data_by_identifier;
+    Ttsdiag_can_read_data_by_identifier tsdiag_can_read_data_by_identifier;
+    Ttsdiag_set_is_valid tsdiag_set_is_valid;
+    Ttsdiag_set_fdmode tsdiag_set_fdmode;
+    Ttsdiag_lin_create tsdiag_lin_create;
+    Ttstp_lin_set_run_with_normal_schedule_table tstp_lin_set_run_with_normal_schedule_table;
+    Ttstp_lin_tp_para_default tstp_lin_tp_para_default;
+    Ttstp_lin_tp_para_special tstp_lin_tp_para_special;
+    Ttsdiag_doip_create tsdiag_doip_create;
+    Ttsdiag_doip_connect tsdiag_doip_connect;
+    Ttsdiag_doip_routing_activation tsdiag_doip_routing_activation;
+    Ttsdiag_doip_disconnect tsdiag_doip_disconnect;
+    Ttsdiag_set_filled_byte tsdiag_set_filled_byte;
+} TrtlUIDiagnostics;
+extern TrtlUIDiagnostics rtlUIDiagnostics;
+
+typedef s32 (__cdecl* Tvisa_query_device_list)(const char** ADeviceList);
+typedef s32 (__cdecl* Tvisa_create_device)(const s32* AID, const s32 AVISAType, const char* AConnectString);
+typedef s32 (__cdecl* Tvisa_send)(const s32 AID, const char* ASendCommand);
+typedef s32 (__cdecl* Tvisa_query)(const s32 AID, const char* ASendCommand, const char** AResult);
+typedef s32 (__cdecl* Tvisa_query_bin)(const s32 AID, const char* ASendCommand, const char* AResult, const int* ADataLength);
+typedef s32 (__cdecl* Tvisa_finalizelib)(void);
+typedef struct _TrtlTSInstrument {
+    Tvisa_query_device_list visa_query_device_list;
+    Tvisa_create_device visa_create_device;
+    Tvisa_send visa_send;
+    Tvisa_query visa_query;
+    Tvisa_query_bin visa_query_bin;
+    Tvisa_finalizelib visa_finalizelib;
+} TrtlTSInstrument;
+extern TrtlTSInstrument rtlTSInstrument;
+
+#pragma pack(pop)
+#endif

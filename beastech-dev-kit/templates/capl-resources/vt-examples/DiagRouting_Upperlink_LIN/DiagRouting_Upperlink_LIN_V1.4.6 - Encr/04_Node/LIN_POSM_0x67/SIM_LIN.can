@@ -1,0 +1,109 @@
+/*@!Encoding:936*/
+includes
+{ 
+  #include "..\UDS_Server.cin"
+  #include "LIN_TP.cin"
+  #pragma library("..\..\02_Library\02_DLL\capldll.dll")  
+
+}
+
+variables
+{ 
+  char SID2A_EcuNumber;
+  
+  struct ServiceVars  EcuResp[EcuSum][3]; 
+  char   ResponseCode = -1;
+  int  Response_flag;
+  int  Response_NRC78_flag;
+  msTimer Timer_GetResponseTask, Timer_ResponseTask, Resopnse_NRC78_Task;
+  
+  word DomainID = 2;//需要更改
+  word Ecuaddress = 0x1B67; //需要更改
+}
+
+
+on start
+{
+  byte i,j;  
+  //初始化connHandle
+  InitTP();
+  NRC78_Init();
+  EcuSN = GetEcuSN(Ecuaddress);
+  //初始化任务调度定时器
+  setTimer(Timer_GetResponseTask, 5);
+  setTimer(Timer_ResponseTask, 5);   //开启任务处理定时器
+  setTimer(Resopnse_NRC78_Task, 5);
+  @GW::Response_NRC78=0;
+  for(i=2;i<EcuSum;i++)    
+  {
+    if(EcuAddressTable[i].TargetID == Ecuaddress)
+    {
+      Response.Packet.SourceID = EcuAddressTable[i].TargetID;
+      Response.Packet.TargetID = EcuAddressTable[i].SourceID;
+    }
+  }
+}
+
+//-------------------------------------------------------------------------------
+
+/*
+**生成诊断应答任务
+*/
+on timer Timer_GetResponseTask
+{
+  int i;
+  qword Response_Indication;
+  qword Response_NRC;
+  Response_Indication = @GW::Response_Indication;
+  Response_NRC = @GW::Response_NRC78;
+  setTimer(Timer_GetResponseTask, 5);
+  
+  //获取响应任务
+  Response_flag = ((Response_Indication & (0x1<<EcuSN))>>EcuSN);
+  Response_NRC78_flag = ((Response_NRC & (0x1<<EcuSN))>>EcuSN); 
+}
+
+/*
+**发送诊断应答任务
+*/
+on timer Timer_ResponseTask
+{
+  int i;
+  
+  if(Response.Flag==1 && Response_flag==1)
+  {
+    ResponseDataToTester(Response.Packet);
+    Send_DiagResponse(Response.Packet);
+    Response.Flag = 0;
+  }
+  setTimer(Timer_ResponseTask, 5);
+}
+
+on linTransmError
+{
+  if ((this.MsgChannel == DomainID) && (this.ID == 0x3D))
+  {
+    @GW::Flag_3DSend[DomainID]=1;
+  } 
+}
+
+
+on timer Resopnse_NRC78_Task
+{
+  int i;
+  if(Response.Flag==1 && Response_NRC78_flag==1)
+  {
+    ResponseDataToTester(Response_NRC.Packet);
+    Send_DiagResponse(Response_NRC.Packet);  
+    Response.Flag = 0;
+  }
+  setTimer(Resopnse_NRC78_Task, 5);
+}
+
+on sysvar_update GW::Response_multsend
+{
+  if(@this==1)
+  {
+    Response.Flag=1;
+  }
+}

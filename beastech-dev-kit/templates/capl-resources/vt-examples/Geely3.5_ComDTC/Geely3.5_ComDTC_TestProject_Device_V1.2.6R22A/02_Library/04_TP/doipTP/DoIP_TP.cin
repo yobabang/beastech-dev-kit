@@ -1,0 +1,247 @@
+/*@!Encoding:936*/
+includes
+{
+  #if TOOL_MAJOR_VERSION > 11
+    #include "FindEdgeNodeIP_DTC.cin"
+  #else
+    #include "FindEdgeNodeIP_DTC_10.cin"
+  #endif
+}
+
+variables
+{
+  dword result;
+  dword interfaceIndex = 1;
+  dword ipv4Address;
+  dword netmask;
+  byte ipv6Address[16];
+  dword prefix;
+  dword TesterLogicAddress = 0x0E80;
+  dword ECULogicAddress = 0x1001;
+}
+
+void DoIP_TP_init()
+{
+  ECULogicAddress = gEdgeNodeLogicAddress;
+//  ipv4Address = ipGetAddressAsNumber("169.254.19.2");
+  ipv4Address = ipGetAddressAsNumber(gTesterIP);
+  netmask = ipGetAddressAsNumber("255.255.0.0");
+  result= ipAddAdapterAddress(interfaceIndex, ipv4Address, netmask);
+  if( result != 0 )
+  {
+    write( "IpAddAdapterAddress failed, error code %d, last error %d", result, IpGetLastError());
+  }
+  
+  DoIP_SetProtocol(2);   //1: Draft version (2010)
+//  DoIP_SetLocalIPaddress("169.254.19.2");
+//  DoIP_SetVehicleAddress("169.254.19.1");
+  DoIP_SetLocalIPaddress(gTesterIP);
+  DoIP_SetVehicleAddress(gEdgeNodeIP);
+  
+  DoIP_SetTesterLogicalAddress( TesterLogicAddress);
+  DoIP_SetVehicleLogicalAddress( ECULogicAddress);
+  DoIP_SetBroadcastIPaddress("169.254.255.255"); 
+  DoIP_SetVehicleTcpPort(13400);
+  DoIP_SetVehicleUdpPort(13400);
+  DoIP_SetReconnectInterval( 200, 150);
+  DoIP_SetReconnectDelay( 50); 
+  DoIP_ConfigureRoutingActivationRequest(1,0x00,0x00000000);
+  DoIP_SetDiagnosticMessageTimeout(50);//P2Server
+  DoIP_SetControlTimeout(2000);
+//  DoIP_SetIdentificationRequestVIN( "VECT0RVEH1CLE1234");
+  
+  DoIP_ConnectToVehicle();
+  testwaitfortimeout(500);
+}
+
+
+Void DoIP_DataInd( byte buffer[], dword count, dword address, dword senderAddress) 
+{
+  TpRxLength=count;
+  memcpy( TpRxData, buffer, count);
+  TestSupplyTextEvent("TPreciveData");
+  write( "Received %d byte  %x ..." , elcount(buffer), buffer[0]);
+}
+
+Void DoIP_DataCon( dword count) 
+{
+  writelineex( 0, 2, "Tester send Data Num %d", count);
+}
+
+void DoIP_NRC_Info(byte nrc)
+{
+  switch(nrc)
+  {
+    case 0x11:
+      testStep("NRC","NRC(0x%2x) serviceNotSupported",nrc);
+      break;
+    case 0x12:
+      testStep("NRC","NRC(0x%2x) subFunctionNotSupported",nrc);
+      break;
+    case 0x13:
+      testStep("NRC","NRC(0x%2x) incorrectMessageLength",nrc);
+      break;
+    case 0x14:
+      testStep("NRC","NRC(0x%2x) responseTooLong",nrc);
+      break;
+    case 0x22:
+      testStep("NRC","NRC(0x%2x) conditionsNotCorrect",nrc);
+      break;
+    case 0x24:
+      testStep("NRC","NRC(0x%2x) requestSequenceError",nrc);
+      break;
+    case 0x31:
+      testStep("NRC","NRC(0x%2x) requestOutOfRange",nrc);
+      break;
+    case 0x33:
+      testStep("NRC","NRC(0x%2x) securityAccessDenied",nrc);
+      break;
+    case 0x35:
+      testStep("NRC","NRC(0x%2x) invalidKey",nrc);
+      break;
+    case 0x36:
+      testStep("NRC","NRC(0x%2x) exceedNumberOfAttempts",nrc);
+      break;
+    case 0x37:
+      testStep("NRC","NRC(0x%2x) requiredTimeDelayNotExpired",nrc);
+      break;
+    case 0x70:
+      testStep("NRC","NRC(0x%2x) uploadDownloadNotAccepted",nrc);
+      break;
+    case 0x71:
+      testStep("NRC","NRC(0x%2x) transferDataSuspended",nrc);
+      break;
+    case 0x72:
+      testStep("NRC","NRC(0x%2x) generalProgrammingFailure",nrc);
+      break;
+    case 0x73:
+      testStep("NRC","NRC(0x%2x) wrongBlockSequenceCounter",nrc);
+      break;
+    case 0x78:
+      testStep("NRC","NRC(0x%2x) requestCorrectlyReceived-ResponsePending",nrc);
+      break;
+    case 0x7e:
+      testStep("NRC","NRC(0x%2x) subfunctionNotSupportinActiveSession-ResponsePending",nrc);
+      break;
+    case 0x7f:
+      testStep("NRC","NRC(0x%2x) serviceNotSupportedInActiveSession",nrc);
+      break;
+    case 0x83:
+      testStep("NRC","NRC(0x%2x) engineIsRunning",nrc);
+      break;
+    case 0x84:
+      testStep("NRC","NRC(0x%2x) engineIsNotRunning",nrc);
+      break;
+    case 0x85:
+      testStep("NRC","NRC(0x%2x) engineRunTimeTooLow",nrc);
+      break;
+    case 0x92:
+      testStep("NRC","NRC(0x%2x) voltageTooHigh",nrc);
+      break;
+    case 0x93:
+      testStep("NRC","NRC(0x%2x) voltageTooLow",nrc);
+      break;
+    default:
+      testStepFail("NRC","NRC(0x%2x) Undefined Reason",nrc);
+      break;
+  }
+}
+
+enum ResponseState DoIP_ECU_Response(int P2)
+{
+  if(testWaitForTextEvent("TPreciveData",P2)==1)
+  {
+    if(TpRxData[0]==0x7f)
+    {
+      switch(TpRxData[2])
+      {
+        case 0x78:
+          return ECU_Response(5000);
+        default:
+        //  NRC_Info(TpRxData[2]);
+          break;
+      }
+      return Neg;
+    }
+    else
+      return Pos;
+  }
+  else
+  {
+    return Timeout;
+  }
+}
+void DoIP_ErrorInd( int error)
+{
+  switch(error)
+  {
+    case 0:
+      writelineex( 0, 2, "No vehicle responded to the identification request");
+      break;
+    case 1:
+      writelineex( 0, 2, "Connection to vehicle failed");
+      break;
+    case 2:
+      writelineex( 0, 2, "Routing Activation failed ");
+      break;
+    case 3:
+      writelineex( 0, 2, "A negative ACK Code was received for a Diagnostic Message ");
+      break;
+    case 4:
+      writelineex( 0, 2, "No Ack for diagnostics message received  ");
+      break;
+    case 5:
+      writelineex( 0, 2, "A Generic DoIP header negative acknowledge was received ");
+      break;
+    default:
+      writelineex( 0, 2, "Reserved ");
+      break;
+  }
+}
+
+void _DoIP_VehicleConnectedInd()
+{
+  TestSupplyTextEvent("VehicleConnected");
+}
+
+int DoIP_TP_Send(byte Data[],enum AddressMode Mode)
+{
+  if(Mode==Physical)
+  {
+    DoIP_DataReq( Data, elCount(Data), ECULogicAddress, TesterLogicAddress);
+    write("Tester send data %x %x %d",Data[0],Data[1], elCount(Data));
+  }
+  else
+  {  
+    DoIP_DataReq( Data, elCount(Data), 0x1FFF, 0x0E80);
+  }
+  return 1;
+}
+
+int DoIP_TP_Send(byte Data[],long length,enum AddressMode Mode)
+{
+  if(length>elcount(Data))
+  {
+    if(Mode==Physical)
+    {
+      DoIP_DataReq( Data, elCount(Data), ECULogicAddress, TesterLogicAddress);
+    }
+    else
+    {  
+      DoIP_DataReq( Data, elCount(Data), 0x1FFF, 0x0E80);
+    }
+    write("Worning tp send data size small than given length");
+  }
+  else
+  {
+    if(Mode==0)
+    {
+      DoIP_DataReq( Data, length, ECULogicAddress, TesterLogicAddress);
+    }
+    else
+    {  
+      DoIP_DataReq( Data, length, 0x1FFF, 0x0E80);
+    }
+  }
+  return 1;;
+}

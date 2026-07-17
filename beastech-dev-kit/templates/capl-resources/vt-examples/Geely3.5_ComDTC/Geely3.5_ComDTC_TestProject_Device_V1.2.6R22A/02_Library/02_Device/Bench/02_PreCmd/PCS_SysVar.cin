@@ -1,0 +1,58 @@
+/*@!Encoding:936*/
+
+
+includes
+{
+  #pragma library("dll\capldll.dll")
+}
+
+variables
+{
+  
+}
+
+void PCS_InitConfig()
+{
+  
+}
+
+double PCS_ReceiveDataStg(char Src[])
+{
+  char SelFront[100]="<Res scr=\"PCS\" pyid=\"-\"><!\\[CDATA\\[";
+  char SelBack[100]="\\]\\]></Res>";
+  char SubSrc_String[100]="";
+  double SubSrc_Double;
+  str_replace_regex(Src,SelFront,"");
+//  testWaitForTimeout(10);
+  str_replace_regex(Src,SelBack,"");
+//  testWaitForTimeout(10);
+  strncpy(SubSrc_String,Src,strlen(Src)-3);
+  str_replace_regex(SubSrc_String,"E","e");
+//  testWaitForTimeout(10);
+  strtod(SubSrc_String,SubSrc_Double);
+  return(SubSrc_Double);
+}
+
+//double PCS_MaxVoltMeasure()
+//{
+//  double Vmax;
+//  OSC_CHAnnel1_Vmax_Meas();
+//  TestWaitForTimeout(500);
+//  OSC_CHAnnel1_Vmax_Result();
+//  TestWaitForTimeout(500);
+//  Vmax=PCS_ReceiveDataStg(PCS_RecvData);
+//  return(Vmax);
+//}
+
+//double PCS_MinVoltMeasure()
+//{
+//  double Vmin;
+//  OSC_CHAnnel1_Vmin_Meas();
+//  
+//  TestWaitForTimeout(500);
+//  OSC_CHAnnel1_Vmin_Result();
+//  TestWaitForTimeout(500);
+//  Vmin=PCS_ReceiveDataStg(PCS_RecvData);
+//  return(Vmin);
+//}
+

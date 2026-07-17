@@ -1,0 +1,23 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_PSRB.cin"
+}
+
+variables
+{
+  
+}
+
+void MainTest ()
+{
+  PSRB();
+}
+
+testcase PSRB()
+{
+  while(1)
+  {
+    testWaitForTimeout(1000000);
+  }
+}

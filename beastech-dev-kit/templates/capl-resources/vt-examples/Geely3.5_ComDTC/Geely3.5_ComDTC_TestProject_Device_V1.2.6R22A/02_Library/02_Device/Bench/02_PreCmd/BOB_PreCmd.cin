@@ -1,0 +1,357 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+variables
+{
+  
+  char BOBID[10]="";
+  char cmd[300]="";
+  char cmd2[300]="";
+  char cmd3[300]="";
+  char cmd4[300]="";
+  
+  
+  byte BOB_SendData[13] = {0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} ;
+
+  enum OperName 
+  {
+   BN_OPEN,BN_RESET,CAN1_ALL,CAN1_RESET,LIN_ALL,LIN_RESET,COM_ALL,COM_RESET,ALL_RESET,//BN_Open短路，
+   BN0_OPEN,BN1_OPEN,BN2_OPEN,BN3_OPEN,ECU_GND_OPEN,
+   BN0_OPEN_R,BN1_OPEN_R,BN2_OPEN_R,BN3_OPEN_R,ECU_GND_OPEN_R,
+   CAN1H_OPEN,CAN1H_BAT,CAN1H_GND,CAN1H_CAN1L,CAN1L_OPEN,CAN1L_BAT,CAN1L_GND,
+   CAN1H_OPEN_R,CAN1H_BAT_R,CAN1H_GND_R,CAN1H_CAN1L_R,CAN1L_OPEN_R,CAN1L_BAT_R,CAN1L_GND_R,
+   LIN_OPEN,LIN_BAT,LIN_GND,
+   LIN_OPEN_R,LIN_BAT_R,LIN_GND_R,
+   OFFSET_GND_EN,
+   OFFSET_GND_Dis,
+   KL30_KL15_OPEN,
+   KL30_KL15_OPEN_R,
+   CAN1H_CAN1L_OPEN,
+   CAN1H_CAN1L_OPEN_R,
+   CAN2H_CAN2L_OPEN,
+   CAN2H_CAN2L_OPEN_R,
+   CAN2H_OPEN,CAN2H_BAT,CAN2H_GND,CAN2H_CAN2L,CAN2L_OPEN,CAN2L_BAT,CAN2L_GND,
+   CAN2H_OPEN_R,CAN2H_BAT_R,CAN2H_GND_R,CAN2H_CAN2L_R,CAN2L_OPEN_R,CAN2L_BAT_R,CAN2L_GND_R
+  };
+  
+  qword OperCmd[61]=
+  {
+    0x0437370000000000LL,0x0400370000000000LL,0x017F000000000000LL,0x0100000000000000LL,0x0307000000000000LL,0x0300000000000000LL,0x027F000000000000LL,0x0200000000000000LL,0x0500000000000000LL,
+    0x0401010000000000LL,0x0404040000000000LL,0x0402020000000000LL,0x0420200000000000LL,0x0410100000000000LL,
+    0x0400010000000000LL,0x0400040000000000LL,0x0400020000000000LL,0x0400200000000000LL,0x0400100000000000LL,
+    0x0101000000000000LL,0x0104000000000000LL,0x0110000000000000LL,0x0140000000000000LL,0x0102000000000000LL,0x0108000000000000LL,0x0120000000000000LL,
+    0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,
+    0x0301000000000000LL,0x0302000000000000LL,0x0304000000000000LL,
+    0x0300000000000000LL,0x0300000000000000LL,0x0300000000000000LL,
+    0x0408080000000000LL,
+    0x0400080000000000LL,
+    0x0405050000000000LL,
+    0x0400050000000000LL,
+    0x0103000000000000LL,
+    0x0100000000000000LL,
+    0x0203000000000000LL,
+    0x0200000000000000LL,
+    0x0201000000000000LL,0x0204000000000000LL,0x0210000000000000LL,0x0240000000000000LL,0x0202000000000000LL,0x0208000000000000LL,0x0220000000000000LL,
+    0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL
+  };
+}
+
+
+
+void ALL_BOB_Reset()
+{
+  byte BOB_SendData[13] = {0x08,0x00,0x00,0x07,0xfe,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  SendTcpData_BYTE(BOB_SendData,TEH_CAN0_Socket);
+}
+
+void BOBControl(char ECUName[],enum OperName opername)
+{
+  char cmd[300];
+  char BOB_ID[10]="";
+  dword BOBID;
+  long BOB_ID1;
+  long BOB_ID2;
+  long BOB_ID3;
+  long BOB_ID4;
+ 
+  
+
+//  if(strncmp(ECUName,"GW",strlen(ECUName))==0)
+//  {
+//    if(index>8&&index!=17)
+//      strncpy(BOB_ID,"0001",10);
+//    else
+//      strncpy(BOB_ID,"0002",10);
+//  }
+     
+  //CAN1-Body CAN（车身）
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0301",10);
+  if(strncmp(ECUName,"DDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0302",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0303",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0304",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0305",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0306",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0307",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0308",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0309",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030a",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030b",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030c",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030d",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030e",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030f",10);
+  if(strncmp(ECUName,"TEM2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0310",10);
+  if(strncmp(ECUName,"TEM2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0311",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0216",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0201",10);
+  if(strncmp(ECUName,"TBOX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0207",10);
+  
+  //CAN2-Propulsion CAN(动力)
+  if(strncmp(ECUName,"HCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0211",10);
+  if(strncmp(ECUName,"HCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"021A",10);
+  if(strncmp(ECUName,"MCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0401",10);
+  if(strncmp(ECUName,"MCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0402",10);
+  if(strncmp(ECUName,"BMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0403",10);
+  if(strncmp(ECUName,"DCDC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0404",10);
+  if(strncmp(ECUName,"RMU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0405",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0406",10);
+  if(strncmp(ECUName,"RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0407",10);
+  if(strncmp(ECUName,"RESERVED2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0408",10);
+  if(strncmp(ECUName,"RESERVED3",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0409",10);
+  if(strncmp(ECUName,"RESERVED4",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040A",10);
+  if(strncmp(ECUName,"RESERVED5",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040B",10);
+  if(strncmp(ECUName,"RESERVED6",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040C",10);
+  if(strncmp(ECUName,"RESERVED7",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040D",10);
+  if(strncmp(ECUName,"RESERVED8",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040E",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040F",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0410",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0411",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0412",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0201",10);
+  if(strncmp(ECUName,"RESERVED9",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0207",10);
+  
+  
+  //CAN3-Passive Safety CAN(被动安全)
+  if(strncmp(ECUName,"BCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0501",10);
+  if(strncmp(ECUName,"AC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0502",10);
+  if(strncmp(ECUName,"PEPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0503",10);
+  if(strncmp(ECUName,"DVR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0504",10);
+  if(strncmp(ECUName,"RRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0505",10);
+  if(strncmp(ECUName,"AVM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0506",10);
+  if(strncmp(ECUName,"IP",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0507",10);
+  if(strncmp(ECUName,"HU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0202",10);
+  if(strncmp(ECUName,"ESCL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0208",10);
+  if(strncmp(ECUName,"FP",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0217",10);
+ 
+  //CAN4-Connectivity CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0202",10);
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0208",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"021A",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051b",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051c",10);
+  
+
+  //CAN5-Chassis CAN2
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0212",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020f",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0518",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0519",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051A",10);
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0203",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0209",10);
+  
+  //CAN6-Chassis CAN1
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050c",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050d",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050e",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050e",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0513",10);
+  if(strncmp(ECUName,"LCDAL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0514",10);
+  if(strncmp(ECUName,"LCDAR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0203",10);
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0209",10);
+  if(strncmp(ECUName,"PBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0212",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0217",10);
+  
+  //CAN7-BodyExposed CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051f",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0521",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0522",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0523",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0524",10);
+  if(strncmp(ECUName,"LCDAL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0216",10);
+  if(strncmp(ECUName,"LCDAR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0204",10);
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020A",10);
+  
+    //CAN12-AD Redundancy CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0511",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0512",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0206",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020c",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0215",10);
+  if(strncmp(ECUName,"LCDAL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020f",10);
+  
+  
+    //CAN13-Diagnostic CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"021B",10);
+  
+  
+     //CAN14-IHU Private CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020D",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020E",10);
+ 
+  
+  //CAN15-FLC Private CAN
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0213",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0214",10);
+ 
+  
+  //CAN16-SODL_SOLR CANFD
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051D",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051e",10);
+  
+  
+   //LIN1
+  if(strncmp(ECUName,"TCU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0601",10);
+  if(strncmp(ECUName,"ACC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0602",10);
+  if(strncmp(ECUName,"EMS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0603",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0604",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0605",10);
+  if(strncmp(ECUName,"LCDAL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0606",10);
+  if(strncmp(ECUName,"LCDAR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0607",10);
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0608",10);
+  if(strncmp(ECUName,"PBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0609",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060A",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+   strncpy(BOB_ID,"060B",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060C",10);
+   if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060D",10);
+   if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060E",10);
+   if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060F",10);
+  
+  BOBID=atol(BOB_ID);
+  BOB_ID1 = BOBID/1000;
+  
+  BOB_ID2 = (BOBID%1000)/100; 
+  BOB_ID3 = (BOBID%100)/10;  
+  BOB_ID4 = BOBID%10;  
+  BOBID =  BOB_ID1*16*16*16+BOB_ID2*16*16+BOB_ID3*16+BOB_ID4;
+  
+  BOB_SendData[3] =(byte)(BOBID>>8);
+  BOB_SendData[4] =(byte)BOBID;
+  BOB_SendData[5] = (byte)(OperCmd[opername]>>56);
+  BOB_SendData[6] = (byte)(OperCmd[opername]>>48);
+  BOB_SendData[7] = (byte)(OperCmd[opername]>>40);
+  SendTcpData_BYTE(BOB_SendData,TEH_CAN0_Socket);
+
+}

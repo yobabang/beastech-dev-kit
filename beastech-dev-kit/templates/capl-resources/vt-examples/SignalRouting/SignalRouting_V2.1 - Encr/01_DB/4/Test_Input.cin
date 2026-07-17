@@ -1,0 +1,1397 @@
+
+variables
+{   
+    //由basetech测试配置生成，非code-factory生成
+    
+    //本次生成选中的目标网段为：['ZCU_CANFD2', 'ZCUD_LIN3']
+    //本次生成被过滤的源网段为：['CEM_LIN1', 'CEM_LIN2']
+    
+    const int Event = 1002;
+    char NodeName[20] = "ZCUD5";
+    LinFrame ZCUD_LIN1.0x36 des_DdsZCUD_Lin1Fr01={dlc=7};
+    LinFrame ZCUD_LIN1.0x39 des_AdcZcud_Lin1Fr02={dlc=4};
+    LinFrame ZCUD_LIN1.0x13 des_MdmZCUD_Lin1Fr01={dlc=2};
+    LinFrame ZCUD_LIN1.0x3b des_AdcZcud_Lin1Fr01={dlc=8};
+    LinFrame ZCUD_LIN1.0x1 des_MmdZCUD_Lin1Fr01={dlc=4};
+    LinFrame CEM_LIN3.0x20 des_OhcCem_Lin3Fr01={dlc=7};
+    LinFrame CEM_LIN3.0x23 des_Srm2Cem_Lin3Fr02={dlc=8};
+    LinFrame CEM_LIN3.0x8 des_SigCem_Lin3Fr01={dlc=7};
+    LinFrame CEM_LIN3.0x11 des_Srm2Cem_Lin3Fr01={dlc=7};
+    LinFrame CEM_LIN3.0x1a des_AwmCem_Lin3Fr01={dlc=3};
+    LinFrame CEM_LIN3.0x16 des_OhcCem_Lin3Fr05={dlc=2};
+    LinFrame CEM_LIN3.0xe des_Awm2Cem_Lin3SertNrFr01={dlc=4};
+    LinFrame CEM_LIN3.0x1c des_OhcCem_Lin3Fr06={dlc=7};
+    LinFrame CEM_LIN3.0x14 des_OhcCem_Lin3Fr04={dlc=1};
+    LinFrame CEM_LIN3.0x6 des_OhcCem_Lin3Fr10={dlc=7};
+    LinFrame CEM_LIN6.0x28 des_BmsCem_Lin6Fr06={dlc=7};
+    LinFrame CEM_LIN6.0x20 des_BmsCem_Lin6Fr10={dlc=7};
+    LinFrame CEM_LIN6.0x2 des_BmsCem_Lin6Fr01={dlc=8};
+    LinFrame CEM_LIN6.0x29 des_BmsCem_Lin6Fr12={dlc=8};
+    LinFrame CEM_LIN6.0x16 des_FmdmCem_Lin6Fr01={dlc=1};
+    LinFrame CEM_LIN6.0x2a des_BmsCem_Lin6Fr13={dlc=8};
+    LinFrame CEM_LIN6.0x18 des_FdmlCem_Lin6Fr01={dlc=1};
+    LinFrame CEM_LIN6.0x3 des_BmsCem_Lin6Fr02={dlc=8};
+    LinFrame CEM_LIN6.0x26 des_BmsCem_Lin6Fr16={dlc=8};
+    LinFrame CEM_LIN6.0x4 des_BmsCem_Lin6Fr03={dlc=7};
+    LinFrame CEM_LIN6.0x7 des_BmsCem_Lin6Fr08={dlc=8};
+    LinFrame CEM_LIN6.0x21 des_BmsCem_Lin6Fr11={dlc=4};
+    LinFrame CEM_LIN6.0x9 des_BmsCem_Lin6Fr04={dlc=7};
+    LinFrame CEM_LIN6.0x6 des_BmsCem_Lin6Fr05={dlc=7};
+    LinFrame CEM_LIN6.0x10 des_BmsCem_Lin6Fr09={dlc=8};
+    LinFrame CEM_LIN6.0x8 des_BmsCem_Lin6Fr07={dlc=8};
+    LinFrame CEM_LIN6.0x24 des_BmsCem_Lin6Fr14={dlc=8};
+    LinFrame CEM_LIN6.0x25 des_BmsCem_Lin6Fr15={dlc=8};
+    LinFrame CEM_LIN6.0x27 des_BmsCem_Lin6Fr17={dlc=8};
+    LinFrame CEM_LIN4.0xc des_FtksCem_Lin4Fr01={dlc=8};
+    LinFrame CEM_LIN4.0x20 des_LsmCem_Lin4Fr01={dlc=5};
+    LinFrame ZCUD_LIN2.0x1 des_HcmlZcud_Lin2Fr01={dlc=7};
+    LinFrame ZCUD_LIN2.0x2 des_HcmrZcud_Lin2Fr01={dlc=7};
+    LinFrame ZCUD_LIN3.0x20 des_MmrlZcud_Lin3Fr01={dlc=8};
+    LinFrame ZCUD_LIN3.0x13 des_Lrss3Zcud_Lin3Fr01={dlc=7};
+    LinFrame ZCUD_LIN3.0x27 des_MrlmlZcud_Lin3Fr01={dlc=2};
+    LinFrame ZCUD_LIN3.0x23 des_MmrlZcud_Lin3SertNrFr01={dlc=4};
+    LinFrame ZCUD_LIN3.0x26 des_MrlmlZcud_Lin3SertNrFr01={dlc=4};
+    LinFrame ZCUD_LIN3.0x5 des_SrsmZcud_Lin3Fr01={dlc=7};
+    LinFrame CEM_LIN7.0x11 des_PosmCem_Lin7Fr01={dlc=8};
+    LinFrame CEM_LIN7.0xf des_TCSCem_Lin7Fr03={dlc=8};
+    LinFrame CEM_LIN7.0xa des_TCSCem_Lin7Fr02={dlc=8};
+    Const int  Num_LIN=47;
+
+    message 0x1 HighPriority_Msg1= {FDF=1,BRS=1,dlc = 15};
+    message 0x7FE LowPriority_Msg1= {FDF=1,BRS=1,dlc = 15};
+    message PropulsionCAN.0x000 des_PropulsionCAN_0x000;
+    message ChassisCAN1.0x000 des_ChassisCAN1_0x000;
+    message ZCU_CANFD1.0x000 des_ZCU_CANFD1_0x000;
+    message ZCUD_CANFD3.0x000 des_ZCUD_CANFD3_0x000;
+    message ChassisCANFD2.0x000 des_ChassisCANFD2_0x000;
+    message ZCUD_CAN1.0x000 des_ZCUD_CAN1_0x000;
+    message ZCUD_CANFD4.0x000 des_ZCUD_CANFD4_0x000;
+    message ZCU_CANFD2.0x000 des_ZCU_CANFD2_0x000;
+    message BodyExposedCAN.0x000 des_BodyExposedCAN_0x000;
+    const int network_quantity=18;
+    dword SignaleRoutingTime=5;
+    int network_num;
+    int Encoding=2;
+
+    struct gFrame{
+    char des_frame[100];
+    int des_cyc;
+    int des_id;   
+    int des_slotid_fr;
+    int des_basecycle_fr;
+    int des_repetition_fr;
+    int des_dlc;
+  };
+  
+    //data for Signal routing message check
+    struct Demo_signal_frame{ 
+    char des_can[100];
+    char networktype[20];
+    int SumAll;
+    struct gFrame GFrame[500];
+  };
+        
+    struct Demo_signal_frame test_sig_frame[network_quantity]={
+
+   {
+       /*des_channels*/  "ZCUD_LIN1",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN3",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN2",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN6",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN1",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN4",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCUD_LIN2",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCUD_LIN3",
+       /*networktype*/  "LIN",
+       1,
+       {
+           {/*des_frame*/"ZcudZcud_Lin3Fr01",   /*des_cyc*/1000,   /*des_id*/9,   /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,   /*des_repetition_fr*/0,  /*des_dlc*/7    
+           }
+       }
+   },
+   {
+       /*des_channels*/  "CEM_LIN7",
+       /*networktype*/  "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "PropulsionCAN",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ChassisCAN1",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCU_CANFD1",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCUD_CANFD3",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ChassisCANFD2",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCUD_CAN1",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCUD_CANFD4",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_channels*/  "ZCU_CANFD2",
+       /*networktype*/  "CAN",
+       4,
+       {
+           {/*des_frame*/"ZCUDZCUCANFD2Fr17",   /*des_cyc*/50,   /*des_id*/0x1e5,   /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,   /*des_repetition_fr*/0,  /*des_dlc*/64    
+           },
+           {/*des_frame*/"ZCUDZCUCANFD2Fr68",   /*des_cyc*/30,   /*des_id*/0x141,   /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,   /*des_repetition_fr*/0,  /*des_dlc*/64    
+           },
+           {/*des_frame*/"ZCUDZCUCANFD2Fr75",   /*des_cyc*/50,   /*des_id*/0x1cf,   /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,   /*des_repetition_fr*/0,  /*des_dlc*/64    
+           },
+           {/*des_frame*/"ZCUDZCUCANFD2Fr25",   /*des_cyc*/60,   /*des_id*/0x220,   /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,   /*des_repetition_fr*/0,  /*des_dlc*/64    
+           }
+       }
+   },
+   {
+       /*des_channels*/  "BodyExposedCAN",
+       /*networktype*/  "CAN",
+       0,
+       {
+           0
+       }
+   }
+};//data for Signal routing test
+  struct gSignal{
+    char sig_name[100];
+    char scr_can[100];
+    char scr_network_type[100];
+    int scr_slotid_fr;
+    int scr_basecycle_fr;
+    int scr_repetition_fr;
+    int scr_startbit;
+    int sig_length;
+    int des_slotid_fr;
+    int des_basecycle_fr;
+    int des_repetition_fr;
+    int des_startbit;
+    int scr_cyc;
+    int scr_id;
+    int scr_dlc;
+    int des_cyc;
+    int des_id;  
+    int updatebit; //source
+    int des_updatebit;
+    qword InitValue; 
+  };
+  
+ //data for Signal routing test
+  struct Demo_signal{ 
+    char des_can[100]; 
+    char des_networktype[100];
+    int sum;
+    struct gSignal GSignal[4000];
+  };
+    
+  struct Demo_signal test_sig[network_quantity]={
+   {
+       /*des_can*/ "ZCUD_LIN1",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN3",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN2",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN6",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN1",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN4",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_LIN2",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_LIN3",
+       /*networktype*/ "LIN",
+       5,
+       {
+           {   /*sig_name*/"isSeatMassgFctRowSecRiMassgProg_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/239,   /*sig_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/6,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_cyc*/1000,   /*des_id*/9, /*src_updatebit*/233,   /*des_updatebit*/1000,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgFctRowSecRiOnOff_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/234,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/11,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_cyc*/1000,   /*des_id*/9, /*src_updatebit*/233,   /*des_updatebit*/1000,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgFctRowSecRiMassgInten_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/236,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/9,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_cyc*/1000,   /*des_id*/9, /*src_updatebit*/233,   /*des_updatebit*/1000,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatHeatgIllmnLvl_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/15,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/38,    /*src_cyc*/101,  /*src_id*/0x205,   /*src_dlc*/64,   /*des_cyc*/1000,   /*des_id*/9, /*src_updatebit*/13,   /*des_updatebit*/1000,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatVentnIllmnLvl_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/12,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/40,    /*src_cyc*/101,  /*src_id*/0x205,   /*src_dlc*/64,   /*des_cyc*/1000,   /*des_id*/9, /*src_updatebit*/10,   /*des_updatebit*/1000,      /*initvalue*/0         }
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN7",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "PropulsionCAN",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ChassisCAN1",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCU_CANFD1",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CANFD3",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ChassisCANFD2",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CAN1",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CANFD4",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCU_CANFD2",
+       /*networktype*/ "CANFD",
+       30,
+       {
+           {   /*sig_name*/"isSeatMassgBackBlstrFailrRowSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/0,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/201,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/200,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowLeSeatVentnBtn_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/9,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/95,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/94,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecLeLieDwnSwt_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/21,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/35,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/33,      /*initvalue*/1         },
+           {   /*sig_name*/"isSecRowLeSeatHeatgBtn_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/7,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/81,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/80,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatVentnBtn2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/17,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/335,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/334,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatUpLumPosPercSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/20,   /*sig_length*/7,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/487,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/480,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatHeatgBtn2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/15,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/323,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/322,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgCmftHwFailrRowSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/1,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/282,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/281,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt1_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/0,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/223,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt5_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/4,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/219,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/1,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/222,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt3_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/2,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/221,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt4_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/3,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/220,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachHwFltSecLeTmrFlt_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/5,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/218,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/217,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgMachFltForEcuSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/6,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/161,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_cyc*/50,   /*des_id*/0x1cf, /*src_updatebit*/1000,   /*des_updatebit*/160,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgCushBlstrFailrRowSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/2,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/309,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/308,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgFltStsForEcuRowSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/3,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/313,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/312,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatVentnBtnStkErr2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/18,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/333,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/332,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecRiMassgFctSwt2MassgProgTyp_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/21,   /*sig_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/47,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/41,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecRiMassgFctSwt2MassgInten_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/24,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/44,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/41,      /*initvalue*/3         },
+           {   /*sig_name*/"isRowSecRiMassgFctSwt2Status_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/26,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/42,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/41,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecLeMassgFctSwtStatus_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/6,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/26,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/25,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecLeMassgFctSwtMassgProgTyp_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/1,   /*sig_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/31,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/25,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecLeMassgFctSwtMassgInten_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/4,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/28,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/25,      /*initvalue*/3         },
+           {   /*sig_name*/"isSeatDownLumPosPercSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/6,   /*sig_length*/7,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/455,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/448,      /*initvalue*/0         },
+           {   /*sig_name*/"isRowSecRiLieDwnSwt2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/23,   /*sig_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/51,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/30,   /*des_id*/0x141, /*src_updatebit*/1000,   /*des_updatebit*/49,      /*initvalue*/1         },
+           {   /*sig_name*/"isSeatMidLumPosPercSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/13,   /*sig_length*/7,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/471,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/464,      /*initvalue*/0         },
+           {   /*sig_name*/"isSecRowRiSeatHeatgBtnStkErr2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/16,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/321,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/320,      /*initvalue*/0         },
+           {   /*sig_name*/"isCeilingShieldSwt1_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/0,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/445,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_cyc*/60,   /*des_id*/0x220, /*src_updatebit*/1000,   /*des_updatebit*/444,      /*initvalue*/0         },
+           {   /*sig_name*/"isSeatMassgPnmFailrRowSecLe_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/4,   /*sig_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/325,    /*src_cyc*/101,  /*src_id*/32,   /*src_dlc*/8,   /*des_cyc*/50,   /*des_id*/0x1e5, /*src_updatebit*/1000,   /*des_updatebit*/324,      /*initvalue*/0         }
+       }
+   },
+   {
+       /*des_can*/ "BodyExposedCAN",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   }
+};
+
+  struct gSignalG{
+//    int num[1000];
+    char sigGroup_s[1000];
+    char sig_name[1000];
+    char scr_can[1000];
+    char scr_network_type[1000];
+    int scr_slotid_fr;
+    int scr_basecycle_fr;
+    int scr_repetition_fr;
+    int scr_startbit;
+    int sigG_length;
+    int des_slotid_fr;
+    int des_basecycle_fr;
+    int des_repetition_fr;
+    int des_startbit;
+    int scr_cyc;
+    int scr_id;
+    int scr_dlc;
+    int des_id;  
+    int updatebit_S;
+    int updatebit_D;
+  };
+    
+ //data for Signal group routing test
+  struct SignalGroup{ 
+    char des_can[20]; 
+    char des_networktype[20];
+    int sum;
+    struct gSignalG GSignalG[2500];
+  };
+  
+  struct SignalGroup test_sigG[network_quantity]={
+    
+       {
+       /*des_can*/ "ZCUD_LIN1",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN3",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN2",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN6",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN1",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN4",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_LIN2",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_LIN3",
+       /*networktype*/ "LIN",
+       3,
+       {
+           {   /*sigGroup_s*/"igSeatMassgFctRowSecRi_0",   /*sig_name*/"isSeatMassgFctRowSecRiMassgProg_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/239,   /*sigG_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/6,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_id*/9, /*updatebit_S*/233,   /*updatebit_D*/1000         },
+           {   /*sigGroup_s*/"igSeatMassgFctRowSecRi_0",   /*sig_name*/"isSeatMassgFctRowSecRiOnOff_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/234,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/11,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_id*/9, /*updatebit_S*/233,   /*updatebit_D*/1000         },
+           {   /*sigGroup_s*/"igSeatMassgFctRowSecRi_0",   /*sig_name*/"isSeatMassgFctRowSecRiMassgInten_0",   /*src_can*/"ZCU_CANFD2",   /*src_network_type*/"CANFD",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/236,   /*sigG_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/9,    /*src_cyc*/101,  /*src_id*/0x260,   /*src_dlc*/64,   /*des_id*/9, /*updatebit_S*/233,   /*updatebit_D*/1000         }
+       }
+   },
+   {
+       /*des_can*/ "CEM_LIN7",
+       /*networktype*/ "LIN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "PropulsionCAN",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ChassisCAN1",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCU_CANFD1",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CANFD3",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ChassisCANFD2",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CAN1",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCUD_CANFD4",
+       /*networktype*/ "CANFD",
+       0,
+       {
+           0
+       }
+   },
+   {
+       /*des_can*/ "ZCU_CANFD2",
+       /*networktype*/ "CANFD",
+       12,
+       {
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt1_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/0,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/223,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt5_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/4,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/219,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt2_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/1,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/222,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt3_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/2,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/221,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeActrFlt4_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/3,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/220,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igSeatMassgMachHwFltSecLe_0",   /*sig_name*/"isSeatMassgMachHwFltSecLeTmrFlt_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/5,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/218,    /*src_cyc*/101,  /*src_id*/39,   /*src_dlc*/2,   /*des_id*/0x1cf, /*updatebit_S*/1000,   /*updatebit_D*/217         },
+           {   /*sigGroup_s*/"igRowSecRiMassgFctSwt2_0",   /*sig_name*/"isRowSecRiMassgFctSwt2MassgProgTyp_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/21,   /*sigG_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/47,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/41         },
+           {   /*sigGroup_s*/"igRowSecRiMassgFctSwt2_0",   /*sig_name*/"isRowSecRiMassgFctSwt2MassgInten_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/24,   /*sigG_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/44,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/41         },
+           {   /*sigGroup_s*/"igRowSecRiMassgFctSwt2_0",   /*sig_name*/"isRowSecRiMassgFctSwt2Status_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/26,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/42,    /*src_cyc*/101,  /*src_id*/5,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/41         },
+           {   /*sigGroup_s*/"igRowSecLeMassgFctSwt_0",   /*sig_name*/"isRowSecLeMassgFctSwtStatus_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/6,   /*sigG_length*/1,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/26,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/25         },
+           {   /*sigGroup_s*/"igRowSecLeMassgFctSwt_0",   /*sig_name*/"isRowSecLeMassgFctSwtMassgProgTyp_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/1,   /*sigG_length*/3,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/31,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/25         },
+           {   /*sigGroup_s*/"igRowSecLeMassgFctSwt_0",   /*sig_name*/"isRowSecLeMassgFctSwtMassgInten_0",   /*src_can*/"ZCUD_LIN3",   /*src_network_type*/"LIN",   /*src_slotid_fr*/0,   /*src_basecycle_fr*/0,  /*src_repetition_fr*/0,  /*src_startbit*/4,   /*sigG_length*/2,  /*des_slotid_fr*/0,   /*des_basecycle_fr*/0,  /*des_repetition_fr*/0,   /*des_startbit*/28,    /*src_cyc*/101,  /*src_id*/19,   /*src_dlc*/7,   /*des_id*/0x141, /*updatebit_S*/1000,   /*updatebit_D*/25         }
+       }
+   },
+   {
+       /*des_can*/ "BodyExposedCAN",
+       /*networktype*/ "CAN",
+       0,
+       {
+           0
+       }
+   }
+};
+}
+
+
+
+void settestchannel(int num)
+{
+  switch(num)
+  {
+  case 0:
+
+        setBusContext(getBusNameContext("ZCUD_LIN1"));
+        teststep("step", "Start test on ZCUD_LIN1");
+        break;
+  case 1:
+
+        setBusContext(getBusNameContext("CEM_LIN3"));
+        teststep("step", "Start test on CEM_LIN3");
+        break;
+  case 2:
+
+        setBusContext(getBusNameContext("CEM_LIN2"));
+        teststep("step", "Start test on CEM_LIN2");
+        break;
+  case 3:
+
+        setBusContext(getBusNameContext("CEM_LIN6"));
+        teststep("step", "Start test on CEM_LIN6");
+        break;
+  case 4:
+
+        setBusContext(getBusNameContext("CEM_LIN1"));
+        teststep("step", "Start test on CEM_LIN1");
+        break;
+  case 5:
+
+        setBusContext(getBusNameContext("CEM_LIN4"));
+        teststep("step", "Start test on CEM_LIN4");
+        break;
+  case 6:
+
+        setBusContext(getBusNameContext("ZCUD_LIN2"));
+        teststep("step", "Start test on ZCUD_LIN2");
+        break;
+  case 7:
+
+        setBusContext(getBusNameContext("ZCUD_LIN3"));
+        teststep("step", "Start test on ZCUD_LIN3");
+        break;
+  case 8:
+
+        setBusContext(getBusNameContext("CEM_LIN7"));
+        teststep("step", "Start test on CEM_LIN7");
+        break;
+  case 9:
+
+        setBusContext(getBusNameContext("PropulsionCAN"));
+        teststep("step", "Start test on PropulsionCAN");
+        break;
+  case 10:
+
+        setBusContext(getBusNameContext("ChassisCAN1"));
+        teststep("step", "Start test on ChassisCAN1");
+        break;
+  case 11:
+
+        setBusContext(getBusNameContext("ZCU_CANFD1"));
+        teststep("step", "Start test on ZCU_CANFD1");
+        break;
+  case 12:
+
+        setBusContext(getBusNameContext("ZCUD_CANFD3"));
+        teststep("step", "Start test on ZCUD_CANFD3");
+        break;
+  case 13:
+
+        setBusContext(getBusNameContext("ChassisCANFD2"));
+        teststep("step", "Start test on ChassisCANFD2");
+        break;
+  case 14:
+
+        setBusContext(getBusNameContext("ZCUD_CAN1"));
+        teststep("step", "Start test on ZCUD_CAN1");
+        break;
+  case 15:
+
+        setBusContext(getBusNameContext("ZCUD_CANFD4"));
+        teststep("step", "Start test on ZCUD_CANFD4");
+        break;
+  case 16:
+
+        setBusContext(getBusNameContext("ZCU_CANFD2"));
+        teststep("step", "Start test on ZCU_CANFD2");
+        break;
+  case 17:
+
+        setBusContext(getBusNameContext("BodyExposedCAN"));
+        teststep("step", "Start test on BodyExposedCAN");
+        break;
+
+  Default:
+        testStepFail("step", "Bus context channel number is wrong!");
+  }
+}
+
+
+
+void getbusbytestchannel(char BusName[],char BusType[],int num)
+{
+  switch(num)
+  {
+
+    case 0:
+        strncpy(BusName,"ZCUD_LIN1",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 1:
+        strncpy(BusName,"CEM_LIN3",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 2:
+        strncpy(BusName,"CEM_LIN2",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 3:
+        strncpy(BusName,"CEM_LIN6",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 4:
+        strncpy(BusName,"CEM_LIN1",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 5:
+        strncpy(BusName,"CEM_LIN4",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 6:
+        strncpy(BusName,"ZCUD_LIN2",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 7:
+        strncpy(BusName,"ZCUD_LIN3",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 8:
+        strncpy(BusName,"CEM_LIN7",elcount(BusName));
+        strncpy(BusType,"LIN",elcount(BusType));
+        break;
+    case 9:
+        strncpy(BusName,"PropulsionCAN",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 10:
+        strncpy(BusName,"ChassisCAN1",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 11:
+        strncpy(BusName,"ZCU_CANFD1",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 12:
+        strncpy(BusName,"ZCUD_CANFD3",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 13:
+        strncpy(BusName,"ChassisCANFD2",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 14:
+        strncpy(BusName,"ZCUD_CAN1",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 15:
+        strncpy(BusName,"ZCUD_CANFD4",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 16:
+        strncpy(BusName,"ZCU_CANFD2",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    case 17:
+        strncpy(BusName,"BodyExposedCAN",elcount(BusName));
+        strncpy(BusType,"CAN",elcount(BusType));
+        break;
+    Default:
+        testStepFail("step","Bus context channel number is wrong!");
+        break;
+  }
+}
+
+void CANFD_switch_HighLoad(char souce_network[])
+{
+    if(strstr(souce_network,"CANFD")>0)
+    {
+        HighPriority_Msg1.FDF=1;
+        LowPriority_Msg1.FDF=1;
+    }
+    else
+    {
+        HighPriority_Msg1.FDF=0;
+        LowPriority_Msg1.FDF=0;
+    }
+}
+        
+void CANFD_switch(char souce_network[])
+{
+    if(strncmp(souce_network,"CANFD",10)==0)
+    {
+        temp_message.FDF = 1;
+    }
+    else
+    {
+        temp_message.FDF = 0;
+    }
+}
+
+
+void Loggingfilenameset(int num, char testcaseid[], char group[], char caseid[], char sub[])
+{
+    char name[100];
+    char network[20];
+    switch(num)
+    {
+
+    case 0:
+        strncpy(network,"ZCUD_LIN1",20);
+        break;
+    
+    case 1:
+        strncpy(network,"CEM_LIN3",20);
+        break;
+    
+    case 2:
+        strncpy(network,"CEM_LIN2",20);
+        break;
+    
+    case 3:
+        strncpy(network,"CEM_LIN6",20);
+        break;
+    
+    case 4:
+        strncpy(network,"CEM_LIN1",20);
+        break;
+    
+    case 5:
+        strncpy(network,"CEM_LIN4",20);
+        break;
+    
+    case 6:
+        strncpy(network,"ZCUD_LIN2",20);
+        break;
+    
+    case 7:
+        strncpy(network,"ZCUD_LIN3",20);
+        break;
+    
+    case 8:
+        strncpy(network,"CEM_LIN7",20);
+        break;
+    
+    case 9:
+        strncpy(network,"PropulsionCAN",20);
+        break;
+    
+    case 10:
+        strncpy(network,"ChassisCAN1",20);
+        break;
+    
+    case 11:
+        strncpy(network,"ZCU_CANFD1",20);
+        break;
+    
+    case 12:
+        strncpy(network,"ZCUD_CANFD3",20);
+        break;
+    
+    case 13:
+        strncpy(network,"ChassisCANFD2",20);
+        break;
+    
+    case 14:
+        strncpy(network,"ZCUD_CAN1",20);
+        break;
+    
+    case 15:
+        strncpy(network,"ZCUD_CANFD4",20);
+        break;
+    
+    case 16:
+        strncpy(network,"ZCU_CANFD2",20);
+        break;
+    
+    case 17:
+        strncpy(network,"BodyExposedCAN",20);
+        break;
+    
+  Default:
+      strncpy(network,"Default",20);
+      testStepFail("step","logging channel number is wrong!");
+      break;
+  }
+
+    strncpy(name,"\\per_testcase\\TC_GW_xx_yy_Vzz_net",100);
+    str_replace_regex(name,"TC",testcaseid);
+    str_replace_regex(name,"xx",group);
+    str_replace_regex(name,"yy",caseid);
+    str_replace_regex(name,"zz",sub);
+    str_replace_regex(name,"net",network);
+    //setLogFileName(name);
+    SetLogPath_sig(name, 1);
+}
+
+void LIN_Init()
+{
+
+    linConfigureResponse(des_DdsZCUD_Lin1Fr01);
+    linConfigureResponse(des_AdcZcud_Lin1Fr02);
+    linConfigureResponse(des_MdmZCUD_Lin1Fr01);
+    linConfigureResponse(des_AdcZcud_Lin1Fr01);
+    linConfigureResponse(des_MmdZCUD_Lin1Fr01);
+    linConfigureResponse(des_OhcCem_Lin3Fr01);
+    linConfigureResponse(des_Srm2Cem_Lin3Fr02);
+    linConfigureResponse(des_SigCem_Lin3Fr01);
+    linConfigureResponse(des_Srm2Cem_Lin3Fr01);
+    linConfigureResponse(des_AwmCem_Lin3Fr01);
+    linConfigureResponse(des_OhcCem_Lin3Fr05);
+    linConfigureResponse(des_Awm2Cem_Lin3SertNrFr01);
+    linConfigureResponse(des_OhcCem_Lin3Fr06);
+    linConfigureResponse(des_OhcCem_Lin3Fr04);
+    linConfigureResponse(des_OhcCem_Lin3Fr10);
+    linConfigureResponse(des_BmsCem_Lin6Fr06);
+    linConfigureResponse(des_BmsCem_Lin6Fr10);
+    linConfigureResponse(des_BmsCem_Lin6Fr01);
+    linConfigureResponse(des_BmsCem_Lin6Fr12);
+    linConfigureResponse(des_FmdmCem_Lin6Fr01);
+    linConfigureResponse(des_BmsCem_Lin6Fr13);
+    linConfigureResponse(des_FdmlCem_Lin6Fr01);
+    linConfigureResponse(des_BmsCem_Lin6Fr02);
+    linConfigureResponse(des_BmsCem_Lin6Fr16);
+    linConfigureResponse(des_BmsCem_Lin6Fr03);
+    linConfigureResponse(des_BmsCem_Lin6Fr08);
+    linConfigureResponse(des_BmsCem_Lin6Fr11);
+    linConfigureResponse(des_BmsCem_Lin6Fr04);
+    linConfigureResponse(des_BmsCem_Lin6Fr05);
+    linConfigureResponse(des_BmsCem_Lin6Fr09);
+    linConfigureResponse(des_BmsCem_Lin6Fr07);
+    linConfigureResponse(des_BmsCem_Lin6Fr14);
+    linConfigureResponse(des_BmsCem_Lin6Fr15);
+    linConfigureResponse(des_BmsCem_Lin6Fr17);
+    linConfigureResponse(des_FtksCem_Lin4Fr01);
+    linConfigureResponse(des_LsmCem_Lin4Fr01);
+    linConfigureResponse(des_HcmlZcud_Lin2Fr01);
+    linConfigureResponse(des_HcmrZcud_Lin2Fr01);
+    linConfigureResponse(des_MmrlZcud_Lin3Fr01);
+    linConfigureResponse(des_Lrss3Zcud_Lin3Fr01);
+    linConfigureResponse(des_MrlmlZcud_Lin3Fr01);
+    linConfigureResponse(des_MmrlZcud_Lin3SertNrFr01);
+    linConfigureResponse(des_MrlmlZcud_Lin3SertNrFr01);
+    linConfigureResponse(des_SrsmZcud_Lin3Fr01);
+    linConfigureResponse(des_PosmCem_Lin7Fr01);
+    linConfigureResponse(des_TCSCem_Lin7Fr03);
+    linConfigureResponse(des_TCSCem_Lin7Fr02);
+    
+}
+
+void messageUpdate(char net_num[], int id, Byte data[])
+{
+    int k;
+    // 按网络通道处理LIN报文数据更新
+    if (0) {}  // 用于后续的else if链
+    else if (strncmp(net_num, "ZCUD_LIN1", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x36:
+                for (k = 0; k < des_DdsZCUD_Lin1Fr01.dlc; k++) {
+                    des_DdsZCUD_Lin1Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_DdsZCUD_Lin1Fr01);
+                break;
+            case 0x39:
+                for (k = 0; k < des_AdcZcud_Lin1Fr02.dlc; k++) {
+                    des_AdcZcud_Lin1Fr02.byte(k) = data[k];
+                }
+                linUpdateResponse(des_AdcZcud_Lin1Fr02);
+                break;
+            case 0x13:
+                for (k = 0; k < des_MdmZCUD_Lin1Fr01.dlc; k++) {
+                    des_MdmZCUD_Lin1Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MdmZCUD_Lin1Fr01);
+                break;
+            case 0x3b:
+                for (k = 0; k < des_AdcZcud_Lin1Fr01.dlc; k++) {
+                    des_AdcZcud_Lin1Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_AdcZcud_Lin1Fr01);
+                break;
+            case 0x1:
+                for (k = 0; k < des_MmdZCUD_Lin1Fr01.dlc; k++) {
+                    des_MmdZCUD_Lin1Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MmdZCUD_Lin1Fr01);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "CEM_LIN3", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x20:
+                for (k = 0; k < des_OhcCem_Lin3Fr01.dlc; k++) {
+                    des_OhcCem_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_OhcCem_Lin3Fr01);
+                break;
+            case 0x23:
+                for (k = 0; k < des_Srm2Cem_Lin3Fr02.dlc; k++) {
+                    des_Srm2Cem_Lin3Fr02.byte(k) = data[k];
+                }
+                linUpdateResponse(des_Srm2Cem_Lin3Fr02);
+                break;
+            case 0x8:
+                for (k = 0; k < des_SigCem_Lin3Fr01.dlc; k++) {
+                    des_SigCem_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_SigCem_Lin3Fr01);
+                break;
+            case 0x11:
+                for (k = 0; k < des_Srm2Cem_Lin3Fr01.dlc; k++) {
+                    des_Srm2Cem_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_Srm2Cem_Lin3Fr01);
+                break;
+            case 0x1a:
+                for (k = 0; k < des_AwmCem_Lin3Fr01.dlc; k++) {
+                    des_AwmCem_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_AwmCem_Lin3Fr01);
+                break;
+            case 0x16:
+                for (k = 0; k < des_OhcCem_Lin3Fr05.dlc; k++) {
+                    des_OhcCem_Lin3Fr05.byte(k) = data[k];
+                }
+                linUpdateResponse(des_OhcCem_Lin3Fr05);
+                break;
+            case 0xe:
+                for (k = 0; k < des_Awm2Cem_Lin3SertNrFr01.dlc; k++) {
+                    des_Awm2Cem_Lin3SertNrFr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_Awm2Cem_Lin3SertNrFr01);
+                break;
+            case 0x1c:
+                for (k = 0; k < des_OhcCem_Lin3Fr06.dlc; k++) {
+                    des_OhcCem_Lin3Fr06.byte(k) = data[k];
+                }
+                linUpdateResponse(des_OhcCem_Lin3Fr06);
+                break;
+            case 0x14:
+                for (k = 0; k < des_OhcCem_Lin3Fr04.dlc; k++) {
+                    des_OhcCem_Lin3Fr04.byte(k) = data[k];
+                }
+                linUpdateResponse(des_OhcCem_Lin3Fr04);
+                break;
+            case 0x6:
+                for (k = 0; k < des_OhcCem_Lin3Fr10.dlc; k++) {
+                    des_OhcCem_Lin3Fr10.byte(k) = data[k];
+                }
+                linUpdateResponse(des_OhcCem_Lin3Fr10);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "CEM_LIN6", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x28:
+                for (k = 0; k < des_BmsCem_Lin6Fr06.dlc; k++) {
+                    des_BmsCem_Lin6Fr06.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr06);
+                break;
+            case 0x20:
+                for (k = 0; k < des_BmsCem_Lin6Fr10.dlc; k++) {
+                    des_BmsCem_Lin6Fr10.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr10);
+                break;
+            case 0x2:
+                for (k = 0; k < des_BmsCem_Lin6Fr01.dlc; k++) {
+                    des_BmsCem_Lin6Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr01);
+                break;
+            case 0x29:
+                for (k = 0; k < des_BmsCem_Lin6Fr12.dlc; k++) {
+                    des_BmsCem_Lin6Fr12.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr12);
+                break;
+            case 0x16:
+                for (k = 0; k < des_FmdmCem_Lin6Fr01.dlc; k++) {
+                    des_FmdmCem_Lin6Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_FmdmCem_Lin6Fr01);
+                break;
+            case 0x2a:
+                for (k = 0; k < des_BmsCem_Lin6Fr13.dlc; k++) {
+                    des_BmsCem_Lin6Fr13.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr13);
+                break;
+            case 0x18:
+                for (k = 0; k < des_FdmlCem_Lin6Fr01.dlc; k++) {
+                    des_FdmlCem_Lin6Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_FdmlCem_Lin6Fr01);
+                break;
+            case 0x3:
+                for (k = 0; k < des_BmsCem_Lin6Fr02.dlc; k++) {
+                    des_BmsCem_Lin6Fr02.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr02);
+                break;
+            case 0x26:
+                for (k = 0; k < des_BmsCem_Lin6Fr16.dlc; k++) {
+                    des_BmsCem_Lin6Fr16.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr16);
+                break;
+            case 0x4:
+                for (k = 0; k < des_BmsCem_Lin6Fr03.dlc; k++) {
+                    des_BmsCem_Lin6Fr03.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr03);
+                break;
+            case 0x7:
+                for (k = 0; k < des_BmsCem_Lin6Fr08.dlc; k++) {
+                    des_BmsCem_Lin6Fr08.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr08);
+                break;
+            case 0x21:
+                for (k = 0; k < des_BmsCem_Lin6Fr11.dlc; k++) {
+                    des_BmsCem_Lin6Fr11.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr11);
+                break;
+            case 0x9:
+                for (k = 0; k < des_BmsCem_Lin6Fr04.dlc; k++) {
+                    des_BmsCem_Lin6Fr04.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr04);
+                break;
+            case 0x6:
+                for (k = 0; k < des_BmsCem_Lin6Fr05.dlc; k++) {
+                    des_BmsCem_Lin6Fr05.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr05);
+                break;
+            case 0x10:
+                for (k = 0; k < des_BmsCem_Lin6Fr09.dlc; k++) {
+                    des_BmsCem_Lin6Fr09.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr09);
+                break;
+            case 0x8:
+                for (k = 0; k < des_BmsCem_Lin6Fr07.dlc; k++) {
+                    des_BmsCem_Lin6Fr07.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr07);
+                break;
+            case 0x24:
+                for (k = 0; k < des_BmsCem_Lin6Fr14.dlc; k++) {
+                    des_BmsCem_Lin6Fr14.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr14);
+                break;
+            case 0x25:
+                for (k = 0; k < des_BmsCem_Lin6Fr15.dlc; k++) {
+                    des_BmsCem_Lin6Fr15.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr15);
+                break;
+            case 0x27:
+                for (k = 0; k < des_BmsCem_Lin6Fr17.dlc; k++) {
+                    des_BmsCem_Lin6Fr17.byte(k) = data[k];
+                }
+                linUpdateResponse(des_BmsCem_Lin6Fr17);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "CEM_LIN4", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0xc:
+                for (k = 0; k < des_FtksCem_Lin4Fr01.dlc; k++) {
+                    des_FtksCem_Lin4Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_FtksCem_Lin4Fr01);
+                break;
+            case 0x20:
+                for (k = 0; k < des_LsmCem_Lin4Fr01.dlc; k++) {
+                    des_LsmCem_Lin4Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_LsmCem_Lin4Fr01);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "ZCUD_LIN2", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x1:
+                for (k = 0; k < des_HcmlZcud_Lin2Fr01.dlc; k++) {
+                    des_HcmlZcud_Lin2Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_HcmlZcud_Lin2Fr01);
+                break;
+            case 0x2:
+                for (k = 0; k < des_HcmrZcud_Lin2Fr01.dlc; k++) {
+                    des_HcmrZcud_Lin2Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_HcmrZcud_Lin2Fr01);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "ZCUD_LIN3", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x20:
+                for (k = 0; k < des_MmrlZcud_Lin3Fr01.dlc; k++) {
+                    des_MmrlZcud_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MmrlZcud_Lin3Fr01);
+                break;
+            case 0x13:
+                for (k = 0; k < des_Lrss3Zcud_Lin3Fr01.dlc; k++) {
+                    des_Lrss3Zcud_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_Lrss3Zcud_Lin3Fr01);
+                break;
+            case 0x27:
+                for (k = 0; k < des_MrlmlZcud_Lin3Fr01.dlc; k++) {
+                    des_MrlmlZcud_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MrlmlZcud_Lin3Fr01);
+                break;
+            case 0x23:
+                for (k = 0; k < des_MmrlZcud_Lin3SertNrFr01.dlc; k++) {
+                    des_MmrlZcud_Lin3SertNrFr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MmrlZcud_Lin3SertNrFr01);
+                break;
+            case 0x26:
+                for (k = 0; k < des_MrlmlZcud_Lin3SertNrFr01.dlc; k++) {
+                    des_MrlmlZcud_Lin3SertNrFr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_MrlmlZcud_Lin3SertNrFr01);
+                break;
+            case 0x5:
+                for (k = 0; k < des_SrsmZcud_Lin3Fr01.dlc; k++) {
+                    des_SrsmZcud_Lin3Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_SrsmZcud_Lin3Fr01);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (strncmp(net_num, "CEM_LIN7", strlen(net_num)) == 0) {
+        switch(id) {
+            case 0x11:
+                for (k = 0; k < des_PosmCem_Lin7Fr01.dlc; k++) {
+                    des_PosmCem_Lin7Fr01.byte(k) = data[k];
+                }
+                linUpdateResponse(des_PosmCem_Lin7Fr01);
+                break;
+            case 0xf:
+                for (k = 0; k < des_TCSCem_Lin7Fr03.dlc; k++) {
+                    des_TCSCem_Lin7Fr03.byte(k) = data[k];
+                }
+                linUpdateResponse(des_TCSCem_Lin7Fr03);
+                break;
+            case 0xa:
+                for (k = 0; k < des_TCSCem_Lin7Fr02.dlc; k++) {
+                    des_TCSCem_Lin7Fr02.byte(k) = data[k];
+                }
+                linUpdateResponse(des_TCSCem_Lin7Fr02);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+
+on timer SimHighLoadTimer_HighPriority
+{
+  int burst[network_quantity],busload[network_quantity],testchannel,buschannel,h;
+  char busaname[20],bustype[20];
+  for(testchannel=0;testchannel<network_quantity;testchannel++)
+  {
+    getbusbytestchannel(busaname,bustype,testchannel);
+    if((strncmp(bustype,"CANFD",strlen("CANFD"))==0)||(strncmp(bustype,"CAN",strlen("CAN"))==0))
+    {
+      buschannel=GetBusNameContext(busaname);
+      CANFD_switch_HighLoad(busaname);
+      for(h=0; h<burst[testchannel] ;h++)
+      { 
+
+         HighPriority_Msg1.can=buschannel;
+         output(HighPriority_Msg1);
+
+      }
+      
+      busload[testchannel] = canGetBusLoad(buschannel);
+      if(busload[testchannel]<80)
+        burst[testchannel]++; 
+    }      
+  }
+}
+
+on timer SimHighLoadTimer_LowPriority
+{
+  int burst[network_quantity],busload[network_quantity],testchannel,buschannel,h;
+  char busaname[20],bustype[20];
+  for(testchannel=0;testchannel<network_quantity;testchannel++)
+  {
+    getbusbytestchannel(busaname,bustype,testchannel);
+    if((strncmp(bustype,"CANFD",strlen("CANFD"))==0)||(strncmp(bustype,"CAN",strlen("CAN"))==0))
+    {
+      buschannel=GetBusNameContext(busaname);
+      CANFD_switch_HighLoad(busaname);
+      for(h=0; h<burst[testchannel] ;h++)
+      { 
+
+         LowPriority_Msg1.can=buschannel;
+         output(LowPriority_Msg1);
+
+      }
+      
+      busload[testchannel] = canGetBusLoad(buschannel);
+      if(busload[testchannel]<80)
+        burst[testchannel]++; 
+    }      
+  }
+}

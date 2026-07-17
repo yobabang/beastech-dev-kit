@@ -1,0 +1,67 @@
+/*@!Encoding:936*/
+includes
+{
+ 
+}
+
+variables
+{
+  
+}
+void PSRB_InitConfig()
+{
+  PSRB_RESET();
+}
+
+void Node_GND_Connect()
+{
+  PSRB_Relay9_Disable();
+}
+void Node_GND_DisConnect()
+{
+  PSRB_Relay9_Enable();
+}
+
+void Offset_GND_Connect()
+{
+  PSRB_Relay10_Disable();
+  testWaitForTimeout(100);
+  PSRB_Relay11_Enable();
+  testWaitForTimeout(100);
+  PSRB_Relay9_Disable();
+
+}
+
+void Offset_GND_DisConnect()
+{
+  PSRB_Relay10_Disable();
+  testWaitForTimeout(100);
+  PSRB_Relay11_Disable();
+  testWaitForTimeout(100);
+  PSRB_Relay9_Disable();
+}
+
+void Stress_DRB_CANL_Connect()
+{
+  PSRB_Relay12_Disable();
+  testWaitForTimeout(100);
+   PSRB_Relay10_Enable();
+}
+void Stress_DRB_CANL_DisConnect()
+{
+  PSRB_Relay12_Disable();
+  testWaitForTimeout(100);
+   PSRB_Relay10_Disable();
+}
+void Stress_DRB_CANH_Connect()
+{
+  PSRB_Relay12_Enable();
+  testWaitForTimeout(100);
+   PSRB_Relay10_Enable();
+}
+void Stress_DRB_CANH_DisConnect()
+{
+  PSRB_Relay12_Disable();
+  testWaitForTimeout(100);
+   PSRB_Relay10_Disable();
+}

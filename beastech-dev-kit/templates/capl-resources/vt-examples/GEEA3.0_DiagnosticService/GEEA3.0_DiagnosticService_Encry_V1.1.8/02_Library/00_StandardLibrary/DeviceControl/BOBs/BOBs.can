@@ -1,0 +1,52 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "onSysvar_BOBs.cin"
+}
+
+variables
+{
+
+}
+
+void MainTest ()
+{
+  BOBs();
+}
+
+testcase BOBs()
+{
+  long index = 0;
+  
+  while(1)
+  {
+    testJoinTextEvent("BOBS_InitConfig");
+    index = testWaitForAnyJoinedEvent(500000);
+    CMD(index);
+  }
+}
+
+void CMD(long index)
+{
+  
+}
+
+dword GetBOBId()
+{
+  dword BOBID;
+  char ECUName[64];
+  char Cluster[64];
+  int BOBPIN,i;
+  
+  sysGetVariableString(sysvar::DeviceControl::BOB::Parameters::ECUName,ECUName,elcount(ECUName));
+  sysGetVariableString(sysvar::DeviceControl::BOB::Parameters::Cluster,Cluster,elcount(Cluster));
+  for(i=0;i<NumOfUsedBOBChnl;i++)
+  {
+    if(strncmp(ECUName,Bench[i].ECUName,strlen(ECUName))==0 && strncmp(Cluster,Bench[i].ECUNetwork,strlen(Cluster))==0)
+    {
+      BOBID = Bench[i].BOBID;
+      break;
+    }
+  }
+  return BOBID;
+}

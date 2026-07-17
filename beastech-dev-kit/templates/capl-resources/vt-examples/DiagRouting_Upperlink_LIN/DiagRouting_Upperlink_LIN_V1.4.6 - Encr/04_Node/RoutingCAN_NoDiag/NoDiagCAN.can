@@ -1,0 +1,178 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "..\..\01_Input\TestParameter.cin"
+}
+
+variables
+{
+  long  EcuConnHandle[EcuSum]; 
+}
+
+on sysvar_update GW::Req_Send  
+{
+  if(@this==1)
+  {
+    int i;
+    byte Sendbuf[4095];
+    long copiedBytes;
+    sysGetVariableData(sysvar::GW::ReqSendBuffer,Sendbuf,copiedBytes);
+    CanTpSendData(EcuConnHandle[@GW::connHandle_req], Sendbuf, copiedBytes);  
+    write("111111111 %d",timeNow());
+  }
+  
+}
+
+on start
+{
+  
+  //初始化connHandle
+  CanTp_ConnHandleSave();
+  
+}
+
+void CanTp_ConnHandleSave()
+{
+  byte i;
+    
+  //Phy
+  for(i=2; i<EcuSum; i++) 
+  {
+    if(strncmp(EcuAddressTable[i].RoutingNet,"Routing_NoDiag",strlen(EcuAddressTable[i].RoutingNet))==0)
+      EcuConnHandle[i] = Phys_SlotsConfig(EcuAddressTable[i].SourceID, EcuAddressTable[i].TargetID);     
+  }
+  //Functional
+  EcuConnHandle[0] = Func_SlotsConfig(EcuAddressTable[0].SourceID, EcuAddressTable[0].TargetID);
+}
+
+void CanTp_ConnHandleClose()
+{
+  byte i;    
+  //Phy
+  for(i=2; i<EcuSum; i++) 
+  {
+    if(strncmp(EcuAddressTable[i].RoutingNet,"Routing_NoDiag",strlen(EcuAddressTable[i].RoutingNet))==0)
+      CanTpCloseConnection(EcuConnHandle[i]);
+  }
+  //Functional
+  CanTpCloseConnection(EcuConnHandle[0]);
+}
+
+long Phys_SlotsConfig(word remoteAddress, word localAddress)
+{
+  int DiagMode=0;
+  int BlockSize=0;
+  int STmin=0;
+  int AddressingMode=0;
+  int N_AS=1000;
+  int N_AR=1000;
+  int N_BS=1000;
+  int N_BR=50;
+  int N_CS=1000;
+  int N_CR=1000;
+  long connHandle;
+  word SourcesID,TargetID;
+  SourcesID = (localAddress & 0x00FF) | 0x0600;
+  TargetID  = (localAddress & 0x00FF) | 0x0700;
+  
+  connHandle = CanTpCreateConnection(DiagMode);    //配置诊断模式 0
+  CanTpSetTxIdentifier(connHandle, TargetID);     //发送ID
+  CanTpSetRxIdentifier(connHandle, SourcesID);      //目标ID
+  CanTpUseFlowControlFrames(connHandle, 1);        //使用流控制
+  CanTpSetFlowControlDelay( connHandle, 1);     //流控制延迟发送
+  CanTpSetMaximumReceiveLength(connHandle,0xFFFF);
+  CanTpSetMaxCANFDFrameLength(connHandle, 64);
+  
+  CanTpUseFlowControlSTmin( connHandle, 1);
+  CanTpSetSTmin(connHandle, STmin);                //流控制的时间间隔
+  CanTpFI_Disable(connHandle);
+  
+  CanTpSetBlockSize( connHandle, BlockSize);       //流控制的包数
+  CanTpSetAddressType(connHandle, AddressingMode);//Set the addressing type, where 1 indicates functional, 0 physical. 
+  CanTpSetTimeoutAs(connHandle,N_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(connHandle,N_AR);//
+  CanTpSetTimeBr(connHandle,N_BR);   //This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(connHandle,N_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(connHandle,N_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(connHandle,N_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  
+  return connHandle;
+}
+
+long Func_SlotsConfig(dword remoteAddress, dword localAddress)
+{
+  int DiagMode=0;
+  int BlockSize=0;
+  int STmin=0;
+  int AddressingMode=1;
+  int N_AS=1000;
+  int N_AR=1000;
+  int N_BS=1000;
+  int N_BR=800;
+  int N_CS=800;
+  int N_CR=1000;
+  
+  long connHandle;
+  word SourcesID,TargetID;
+  SourcesID = 0x6ff;
+  TargetID =  0x7ff;
+  
+  connHandle = CanTpCreateConnection(0);
+  CanTpSetTxIdentifier(connHandle, TargetID );  //发送ID
+  CanTpSetRxIdentifier(connHandle, SourcesID );   //目标ID
+  CanTpUseFlowControlFrames(connHandle, 1);        //使用流控制
+  CanTpSetFlowControlDelay( connHandle, 1);     //流控制延迟发送
+  CanTpSetMaximumReceiveLength(connHandle,0xFFFF);
+  CanTpSetMaxCANFDFrameLength(connHandle, 64);
+  
+  CanTpUseFlowControlSTmin( connHandle, 1);
+  CanTpSetSTmin(connHandle, STmin);                //流控制的时间间隔
+  CanTpFI_Disable(connHandle);
+  
+  CanTpSetBlockSize( connHandle, BlockSize);       //流控制的包数
+  CanTpSetTimeoutAs(connHandle,N_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+  CanTpSetTimeoutAr(connHandle,N_AR);//
+  CanTpSetTimeBr(connHandle,N_BR);//This value determines the time until the next Flow Control Frame is sent. 
+  CanTpSetTimeoutBs(connHandle,N_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+  CanTpSetTimeCs(connHandle,N_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame. 
+  CanTpSetTimeoutCr(connHandle,N_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame. 
+  
+  return connHandle;
+}
+
+
+int GetEcuSNByconnHandle(long connHandle)
+{
+  int i = 0;
+  
+  for(i=0;i<EcuSum;i++)
+	{
+    if(EcuConnHandle[i] == connHandle)  //物理寻址
+		{
+			return i;
+		}
+	}
+  return -1;
+}
+
+/*
+**Receive CAN data
+*/
+void CanTp_ReceptionInd(long connHandle, byte data[])
+{
+  int  x,i;
+  
+  x = GetEcuSNByconnHandle(connHandle);
+  //write("ecusn=%x",x);
+  if(-1 == x)
+  {
+    
+  }
+  else
+  {
+    sysSetVariableData(sysvar::GW::RespSendBuffer,data,elCount(data));
+    @sysvar::GW::connHandle_resp=x;
+    @sysvar::GW::Resp_Send=1;
+  }
+  
+} 

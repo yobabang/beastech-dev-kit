@@ -1,0 +1,137 @@
+/*@!Encoding:936*/
+/* 
+使用说明参考 https://alidocs.dingtalk.com/i/nodes/G1DKw2zgV224Yq3rTAbooaLvVB5r9YAn?utm_scene=team_space 
+CAPL SVN地址：http://svn.polelink.com/repos/z4_can/CodeManagement/StandardLibrary/CallOutlook
+
+禁止修改声明：本文件禁止任何不具有权限的人进行修改，请联系对应负责人进行修改
+
+测试用例开发者只需关注API组下包含的函数即可。
+*/
+includes
+{
+//  #include "outlookControllerTestcase.cin"
+}
+
+variables
+{
+  
+  char exeName[100] = "CALLOUTLOOK.exe";
+  struct mail
+  {
+    char body[512];//邮件正文
+    char receiver[256];//收件人
+    char ReportName[256];//邮件主题
+    long sentRequestTimes;//请求发送次数
+    long HaveSentTimes;//发送成功的次数
+  };
+  
+  struct mail built_in_mail;/* 内置的邮件对象，通用的API使用此内置对象来进行操作 */
+  msTimer t_CopyRight;
+}
+
+on timer t_CopyRight
+{
+  writeEx(-4,1,"shanghai beihui");
+}
+
+on preStart
+{
+  sysDefineNamespace("CALLOUTLOOK");
+  sysDefineVariableString("CALLOUTLOOK","Receiver","sunye@geely.com");
+  sysDefineVariableString("CALLOUTLOOK","file","");
+}
+
+/// <API>
+void ClaimCopyRight()
+{
+  setTimerCyclic(t_CopyRight,1000);
+}
+
+/// <Mail>
+/* 邮件的发送，发送成功返回1 */
+long Mail_Send(struct mail self)
+{
+  char args[256];
+  self.sentRequestTimes ++;
+  if(!isEmailAddressValid(self.receiver))return 0;
+  if(!isPathValid(self.ReportName))return 0;
+  if(!isFileExist(self.ReportName))return 0;
+  
+  str_replace(self.ReportName,"/","\\");
+  str_replace(self.ReportName,"\\\\","\\");
+  snprintf(args,elcount(args),"\"%s\" \"%s\"",self.receiver,self.ReportName);
+  
+  if(0 == sysExec(exeName,args) ) 
+    teststep("","[Mail_Send] 调用软件失败");
+  else
+    teststep("","[Mail_Send] 调用软件成功");
+  if(!check_mail_send())return 0;
+  self.HaveSentTimes ++;
+  return 1;
+}
+
+/* 验证文件的源xml是否存在;xml一定会先生成 */
+long isFileExist(char path[])
+{
+  return 1;
+}
+
+/* 路径是否有效,暂从略 */
+long isPathValid(char path[])
+{
+  return 1;
+}
+
+/// <Debug>
+/* 打印debug相关信息 */
+void Debug_Write(char description[])
+{
+  write(description);
+  teststep("",description);
+}
+
+/// <Debug>
+void Debug_Write(char description[],char arg1[])
+{
+  write(description,arg1);
+  teststep("",description,arg1);
+}
+
+/* 验证邮件已经被成功发送 */
+long check_mail_send()
+{
+  return 1;
+}
+
+/* 验证邮件地址格式的合法性 */
+long isEmailAddressValid(char mail_address[])
+{
+  if(!str_match_regex(mail_address,"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") )
+  {
+    Debug_Write("[%BASE_FILE_NAME%][%FILE_NAME%] 无效的邮件地址[%s]",mail_address);
+    return 0;
+  }
+  return 1;
+}
+
+/// <API>
+/* 发送内置邮件对象built_in_mail */
+void Outlook_sendMailTo(char receiver[],char ReportName[])
+{
+  snprintf(built_in_mail.receiver,elcount(built_in_mail.receiver),receiver);
+  snprintf(built_in_mail.ReportName,elcount(built_in_mail.ReportName),ReportName);
+
+  sysSetVariableString("CALLOUTLOOK","Receiver",receiver);
+  sysSetVariableString("CALLOUTLOOK","file",ReportName);
+//  Mail_Send(built_in_mail);
+}
+
+/* 只有在结束后，报告才会生成，此时报告才能够通过邮件发送，不然软件报错，不会发送邮件 */
+on preStop
+{
+  sysGetVariableString("CALLOUTLOOK","Receiver",built_in_mail.receiver,256);
+  sysGetVariableString("CALLOUTLOOK","file",built_in_mail.ReportName,256);
+  
+  Mail_Send(built_in_mail);
+  deferStop(3000);
+}

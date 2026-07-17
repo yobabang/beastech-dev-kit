@@ -1,0 +1,361 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{
+  byte PSRB_SendData[13] = {0x08,0x00,0x00,0x00,0x80,0x02,0x00,0x00,0x00,0x55,0x55,0x55,0x55} ;
+}
+
+void PSRB_Relay1_Enable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay1_Enable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x01;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+}
+
+void PSRB_Relay1_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay1_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x02;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002020000555555555555");
+}
+
+void PSRB_Relay2_Enable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay2_Enable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x10;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002100000555555555555");
+}
+
+void PSRB_Relay2_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay2_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x20;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002200000555555555555");
+}
+
+void PSRB_Relay3_Enable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay3_Enable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x01;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002000100555555555555");
+}
+
+void PSRB_Relay3_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay3_Disable=1;
+//  PSRB_SendData[5] = 0x02; 
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x02;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002000200555555555555");
+}
+
+void PSRB_Relay4_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay4_Enable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x04;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002040000555555555555");
+}
+
+void PSRB_Relay4_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay4_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x08;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002080000555555555555");
+}
+
+void PSRB_Relay5_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay5_Enable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x40;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//   testWaitForTimeout(10);
+////  SendTcpData("02008002400000555555555555");
+}
+
+void PSRB_Relay5_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay5_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x80;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002800000555555555555");
+}
+
+void PSRB_Relay6_Enable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay6_Enable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x04;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000400555555555555");
+}
+
+void PSRB_Relay6_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay6_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x08;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000800555555555555");
+}
+
+void PSRB_Relay7_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay7_Enable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x10;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002001000555555555555");
+}
+
+void PSRB_Relay7_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay7_Disable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x20;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002002000555555555555");
+}
+
+void PSRB_Relay8_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay8_Enable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x01;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000001555555555555");
+}
+
+void PSRB_Relay8_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay8_Disable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x02;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000002555555555555");
+}
+
+void PSRB_Relay9_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay9_Enable=1;
+//  PSRB_SendData[5] = 0x02; 
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x10;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000010555555555555");
+}
+
+void PSRB_Relay9_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay9_Disable=1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x20;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000020555555555555");
+}
+
+void PSRB_Relay10_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay10_Enable=1;
+//  PSRB_SendData[5] = 0x02;  
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x40;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002004000555555555555");
+}
+
+void PSRB_Relay10_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay10_Disable=1;
+//  PSRB_SendData[5] = 0x02;  
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x80;
+//  PSRB_SendData[8] = 0x00;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002008000555555555555");
+}
+
+void PSRB_Relay11_Enable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay11_Enable=1;
+//  PSRB_SendData[5] = 0x02;  
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x04;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000004555555555555");
+}
+
+void PSRB_Relay11_Disable()
+{
+  @ sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay11_Disable=1;
+//  PSRB_SendData[5] = 0x02; 
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x08;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000008555555555555");
+}
+
+void PSRB_Relay12_Enable()
+{ 
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay12_Enable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x40;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000040555555555555");
+}
+
+void PSRB_Relay12_Disable()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_Relay12_Disable =1;
+//  PSRB_SendData[5] = 0x02;
+//  PSRB_SendData[6] = 0x00;
+//  PSRB_SendData[7] = 0x00;
+//  PSRB_SendData[8] = 0x80;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008002000080555555555555");
+}
+
+void PSRB_RESET()
+{
+  @sysvar::PreCmd::PSRB_PreCmd::PSRB_RESET =1;
+//  PSRB_SendData[5] = 0x03;
+//  PSRB_SendData[6] = 0x01;
+//  PSRB_SendData[7] = 0x55;
+//  PSRB_SendData[8] = 0x55;
+//  SendTcpData_BYTE(PSRB_SendData,TEH_CAN1_Socket);
+//  testWaitForTimeout(10);
+////  SendTcpData("02008003015555555555555555");
+}
+void PSRB_Test()
+{
+  PSRB_Relay1_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay1_Disable();
+  testWaitForTimeout(50);
+  PSRB_Relay2_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay2_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay3_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay3_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay4_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay4_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay5_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay5_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay6_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay6_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay7_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay7_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay8_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay8_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay9_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay9_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay10_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay10_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay11_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay11_Disable();
+  testWaitForTimeout(50);
+    PSRB_Relay12_Enable();
+  testWaitForTimeout(50);
+  PSRB_Relay12_Disable();
+  testWaitForTimeout(50); 
+  PSRB_RESET();
+}

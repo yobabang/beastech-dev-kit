@@ -1,0 +1,89 @@
+/*@!Encoding:936*/
+
+variables
+{
+  enum PPS_OutputSts{PPS_On,PPS_Off};
+}
+
+void PPS_InitConfig()
+{
+  @sysvar::PPS::PPS_InitConfig=1;
+
+}
+
+void PPS_OutputStsSet(enum PPS_OutputSts Sts)
+{
+  if(Sts==PPS_On)
+    @sysvar::PPS::PPS_OutputStsSet=1;
+  else
+    @sysvar::PPS::PPS_OutputStsSet=0;
+}
+
+void PPS_Shift_OutputStsSet(enum PPS_OutputSts Sts)
+{
+  if(Sts==PPS_On)
+    @sysvar::PPS::PPS_Shift_OutputStsSet=1;
+  else
+    @sysvar::PPS::PPS_Shift_OutputStsSet=0;
+}
+
+void PPS_Shift_VoltageSet(float Volt)
+{
+  
+  @sysvar::PPS::PPS_Shift_VoltageSet=Volt;
+
+}
+
+void PPS_Shift_CurrentSet(float Curr)
+{
+  @sysvar::PPS::PPS_Shift_CurrentSet=Curr;
+}
+
+
+void PPS_Shift_PowerSet(float Volt,float Curr)
+{
+  @sysvar::PPS::PPS_Shift_PowerSet[0]=Volt;
+  @sysvar::PPS::PPS_Shift_PowerSet[1]=Curr;
+}
+
+
+void PPS_VoltageSet(float Volt)
+{
+  @sysvar::PPS::PPS_VoltageSet=Volt;
+}
+
+void PPS_CurrentSet(float Curr)
+{
+  @sysvar::PPS::PPS_CurrentSet=Curr;
+}
+
+
+
+void PPS_PowerSet(float Volt,float Curr)
+{
+  @sysvar::PPS::PPS_PowerSet[0]=Volt;
+  @sysvar::PPS::PPS_PowerSet[0]=Curr;
+}
+
+
+double PPS_CurrentMeasure()//还存在问题，回读值存在延时
+{
+  @sysvar::PPS::PPS_CurrentMeasure=1;
+  testWaitForTimeout(100);
+  return(@sysvar::PPS::PPS_CurrentMeasure_Value);
+}
+
+double PPS_VoltageMeasure()//还存在问题，回读值存在延时
+{
+  @sysvar::PPS::PPS_VoltageMeasure=1;
+  testWaitForTimeout(100);
+  return(@sysvar::PPS::PPS_VoltageMeasure_Value);
+}
+
+void PPS_ShowVoltage(int Vtype, double CycleTime)
+{
+  @sysvarMember::PPS::PPS_ShowVoltage[0]=Vtype;
+  testWaitForTimeout(100);
+  @sysvarMember::PPS::PPS_ShowVoltage[1]=CycleTime;
+  testWaitForTimeout(100);
+}

@@ -1,0 +1,1676 @@
+/*@!Encoding:936*/
+includes
+{
+//  #pragma library("GenSAKey.dll") //用于生成安全访问的Seed and Key
+//  #pragma library("osek_tp_New.dll") //用于生成安全访问的Seed and Key
+  
+}
+
+variables
+{
+  //ECU信息参数
+  int   gECUSN = 1;//用来作为索引数据库的ECU唯一标识
+  int   gFlag_ECUAPP = 1;//用来表示应用程序是否有效
+  int   gCompleteFlag = 1;
+  int   gComppatiable = 1;
+  int   gSBLActived = 0;
+  
+  
+  //Diagnostic Session Layer
+  dword gTpRxLength; //接收诊断数据的长度
+  byte  gTpRxData[65535]; //接收诊断数据的数组
+  long  CAN_connHandle;//物理请求的连接句柄
+  
+  //TP层参数
+  dword   gCAN_TP_PhyRequestID  = 0x620;
+	const dword   gCAN_TP_FuncRequestID = 0x7FF;
+	dword   gCAN_TP_ResponseID    = 0x720;
+
+	int   CAN_TP_AS = 25;
+	int   CAN_TP_AR = 25;
+	int   CAN_TP_BS = 75;
+	int   CAN_TP_BR = 10;
+	int   CAN_TP_CS = 20;
+	int   CAN_TP_CR = 150;
+	int   CAN_TP_BlockSize = 0;
+	int   CAN_TP_STmin = 0x00;
+	int   gFC_WaitReceived;
+  //TP层参数
+  
+  //状态控制参数
+  msTimer S3ServerTimer;
+  msTimer DelatTimer_Level0x01;
+  msTimer DelatTimer_Level0x05;
+  int  gS3ServerTimerTimeoutTime = 5000;
+  int  gP2ClientAPP = 50;
+  int  gP2ClientBOOT = 25;
+  int  gP2StarClient = 5000;
+  int  gDelayTimerTimeoutTime = 10000;
+  int  gNumverOfSeed = 4;//种子字节数
+  int  gFailCounterMax = 2;//允许的最大错误计数器值
+  int  gFailAttemptCounterLelve_0x01;
+  int  gFailAttemptCounterLelve_0x05;
+  int  gFlag_SeedRequest_Level0x01;
+  int  gFlag_SeedRequest_Level0x05;
+  byte gSeedArray[4];//存储种子值
+  byte gKeyArray[4];//存储密钥值
+  enum e_DiagMode {PHYSICAL = 0x01,FUNCTIONAL = 0X02};
+  enum e_DiagMode gCurrentReqMode;
+  enum e_DiagSession {DEFAULTSESSION=0x01,PROGRAMMINGSESSION=0x02,EXTENDEDSESSION=0x03,SAFETYSESSION=0x04};//会话模式
+  enum e_DiagSession gCurrentSession;//当前会话模式
+  enum e_DiagSecurityState {NoLevelUnlocked = 0x00,WriteLevelUnlocked = 0x05,BootLevelUnlocked = 0x01};
+  enum e_DiagSecurityState gCurrentState;//当前解锁状态
+  int  gAddressFormat = 4;//控制器使用的下载地址字节长度
+  int  gLengthFormat = 4;//控制器使用的下载长度字节长度
+  int  gDataFormatIdentifier;//控制器使用的数据类型
+  dword  gMaxNumberOfBlockLenth = 0xFFF;//控制器支持的最大块长度
+  int  gFlag_StartDownload;
+  int  gFlag_FinishDownload;
+  int  gCounter;
+  dword gDwonloadLength;
+  byte gTempSaveData[65535];
+  dword gTempSaveLength; 
+  //状态控制参数
+  
+  //控制器存储信息
+  byte gECUFixBytes_L1[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
+  byte gECUFixBytes_L5[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
+  byte gECUHardwareNumber[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUBootNumber[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUDiagnosticDatabasePN[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUDeliveryAssemblyPartNumberGeely[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUSerialNumber[4] = {0x88,0x92,0x35,0x74};
+  byte gECUSoftwareNumber[17] = {0x02,0x88,0x94,0x27,0x31,0x98,0x20,0x20,0x42,0x88,0x94,0x27,0x32,0x71,0x20,0x20,0x42};
+  int  gECUSoftwareNumberLength = 17;
+  byte gPaddingByte = 0xAA;
+  
+}
+
+on timer S3ServerTimer
+{
+  if(gFlag_ECUAPP == 1)
+  { 
+    gCurrentSession = DEFAULTSESSION;
+  }
+  else
+  {
+    gCurrentSession = PROGRAMMINGSESSION;
+  }
+}
+
+on timer DelatTimer_Level0x01
+{
+  gFailAttemptCounterLelve_0x01 = gFailCounterMax -1;
+}
+
+on timer DelatTimer_Level0x05
+{
+  gFailAttemptCounterLelve_0x05 = gFailCounterMax -1;
+}
+
+void ChangeSession(enum e_DiagSession TargetSession)
+{
+  gCurrentSession = TargetSession;
+  if(gCurrentSession != DEFAULTSESSION)
+  {
+    setTimer(S3ServerTimer,gS3ServerTimerTimeoutTime);
+  }
+  
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    gSBLActived = 0;
+  }
+  gCurrentState = NoLevelUnlocked;
+  
+  //在切换会话后，即对种子请求状态做清除
+  gFlag_SeedRequest_Level0x01 = 0;
+  gFlag_SeedRequest_Level0x05 = 0;
+  
+  //在切换会话后，即对所有下载参数做复位
+  gFlag_StartDownload = 0;
+  gFlag_FinishDownload = 0;
+  gCounter = 0;
+  gDwonloadLength = 0;
+  gTempSaveLength = 0;
+}
+
+/**************服务处理****************/
+ServiceHandle(byte ReceiveData[],dword ReceiveLength)
+{
+  switch(ReceiveData[0])
+  {
+    case 0x10:
+    {
+      HandleService_0x10(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x11:
+    {
+      HandleService_0x11(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x22:
+    {
+      HandleService_0x22(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x27:
+    {
+      HandleService_0x27(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x19:
+    {
+      HandleService_0x19(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x14:
+    {
+      HandleService_0x14(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x3E:
+    {
+      HandleService_0x3E(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x34:
+    {
+      HandleService_0x34(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x36:
+    {
+      HandleService_0x36(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x37:
+    {
+      HandleService_0x37(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x31:
+    {
+      HandleService_0x31(ReceiveData,ReceiveLength);
+      break;
+    }
+    default :
+    {
+      if(gCurrentReqMode != FUNCTIONAL)
+      {
+        SendNegativeResponse(0x11);
+      }
+      break;
+    }
+  }
+}
+
+void SendNegativeResponse(int code)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  
+  NRC[1] = gTpRxData[0];
+  NRC[2] = code;
+  if(gCurrentReqMode != FUNCTIONAL)
+  {
+    CanTpSendData(CAN_connHandle,NRC,3);
+  }
+  else
+  {
+    if((code == 0x11)||(code == 0x12)||(code == 0x31)||(code == 0x7E)||(code == 0x7F))
+    {
+      
+    }
+    else
+    {
+      CanTpSendData(CAN_connHandle,NRC,3);
+    }
+  }
+}
+
+void HandleService_0x10(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[6] = {0x50,0x00,0x00,0x00,0x01,0xF4};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if((ReceiveLength <= 1)||(ReceiveLength > 2))
+  {
+    SendNegativeResponse(0x13);
+    return;   
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      PosRes[1] = 0x01;
+      PosRes[2] = (gP2ClientAPP>>8);
+      PosRes[3] = gP2ClientAPP&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,6);
+      }
+      ChangeSession(DEFAULTSESSION);
+      break;
+    }
+    case 0x02:
+    {
+      PosRes[1] = 0x02;
+      PosRes[2] = (gP2ClientBOOT>>8);
+      PosRes[3] = gP2ClientBOOT&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,6);
+      }
+      ChangeSession(PROGRAMMINGSESSION);
+      break;
+    }
+    case 0x03:
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+         SendNegativeResponse(0x7E);
+         break;
+      }
+      PosRes[1] = 0x03;
+      PosRes[2] = (gP2ClientAPP>>8);
+      PosRes[3] = gP2ClientAPP&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,6);
+      }
+      ChangeSession(EXTENDEDSESSION);
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x22(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[300];
+  int  PosResLength;
+  
+  dword DataIdentifer;
+  int  i,j;
+  
+  PosRes[0] = 0x62;
+  //判断最小长度
+  write("ReceiveLength=%d",ReceiveLength);
+  if(ReceiveLength <= 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+//   else if(ReceiveLength <=21)
+//   {
+////    for(j=0;j<=3;j++)
+////    { 
+////    PosRes[0] = 0x7F;
+////    PosRes[1] = 0x22;
+////    PosRes[2] = 0x78;
+////    PosResLength=3;
+////    CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+////    }
+//      PosRes[0] = 0x62;
+//      PosRes[1] = 0x00;
+//      PosRes[2] = 0x01;
+//      PosRes[3] = 0x11;
+//      PosRes[4] = 0x00;
+//      PosRes[5] = 0x02;
+//      PosRes[6] = 0x22;
+//      PosRes[7] = 0x22;
+//      PosRes[8] = 0x00;
+//      PosRes[9] = 0x03;
+//      PosRes[10] = 0x33;
+//      PosRes[11] = 0x33;
+//      PosRes[12] = 0x33;
+//      PosRes[13] = 0x00;
+//      PosRes[14] = 0x04;
+//      PosRes[15] = 0x44;
+//      PosRes[16] = 0x44;
+//      PosRes[17] = 0x44;
+//      PosRes[18] = 0x44;
+//      PosRes[19] = 0x00;
+//      PosRes[20] = 0x05;
+//      PosRes[21] = 0x55;
+//      PosRes[22] = 0x55;
+//      PosRes[23] = 0x55;
+//      PosRes[24] = 0x55;
+//      PosRes[25] = 0x55;
+//      PosRes[26] = 0x00;
+//      PosRes[27] = 0x06;
+//      PosRes[28] = 0x66;
+//      PosRes[29] = 0x66;
+//      PosRes[30] = 0x66;
+//      PosRes[31] = 0x66;
+//      PosRes[32] = 0x66;
+//      PosRes[33] = 0x66;
+//      PosRes[34] = 0x00;
+//      PosRes[35] = 0x07;
+//      PosRes[36] = 0x77;
+//      PosRes[37] = 0x77;
+//      PosRes[38] = 0x77;
+//      PosRes[39] = 0x77;
+//      PosRes[40] = 0x77;
+//      PosRes[41] = 0x77;
+//      PosRes[42] = 0x77;
+//      PosRes[43] = 0x00;
+//      PosRes[44] = 0x08;
+//      PosRes[45] = 0x88;
+//      PosRes[46] = 0x88;
+//      PosRes[47] = 0x88;
+//      PosRes[48] = 0x88;
+//      PosRes[49] = 0x88;
+//      PosRes[50] = 0x88;
+//      PosRes[51] = 0x88;
+//      PosRes[52] = 0x88;
+//      PosRes[53] = 0x00;
+//      PosRes[54] = 0x09;
+//      PosRes[55] = 0x99;
+//      PosRes[56] = 0x99;
+//      PosRes[57] = 0x99;
+//      PosRes[58] = 0x99;
+//      PosRes[59] = 0x99;
+//      PosRes[60] = 0x99;
+//      PosRes[61] = 0x99;
+//      PosRes[62] = 0x99;
+//      PosRes[63] = 0x99;
+//      PosRes[64] = 0x00;
+//      PosRes[65] = 0x0A;
+//      PosRes[66] = 0x00;
+//      PosRes[67] = 0x00;
+//      PosRes[68] = 0x00;
+//      PosRes[69] = 0x00;
+//      PosRes[70] = 0x00;
+//      PosRes[71] = 0x00;
+//      PosRes[72] = 0x00;
+//      PosRes[73] = 0x00;
+//    PosRes[74] = 0x00;
+//    PosRes[75] = 0x00;
+//    PosRes[76] = 0x00;
+//    PosResLength=77;
+//    CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+//    return;
+//
+//   }
+
+//    else if(ReceiveLength > 3)
+//  {
+//    
+//      PosRes[1] = 0x00;
+//      PosRes[2] = 0x01;
+//      PosRes[3] = 0x11;
+//      PosRes[4] = 0x00;
+//      PosRes[5] = 0x02;
+//      PosRes[6] = 0x22;
+//      PosRes[7] = 0x22;
+//      PosRes[8] = 0x00;
+//      PosRes[9] = 0x03;
+//      PosRes[10] = 0x33;
+//      PosRes[11] = 0x33;
+//      PosRes[12] = 0x33;
+//      PosRes[13] = 0x00;
+//      PosRes[14] = 0x04;
+//      PosRes[15] = 0x44;
+//      PosRes[16] = 0x44;
+//      PosRes[17] = 0x44;
+//      PosRes[18] = 0x44;
+//      PosRes[19] = 0x00;
+//      PosRes[20] = 0x05;
+//      PosRes[21] = 0x55;
+//      PosRes[22] = 0x55;
+//      PosRes[23] = 0x55;
+//      PosRes[24] = 0x55;
+//      PosRes[25] = 0x55;
+//      PosRes[26] = 0x00;
+//      PosRes[27] = 0x06;
+//      PosRes[28] = 0x66;
+//      PosRes[29] = 0x66;
+//      PosRes[30] = 0x66;
+//      PosRes[31] = 0x66;
+//      PosRes[32] = 0x66;
+//      PosRes[33] = 0x66;
+//      PosRes[34] = 0x00;
+//      PosRes[35] = 0x07;
+//      PosRes[36] = 0x77;
+//      PosRes[37] = 0x77;
+//      PosRes[38] = 0x77;
+//      PosRes[39] = 0x77;
+//      PosRes[40] = 0x77;
+//      PosRes[41] = 0x77;
+//      PosRes[42] = 0x77;
+//      PosRes[43] = 0x00;
+//      PosRes[44] = 0x08;
+//      PosRes[45] = 0x88;
+//      PosRes[46] = 0x88;
+//      PosRes[47] = 0x88;
+//      PosRes[48] = 0x88;
+//      PosRes[49] = 0x88;
+//      PosRes[50] = 0x88;
+//      PosRes[51] = 0x88;
+//      PosRes[52] = 0x88;
+//      PosRes[53] = 0x00;
+//      PosRes[54] = 0x09;
+//      PosRes[55] = 0x99;
+//      PosRes[56] = 0x99;
+//      PosRes[57] = 0x99;
+//      PosRes[58] = 0x99;
+//      PosRes[59] = 0x99;
+//      PosRes[60] = 0x99;
+//      PosRes[61] = 0x99;
+//      PosRes[62] = 0x99;
+//      PosRes[63] = 0x99;
+//      PosRes[64] = 0x00;
+//      PosRes[65] = 0x0A;
+//      PosRes[66] = 0x00;
+//      PosRes[67] = 0x00;
+//      PosRes[68] = 0x00;
+//      PosRes[69] = 0x00;
+//      PosRes[70] = 0x00;
+//      PosRes[71] = 0x00;
+//      PosRes[72] = 0x00;
+//      PosRes[73] = 0x00;
+//    PosRes[74] = 0x00;
+//    PosRes[75] = 0x00;
+//    PosRes[76] = 0x00;
+//    PosResLength=77;
+//    CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+//    
+//    
+//    return;  
+//  }
+    else if(ReceiveLength > 21)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断最小长度
+  
+  DataIdentifer = ((ReceiveData[1]<<8)+ReceiveData[2]);
+  //判断DID
+  switch(DataIdentifer)
+  {
+    case 0xF186:
+    {
+      PosResLength = 4;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0x86;
+      PosRes[3] = gCurrentSession;
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xD01C:
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x22);
+        break;
+      }
+      else
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+    }
+    case 0xF1A0://控制器诊断数据库版本信息
+    {
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xA0;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUDiagnosticDatabasePN[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1AA://控制器硬件版本信息
+    {
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xAA;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUHardwareNumber[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1A2://控制器SBL版本信息
+    {
+      if((gCurrentSession != PROGRAMMINGSESSION)||(gSBLActived != 1))
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xA2;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUHardwareNumber[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1AB://控制器版本信息
+    {
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xAB;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUDeliveryAssemblyPartNumberGeely[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xF18C://控制器SN版本信息
+    {
+      PosResLength = 7;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0x8C;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUSerialNumber[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1AE://控制器软件版本信息
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      PosResLength = gECUSoftwareNumberLength;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xAE;
+      for(i=0;i<gECUSoftwareNumberLength;i++)
+      {
+        PosRes[i+3] = gECUSoftwareNumber[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength+3);
+      break;
+    }
+    case 0xF1A5://控制器BootLoader版本信息
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xA5;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUBootNumber[i];
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xED20://控制器综合信息
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        PosResLength = 8+8+8+4+gECUSoftwareNumberLength+3;
+        PosRes[1] = 0xED;
+        PosRes[2] = 0x20;
+        for(i=0;i<(PosResLength-3);i++)
+        {
+          if(i<8)
+          {
+            PosRes[i+3] = gECUDiagnosticDatabasePN[i];
+          }
+          else if(i<16)
+          {
+            PosRes[i+3] = gECUHardwareNumber[i-8];
+          }
+          else if(i<24)
+          {
+            PosRes[i+3] = gECUDeliveryAssemblyPartNumberGeely[i-16];
+          }
+          else if(i<28)
+          {
+            PosRes[i+3] = gECUSerialNumber[i-24];
+          }
+          else
+          {
+            PosRes[i+3] = gECUSoftwareNumber[i-28];
+          }
+        }
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+        break;
+      }
+      else
+      {
+        PosResLength = 39;
+        PosRes[1] = 0xED;
+        PosRes[2] = 0x20;
+        for(i=0;i<(PosResLength-3);i++)
+        {
+          if(i<8)
+          {
+            PosRes[i+3] = gECUDiagnosticDatabasePN[i];
+          }
+          else if(i<16)
+          {
+            PosRes[i+3] = gECUHardwareNumber[i-8];
+          }
+          else if(i<24)
+          {
+            PosRes[i+3] = gECUDeliveryAssemblyPartNumberGeely[i-16];
+          }
+          else if(i<28)
+          {
+            PosRes[i+3] = gECUSerialNumber[i-24];
+          }
+          else
+          {
+            PosRes[i+3] = gECUBootNumber[i-28];
+          }
+        }
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+        break;
+      }
+    }
+    default :
+    {
+      SendNegativeResponse(0x31);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x31(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[100];
+  int  PosResLength;
+  
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  dword DataIdentifer;
+  int  i;
+  
+  PosRes[0] = 0x71;
+  //判断最小长度
+  if(ReceiveLength <= 3)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断最小长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  DataIdentifer = ((ReceiveData[2]<<8)+ReceiveData[3]);
+  //判断DID
+  switch(DataIdentifer)
+  {
+    case 0x0212://验证签名
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      if(gCurrentState != BootLevelUnlocked)
+      {
+        SendNegativeResponse(0x33);
+        return;
+      }
+      //判断最大长度
+      if(ReceiveLength != 260)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 6;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      if(ReceiveData[4] == 0x02)
+      {
+        PosRes[5] = 0x01;
+        gCompleteFlag = 0;
+      }
+      else
+      {
+        PosRes[5] = 0x00;
+        if(ReceiveData[4] == 0x01)
+        {
+          gCompleteFlag = 1;
+          gComppatiable = 0;
+          //gFlag_ECUAPP = 2;
+        }
+        else
+        {
+          gCompleteFlag = 1;
+          gComppatiable = 1;
+          //gFlag_ECUAPP = 1;
+        }
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0x0301://激活SBL
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      if(gCurrentState != BootLevelUnlocked)
+      {
+        SendNegativeResponse(0x33);
+        return;
+      }
+      //判断最大长度
+      if(ReceiveLength != 8)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 5;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      gSBLActived = 1;
+      break;
+    }
+    case 0x0206://进入编程模式条件检查
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      //判断最大长度
+      if(ReceiveLength != 4)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 6;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      PosRes[5] = 0x01;
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    case 0xFF00://擦除信息
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      //判断最大长度
+      if(ReceiveLength != 12)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 5;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      PosRes[5] = 0x01;
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      gFlag_ECUAPP = 0;
+      gCompleteFlag = 0;
+      gComppatiable = 0;
+      break;
+    }
+    case 0x0205://完整性一致性校验
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      //判断最大长度
+      if(ReceiveLength != 4)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      if(gCompleteFlag == 0)
+      {
+        gFlag_ECUAPP = 0;
+      }
+      else if(gComppatiable == 0)
+      {
+        gFlag_ECUAPP = 2;
+      }
+      else
+      {
+        gFlag_ECUAPP = 1;
+      }
+      //判断最大长度
+      PosResLength = 9;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      PosRes[5] = 0x00;
+      PosRes[6] = 0x00;
+      PosRes[7] = 0x00;
+      if(gFlag_ECUAPP == 1)
+      {
+        PosRes[8] = 0x00;
+      }
+      else if(gFlag_ECUAPP == 0)
+      {
+        PosRes[8] = 0x05;
+      }
+      else if(gFlag_ECUAPP == 2)
+      {
+        PosRes[8] = 0x02;
+      }
+      CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      break;
+    }
+    default:
+    {
+      SendNegativeResponse(0x31);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x27(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[6] = {0x67,0x00,0x00,0x00,0x01,0xF4};
+  int  PosResLength;
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  int  CompareFlag;
+  int  i;
+  
+  
+  //判断长度
+  if(ReceiveLength <= 1)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      if(ReceiveLength != 2)
+      {
+        SendNegativeResponse(0x13);
+        break;
+      }
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        break;
+      }
+      if(gFailAttemptCounterLelve_0x01 == gFailCounterMax)
+      {
+        SendNegativeResponse(0x37);
+        break;
+      }
+      PosResLength = gNumverOfSeed + 2;
+      PosRes[1] = 0x01;
+      if(gCurrentState == BootLevelUnlocked)
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = 0;
+        }
+      }
+      else
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = random(256);
+          gSeedArray[i] = PosRes[i+2];
+        }
+        gFlag_SeedRequest_Level0x01 = 1;
+      }
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      }
+      break;
+    }
+    case 0x02:
+    {
+      if(ReceiveLength != (gNumverOfSeed + 2))
+      {
+        SendNegativeResponse(0x13);
+        
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gFlag_SeedRequest_Level0x01 != 1)
+      {
+        SendNegativeResponse(0x24);
+        break;
+      }
+      //在进入2702判断后，即对种子请求状态做清除
+      gFlag_SeedRequest_Level0x01 = 0;
+      gFlag_SeedRequest_Level0x05 = 0;
+      GenerateKey(gSeedArray,gKeyArray,gNumverOfSeed,0x01,gECUFixBytes_L1);
+      CompareFlag = 0;
+      for(i=0;i<gNumverOfSeed;i++)
+      {
+        if(gKeyArray[i] != ReceiveData[i+2])
+        {
+          CompareFlag = 1;
+        }
+      }
+      if(CompareFlag == 1)
+      {
+        gFailAttemptCounterLelve_0x01++;
+        if(gFailAttemptCounterLelve_0x01<gFailCounterMax)
+        {
+          SendNegativeResponse(0x35);
+          break;
+        }
+        else
+        {
+          SendNegativeResponse(0x36);
+          setTimer(DelatTimer_Level0x01,gDelayTimerTimeoutTime);
+          break;
+        }
+      }
+      else
+      {
+      PosResLength = 2;
+      PosRes[1] = 0x02;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      }
+      gFailAttemptCounterLelve_0x01 = 0;
+      gCurrentState = BootLevelUnlocked;
+      }
+      break;
+    }
+    case 0x05:
+    {
+      if(ReceiveLength != 2)
+      {
+        SendNegativeResponse(0x13);
+        break;
+      }
+      if(gCurrentSession != EXTENDEDSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        break;
+      }
+      if(gFailAttemptCounterLelve_0x05 == gFailCounterMax)
+      {
+        SendNegativeResponse(0x37);
+        break;
+      }
+      PosResLength = gNumverOfSeed + 2;
+      PosRes[1] = 0x05;
+      if(gCurrentState == WriteLevelUnlocked)
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = 0;
+        }
+      }
+      else
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = random(256);
+          gSeedArray[i] = PosRes[i+2];
+        }
+        gFlag_SeedRequest_Level0x05 = 1;
+      }
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      }
+      break;
+    }
+    case 0x06:
+    {
+      if(ReceiveLength != (gNumverOfSeed + 2))
+      {
+        SendNegativeResponse(0x13);
+        
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gCurrentSession != EXTENDEDSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gFlag_SeedRequest_Level0x05 != 1)
+      {
+        SendNegativeResponse(0x24);
+        break;
+      }
+      //在进入2702判断后，即对种子请求状态做清除
+      gFlag_SeedRequest_Level0x01 = 0;
+      gFlag_SeedRequest_Level0x05 = 0;
+      GenerateKey(gSeedArray,gKeyArray,gNumverOfSeed,0x05,gECUFixBytes_L5);
+      CompareFlag = 0;
+      for(i=0;i<gNumverOfSeed;i++)
+      {
+        if(gKeyArray[i] != ReceiveData[i+2])
+        {
+          CompareFlag = 1;
+        }
+      }
+      if(CompareFlag == 1)
+      {
+        gFailAttemptCounterLelve_0x05++;
+        if(gFailAttemptCounterLelve_0x05<gFailCounterMax)
+        {
+          SendNegativeResponse(0x35);
+          break;
+        }
+        else
+        {
+          SendNegativeResponse(0x36);
+          setTimer(DelatTimer_Level0x05,gDelayTimerTimeoutTime);
+          break;
+        }
+      }
+      else
+      {
+      PosResLength = 2;
+      PosRes[1] = 0x06;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,PosResLength);
+      }
+      gFailAttemptCounterLelve_0x05 = 0;
+      gCurrentState = WriteLevelUnlocked;
+      }
+      break;
+    }
+    default :
+    {
+        SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x3E(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[2] = {0x7E,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if(ReceiveLength != 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x00:
+    {
+      PosRes[1] = 0x00;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,2);
+      }
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x11(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[2] = {0x51,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if(ReceiveLength != 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      PosRes[1] = 0x01;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,2);
+      }
+      if(gFlag_ECUAPP == 1)
+      { 
+        gCurrentSession = DEFAULTSESSION;
+      }
+      else
+      {
+        gCurrentSession = PROGRAMMINGSESSION;
+      }
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x19(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[3] = {0x59,0x00,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if(ReceiveLength <= 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  
+  if(gFlag_ECUAPP != 1)
+  {
+     SendNegativeResponse(0x11);
+     return;
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x02:
+    {
+      if(ReceiveLength != 3)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      PosRes[1] = 0x02;
+      PosRes[2] = 0xFF;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        CanTpSendData(CAN_connHandle,PosRes,3);
+      }
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+void HandleService_0x14(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[1] = {0x54};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  if(gFlag_ECUAPP != 1)
+  {
+     SendNegativeResponse(0x11);
+     return;
+  }
+  //判断长度
+  if(ReceiveLength != 4)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  CanTpSendData(CAN_connHandle,PosRes,1);
+  
+}
+
+void HandleService_0x34(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[4] = {0x74,0x20,0x0F,0xFF};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  int  i;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  //判断长度
+  if(ReceiveLength != (gAddressFormat + gLengthFormat + 3))
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //检查地址及长度
+  
+  //检查地址及长度
+  
+  //检查是否擦除
+  
+  //检查是否擦除
+  
+  //获取下载长度
+  gDwonloadLength = 0;
+  for(i=0;i<gLengthFormat;i++)
+  {
+    gDwonloadLength = gDwonloadLength + (ReceiveData[3+gAddressFormat+i]<<((gLengthFormat-1-i)*8));
+  } 
+  //获取下载长度
+  
+  PosRes[2] = gMaxNumberOfBlockLenth>>8;
+  PosRes[3] = gMaxNumberOfBlockLenth&0xFF;
+  
+  gFlag_StartDownload = 1;
+  gFlag_FinishDownload = 0;
+  gCounter = 1;
+  CanTpSendData(CAN_connHandle,PosRes,4);
+  
+}
+
+void HandleService_0x36(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[2] = {0x76,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  dword i;
+  int  flag;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  
+  //判断长度
+  if(ReceiveLength <=2)
+  {
+    SendNegativeResponse(0x13);
+    return;
+  }
+  //判断长度
+  
+  //判断下载顺序
+  if(gFlag_StartDownload != 1)
+  {
+    SendNegativeResponse(0x24);
+    return;
+  }
+  //判断下载顺序
+  
+  //判断计数器
+  if(ReceiveData[1] !=gCounter)
+  {
+    if(ReceiveData[1] != (gCounter - 1))
+    {
+      SendNegativeResponse(0x73);
+      return;
+    }
+    else//重复传输相同数据，则直接回复肯定响应
+    {
+      if(ReceiveLength != (gTempSaveLength + 2))
+      {
+        SendNegativeResponse(0x73);
+        return;
+      }
+      else
+      {
+        flag = 0;
+        for(i=0;i<gTempSaveLength;i++)
+        {
+          if(ReceiveData[i+2] != gTempSaveData[i])
+          {
+            flag = 1;
+            break;
+          }
+        }
+        if(flag == 1)
+        {
+          SendNegativeResponse(0x73);
+          return;
+        }
+        else
+        {
+          PosRes[1] = ReceiveData[1];
+          CanTpSendData(CAN_connHandle,PosRes,2);
+          return;
+        }
+      }
+    }
+  }
+  else
+  {
+    gCounter++;
+    if(gCounter>0xFF)
+    {
+      gCounter = 0;
+    }
+  }
+  //判断计数器
+  
+  gTempSaveLength = ReceiveLength - 2;
+  for(i = 0;i<gTempSaveLength;i++)
+  {
+    gTempSaveData[i] = ReceiveData[i+2];
+  }
+  gDwonloadLength = gDwonloadLength-gTempSaveLength;
+  if(gDwonloadLength<0)//下载了超过34服务传输的数据，响应NRC70
+  {
+    SendNegativeResponse(0x70);
+    return;
+  }
+  else if(gDwonloadLength == 0)
+  {
+    gFlag_FinishDownload = 1;
+  }
+  
+  PosRes[1] = ReceiveData[1];
+  CanTpSendData(CAN_connHandle,PosRes,2);
+  
+}
+
+void HandleService_0x37(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[1] = {0x77};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  int  i;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  //判断长度
+  if(ReceiveLength != 1)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  //判断下载顺序
+  if(gFlag_FinishDownload != 1)
+  {
+    SendNegativeResponse(0x24);
+    return;
+  }
+  //判断下载顺序
+  
+  gFlag_StartDownload = 0;
+  gFlag_FinishDownload = 0;
+  CanTpSendData(CAN_connHandle,PosRes,1);
+  
+}
+/**************服务处理****************/
+
+/**************获取诊断数据的中断****************/
+//物理寻址请求
+void CanTp_ReceptionInd( long InputHandle, byte data[])
+{
+	gTpRxLength=elcount(data);
+	memcpy( gTpRxData, data, gTpRxLength);
+  gCurrentReqMode = PHYSICAL;
+  if(gTpRxLength > 0)
+  {
+  write("Receive physical request %02x",gTpRxData[0]);
+  if(gCurrentSession != DEFAULTSESSION)
+  {
+    setTimer(S3ServerTimer,gS3ServerTimerTimeoutTime);
+  }
+  
+  ServiceHandle(gTpRxData,gTpRxLength);
+  
+  }
+}
+
+//功能寻址请求
+on message gCAN_TP_FuncRequestID
+{
+  int i;
+  
+  if(this.dir == rx)
+  {
+  if(this.byte(0) == 0)
+  {
+    if(this.FDF == 1)
+    {
+      gTpRxLength = this.byte(1);
+    }
+    else
+    {
+      gTpRxLength = 0;
+    }
+  }
+  else
+  {
+    gTpRxLength = this.byte(0);
+    for(i=0;i<gTpRxLength;i++)
+    {
+      gTpRxData[i] = this.byte(i+1);
+    }
+  }
+  gCurrentReqMode = FUNCTIONAL;
+  if(gTpRxLength > 0)
+  {
+  write("Receive functional request %02x",gTpRxData[0]);
+  if(gCurrentSession != DEFAULTSESSION)
+  {
+    setTimer(S3ServerTimer,gS3ServerTimerTimeoutTime);
+  }
+  ServiceHandle(gTpRxData,gTpRxLength);
+  }
+  
+  }
+}
+/**************获取诊断数据的中断****************/
+
+/***********************初始化函数*************************/
+long CAN_TP_Config(dword SoutcesID,dword TargetID )
+{
+	int DiagMode=0;
+	int AddressingMode=0;
+
+  write("Create physical connection");
+	CAN_connHandle =CanTpCreateConnection( DiagMode);   //配置诊断模式 0
+	CanTpSetTxIdentifier(CAN_connHandle, SoutcesID);   //发送ID
+	CanTpSetRxIdentifier(CAN_connHandle, TargetID);    //目标ID
+	CanTpUseFlowControlFrames(CAN_connHandle, 1);     //使用流控制
+//  CanTpSetFlowControlDelay( connHandle, 50);   //流控制延迟发送
+	CanTpSetSTmin(CAN_connHandle, CAN_TP_STmin);  //流控制的时间间隔
+	CanTpSetBlockSize( CAN_connHandle, CAN_TP_BlockSize);   //流控制的包数
+	CanTpSetAddressType(CAN_connHandle, AddressingMode);  //Set the addressing type, where 1 indicates functional, 0 physical.
+//  CanTpSetMaxCANFDFrameLength(CAN_connHandle,64);
+	CanTpSetTimeoutAs(CAN_connHandle,CAN_TP_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+	CanTpSetTimeoutAr(CAN_connHandle,CAN_TP_AR);//
+	CanTpSetTimeBr(CAN_connHandle,CAN_TP_BR);//This value determines the time until the next Flow Control Frame is sent.
+	CanTpSetTimeoutBs(CAN_connHandle,CAN_TP_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+	CanTpSetTimeCs(CAN_connHandle,CAN_TP_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame.
+	CanTpSetTimeoutCr(CAN_connHandle,CAN_TP_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame.
+  CanTpSetPadding(CAN_connHandle,gPaddingByte);
+	return CAN_connHandle;
+}
+
+on start
+{
+  dword gHandle;
+    
+  gHandle = registerCAPLDLL();
+
+//	SKDLL_Init(gHandle);
+  
+  gSBLActived = 0;
+  
+  write("Initial diagnostic!");
+  CAN_TP_Config(gCAN_TP_PhyRequestID,gCAN_TP_ResponseID);
+  
+  if(gFlag_ECUAPP == 1)
+  { 
+    gCurrentSession = DEFAULTSESSION;
+  }
+  else
+  {
+    gCurrentSession = PROGRAMMINGSESSION;
+  }
+}
+/***********************初始化函数*************************/
+
+void GenerateKey(byte SeedArray[],byte KeyArray[],int ByteNumOfSeed,int level,byte FixedBytes[])
+{
+  long ActualSize[1];
+	byte Challenge8Byte[8];
+  char cfgPath[400];
+  char gDLLName[400];
+  
+  getAbsFilePath("", cfgPath, 400);
+  snprintf(gDLLName, 400, "%s\\02_Library\\04_SecurityHandle\\GenerateKeyExImpl.dll", cfgPath);
+  write("dll name is %s",gDLLName);
+  
+  memcpy(Challenge8Byte,SeedArray,3);
+  memcpy_off(Challenge8Byte,3,FixedBytes,0,5);
+  
+//	SKDLL_GenKeyEx(Challenge8Byte,elcount(Challenge8Byte),level,"",KeyArray,3,ActualSize,gDLLName);
+
+}

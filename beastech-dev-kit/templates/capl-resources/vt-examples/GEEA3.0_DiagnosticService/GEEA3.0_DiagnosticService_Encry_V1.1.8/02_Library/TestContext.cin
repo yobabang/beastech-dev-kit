@@ -1,0 +1,181 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #include "00_StandardLibrary\Common\LogAndReport.cin"
+  #include "00_StandardLibrary\Common\Encryption.cin"
+  #include "00_StandardLibrary\DeviceControl\0_UpperControl\DeviceControl_c.cin"
+  #include "00_StandardLibrary\Diagnostic\DiagConfig.cin"//诊断
+  #include "00_StandardLibrary\SignalSimulation\SimSigGroup.cin"//信号仿真
+  #include "..\03_Script\TestFunctionLibrary.cin"
+  #include "..\03_Script\Parameters.cin"
+  #include "..\03_Script\UserDefine.cin"
+}
+
+variables
+{
+  message CAN1.0x53E NMMessage = {dlc=8,byte(0)=0x3E,byte(1)=0x40,byte(2)=0xFF,byte(3)=0xFF,byte(4)=0xFF,byte(5)=0xFF,byte(6)=0xFF,byte(7)=0xFF};
+  message CAN1.0x53E NMMessage_Repeat = {dlc=8,byte(0)=0x3E,byte(1)=0x41,byte(2)=0xFF,byte(3)=0xFF,byte(4)=0xFF,byte(5)=0xFF,byte(6)=0xFF,byte(7)=0xFF};
+  msTimer NMMes;
+}
+
+on timer NMMes
+{
+  output(NMMessage);
+}
+on preStop
+{
+  reportParsing();
+}
+testfunction TestContext_Init()
+{
+  long tmnow[9];
+  
+//  getlocaltime(tmnow);
+//  if((tmnow[5]+1900) > 2023)
+//  {
+//    write("Data is expired!");//时间加密
+//    stop();
+//  }
+
+//  CodeMeter();//加密狗加密
+  
+  AllDeviceInit();//设备初始化
+  
+  kl30(T_on);
+  kl15(T_on);
+  WakeupECU(T_on);
+  
+  WaitForECUOnline();
+  
+  GeelyParameterParsing();
+  DiagParameterinit();//诊断底层初始化
+  DiagEnable(); //诊断底层初始化
+  
+  PrjInfoPrint();//打印公司信息
+  
+  SetLogReportPath("ECU");//设置log和报告路径
+  
+  DllPathInit();//解锁dll路径初始化
+  
+  ParameterOfSigGroupsInit();//信号仿真初始化
+  
+  ChangeDTC(NumofDTC);
+}
+
+testfunction TestContext_End()
+{
+
+//  SetLog("trace");
+//  testWaitForTimeout(10);
+//  stopLogging();
+  
+  WakeupECU(T_off);
+  kl30(T_off);
+  kl15(T_off);
+  
+  reportParsing();
+
+  testWaitForTimeout(5000);
+  stop();
+}
+
+void reportParsing()
+{
+  char ReportPath[1500];
+  char AbsPath[1500];
+  char ToolPath[3000];
+  
+  getAbsFilePath("",AbsPath,1500);
+  snprintf(ToolPath,1500,"%s02_Library\\00_StandardLibrary\\Common\\main.exe",AbsPath);
+  snprintf(ReportPath,1500,"%s.html",reportName);
+  
+  sysExec(ToolPath,ReportPath);
+}
+void AllDeviceInit()
+{
+  DeviceConfigCheck();
+  testWaitForTimeout(100);
+  Panel_Init();
+  testWaitForTimeout(100);
+  
+  //设备初始化
+  PPS_InitConfig();
+  testWaitForTimeout(200);
+//////  SPPS_InitConfig();
+//////  testWaitForTimeout(200);
+//////  PSRB_InitConfig();
+//////  testWaitForTimeout(100);
+//////  DRB_InitConfig();
+//////  testWaitForTimeout(500);//适配有多个DRB需要reset的情况
+//////  ENV_InitConfig();
+//////  testWaitForTimeout(100);
+  
+  //设备设置
+//  PPS_SetVoltage(12, 10);//
+//  testWaitForTimeout(100);
+//  
+//  DRB_CAN_Init(1);
+//  testWaitForTimeout(100);
+//  
+//  ENV_CAN_InitConfig();
+//  testWaitForTimeout(100);
+  
+  testWaitForTimeout(5000);
+}
+
+void Precondition()
+{
+  ResetStepIndex();//重置测试步骤的step编号
+  
+	testStep("Pre","Verify the current session is default session");
+  testWaitForTimeout(100);
+	SID10_DiagnosticSessionControl(DEFAULTSESSION,PHYSICAL,SPRMIB_FALSE);
+	CheckPosResponse_SID10(DEFAULTSESSION,gP2Client_APP,gP2StarClientFor10Check,0,0);
+    
+//////  testWaitForTimeout(ECUIniTime+3000);
+  testWaitForTimeout(TestStepIntervalTime);
+  CheckCurrentSession(0x01,PHYSICAL,0,0); 
+	
+  testWaitForTimeout(1000);
+  
+  TP_TesterPresentSet(TP_ON);
+  
+  testWaitForTimeout(1000);
+}
+
+void PostCondition()
+{
+  testStep("","");
+  testWaitForTimeout(TestStepIntervalTime);
+  testStep("Post","Verify the current session is default session");
+  
+	SID10_DiagnosticSessionControl(DEFAULTSESSION,PHYSICAL,SPRMIB_FALSE);
+	CheckPosResponse_SID10(DEFAULTSESSION,gP2Client_APP,gP2StarClientFor10Check,0,0);
+  if(SessionFlag == BOOT) { ECUinitHandle(0); SessionFlag = APP; }
+  
+  testWaitForTimeout(ECUIniTime);
+  CheckCurrentSession(0x01,PHYSICAL,0,0); 
+  
+  TP_TesterPresentSet(TP_OFF);
+  stopLogging();
+}
+void WakeupECU(enum T_mode sw)
+{
+  if(gBusFlag != 3)
+  {
+    if(sw==T_on)
+    {
+      setTimerCyclic(NMMes,20);
+      testWaitForTimeout(1000);
+      
+      cancelTimer(NMMes);
+      
+      setTimerCyclic(NMMes,1000);
+    }
+    else
+    {
+      cancelTimer(NMMes);
+    } 
+  }
+}

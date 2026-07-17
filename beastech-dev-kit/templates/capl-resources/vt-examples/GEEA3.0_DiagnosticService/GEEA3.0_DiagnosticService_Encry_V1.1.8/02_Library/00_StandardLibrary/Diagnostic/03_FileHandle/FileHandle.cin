@@ -1,0 +1,122 @@
+/*@!Encoding:936*/
+
+includes
+{
+//#pragma library("..\..\03_dll\sqldll.dll") //用于解析Hex, S19及vbf格式的下载文件
+}
+
+variables
+{
+  
+}
+
+//void LoadAppFile()
+//{
+//  writeLineEx(4,1,"Load AppFilesp:%s",gsAppFilePath);
+// if(gAppFilesp==S19FILE)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    LoadS19(gsAppFilePath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(gAppFilesp==HEXFILE)
+//  {
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(gsAppFilePath);
+//    writeLineEx(4,1,"Temp start address:%08x",LoadHex(gsAppFilePath));
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//  else if(gAppFilesp==VBFFILE)
+//  {
+//    writeLineEx(4,1,"Start load vbf...");
+//    LoadVBF(gsAppFilePath);
+//    writeLineEx(4,1,"Finish load vbf.");
+//  }
+//}
+
+//void LoadAppFile(char FilePath[])
+//{
+//  writeLineEx(4,1,"Load gsAppFile:%s",FilePath);
+//
+// if(gAppFilesp==S19FILE)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    LoadS19(FilePath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(gAppFilesp==HEXFILE)
+//  {
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(FilePath);
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//  else if(gAppFilesp==VBFFILE)
+//  {
+//    writeLineEx(4,1,"Start load vbf...");
+////    LoadVBF(FilePath);
+//    writeLineEx(4,1,"Finish load vbf.");
+//  }
+//}
+
+//void LoadFdvFile()
+//{
+//
+//  writeLineEx(4,1,"Load gsFdvFilePath:%s",gsFdvFilePath);
+//
+//  if(gFdvFilesp==S19FILE)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    LoadS19(gsFdvFilePath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(gFdvFilesp==HEXFILE)
+//  {
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(gsFdvFilePath);
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//  else if(gFdvFilesp==VBFFILE)
+//  {
+//    writeLineEx(4,1,"Start load vbf...");
+////    LoadVBF(gsFdvFilePath);
+//    writeLineEx(4,1,"Finish load vbf.");
+//  }
+//}
+
+void FileDecode()
+{
+//	char cfgPath[400];
+//	char DecodeExePath[400];
+//
+//	getAbsFilePath("",cfgPath,400);
+//	snprintf(DecodeExePath,elcount(DecodeExePath),"%s02_Library\\03_dll\\FileDecodeForGEELY1.0.exe",cfgPath);
+//	sysExec(DecodeExePath,"");
+//  
+//  //TCPini();
+//  
+//  //testWaitForTextEvent("OnTcpReceive",0);
+//	testWaitForTesterConfirmation("Please wait for the window 'Decode Successfully!'");
+}
+
+//void LoadCalFile()
+//{
+//  if(gCalFilesp==S19FILE)
+//  {
+//    writeLineEx(4,1,"Start load s19...");
+//    LoadS19(gsCalFilePath);
+//    writeLineEx(4,1,"Finish load s19.");
+//  }
+//  else if(gCalFilesp==HEXFILE)
+//  {
+//    writeLineEx(4,1,"Start load hex...");
+//    LoadHex(gsCalFilePath);
+//    writeLineEx(4,1,"Finish load hex.");
+//  }
+//  else if(gCalFilesp==VBFFILE)
+//  {
+//    writeLineEx(4,1,"Start load vbf...");
+////    LoadVBF(gsCalFilePath);
+//    writeLineEx(4,1,"Finish load vbf.");
+//  }
+//}
+

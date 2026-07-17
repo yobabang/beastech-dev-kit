@@ -1,0 +1,562 @@
+/*@!Encoding:936*/
+variables
+{
+ // word   checklistreq[10][200];//10 for network,and 200 for node 
+  enum EcuWork_Mode
+  {
+    AppMode  = 0,
+    BootMode = 1
+  };
+  msTimer Timer_TesterPresent;
+  msTimer Timer_DllDataUpdate;
+  msTimer Timer_ScheduleChange;
+  msTimer Timer_TcpResend;
+
+  struct  SDU_36
+  {
+    word   NUM;
+    word   flag;  //1代表使用
+  };
+  word  Send36Instruct[EcuSum];
+  struct  SDU_36 Send36Confirm[EcuSum][2];
+
+  word DiagAddress;
+}
+
+void CurrentSessionchange(enum DiagnosticSession swWorkMode)
+{
+  if(swWorkMode == DefaultSession)
+  {
+    testWaitForTimeout(500);
+    @GW::CurrentSession = 1;
+  }
+  else if(swWorkMode == ProgrammingSession)
+  {
+    testWaitForTimeout(500);
+    @GW::CurrentSession = 2;
+  }
+  else
+  {
+    testWaitForTimeout(500);
+    @GW::CurrentSession = 3;
+  }
+}
+
+on timer Timer_TesterPresent
+{ 
+  struct SDU_Data sid3E;
+  
+  sid3E.SourceID = 0x0E80;
+  sid3E.TargetID = EcuAddressTable[1].TargetID;
+//  sid3E.TargetID = 0x1FFF;
+  sid3E.Length = 2;
+  sid3E.Payload[0] = 0x3E;
+  sid3E.Payload[1] = 0x80;
+  Send_DiagRequest(sid3E);
+  
+  setTimer(Timer_TesterPresent, 2000);
+  
+}
+On sysvar_update sysvar::GW::CurrentSession
+{
+  setTimer(Timer_ScheduleChange, 1000);
+  if(@GW::CurrentSession == 2)//编程会话
+  {
+    setTimer(Timer_TesterPresent, 2000);
+  }
+  else 
+  {
+    if(@GW::CurrentSession == 3)//扩展会话
+      setTimer(Timer_TesterPresent, 2000);
+    else
+      cancelTimer(Timer_TesterPresent);
+  }
+}
+/*
+** 获取DLL中存储的诊断请求和应答
+ */
+on timer Timer_DllDataUpdate
+{
+  long i,j,n;
+  long len;
+  word ECUREQSN, ECURESPSN;
+  
+  setTimer(Timer_DllDataUpdate, 1);
+  
+  len = dllReqQueueLength();          //？？？？
+  for(i=0; i<len; i++)
+  {
+    //write("111");
+    //将诊断请求根据targetID放入对应的数组中
+    dllDeReqQueue();
+    ECUREQSN                               = GetEcuSN(dllGetReqTranstargetID());
+    if((ECUREQSN==0)&&(@GW::FunRequest_flag==1))
+    {
+      FunRequest[@GW::FunRequestNum].TimeStamp       = dllGetReqTransTimer() / 100.0; 
+      FunRequest[@GW::FunRequestNum].Network_num     = dllGetReqTransNetwork();
+      FunRequest[@GW::FunRequestNum].Flag            = 1;
+      FunRequest[@GW::FunRequestNum].Packet.Length   = dllGetReqTransLength();
+      FunRequest[@GW::FunRequestNum].Packet.SourceID = dllGetReqTransSourceID();
+      FunRequest[@GW::FunRequestNum].Packet.TargetID = dllGetReqTranstargetID();
+      dllGetReqTransData(FunRequest[@GW::FunRequestNum].Packet.Length, FunRequest[@GW::FunRequestNum].Packet.Payload);    
+      @GW::FunRequestNum++;
+    }
+    else
+    {
+      if(@GW::QueRequest_flag==1)
+      {
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].TimeStamp       = dllGetReqTransTimer() / 100.0; //1ms
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Network_num     = dllGetReqTransNetwork();
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Flag            = 1;
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Packet.Length   = dllGetReqTransLength();
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Packet.SourceID = dllGetReqTransSourceID();
+        QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Packet.TargetID = dllGetReqTranstargetID();
+        dllGetReqTransData(QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Packet.Length, QueRequestTrans[ECUREQSN][@GW::QueRequestNum[ECUREQSN]].Packet.Payload);    
+        @GW::QueRequestNum[ECUREQSN]++;
+      }
+      else
+      {
+        RequestTrans[ECUREQSN].TimeStamp       = dllGetReqTransTimer() / 100.0; //1ms
+        RequestTrans[ECUREQSN].Network_num     = dllGetReqTransNetwork();
+        RequestTrans[ECUREQSN].Flag            = 1;
+        RequestTrans[ECUREQSN].Packet.Length   = dllGetReqTransLength();
+        RequestTrans[ECUREQSN].Packet.SourceID = dllGetReqTransSourceID();
+        RequestTrans[ECUREQSN].Packet.TargetID = dllGetReqTranstargetID();
+        dllGetReqTransData(RequestTrans[ECUREQSN].Packet.Length, RequestTrans[ECUREQSN].Packet.Payload);             
+      }
+    }
+  }
+  
+  len = dllRespQueueLength();
+  //write("len=%d",len);
+  for(i=0; i<len; i++)
+  {
+    dllDeRespQueue();
+    ECURESPSN                           = GetEcuSN(dllGetRespSourceID());
+    Response[ECURESPSN].flag            = 1;
+//    write("ECURESPSN=%d",ECURESPSN);
+//    write("dllGetRespSourceID()=%d",dllGetRespSourceID());
+    Response[ECURESPSN].TimeStamp       = dllGetRespTimer() / 100.0; //1ms
+    Response[ECURESPSN].Network_num     = dllGetRespNetwork();
+    Response[ECURESPSN].Packet.Length   = dllGetRespLength();
+    Response[ECURESPSN].Packet.SourceID = dllGetRespSourceID();
+    Response[ECURESPSN].Packet.TargetID = dllGetResptargetID();
+    dllGetRespData(Response[ECURESPSN].Packet.Length, Response[ECURESPSN].Packet.Payload);
+    
+  }
+}
+
+on timer Timer_TcpResend
+{
+  int i,j;
+  setTimer(Timer_TcpResend, 5);
+  
+  for(i=2; i<EcuSum; i++)
+  {
+    if(ETHTxBuffer[i][0].sendFlag==1)
+    {
+      Send_DiagRequest(ETHTxBuffer[i][0].Packet);
+    }
+  }
+}
+
+on message *
+{
+  if(this.id==DiagAddress||this.id==0x7FF)
+    testSupplyTextEvent("DiagReqSend");
+}
+
+void SendDiagRequest(struct ServiceVars Data)
+{
+  int x;
+  dword i,j,k;
+  
+  if(@GW::CurrentSession!=1 && @GW::FunRequest_flag != 1)
+  {
+    DiagAddress = (Data.Packet.TargetID & 0x00FF) | 0x0700;
+    TestWaitForTextEvent("DiagReqSend",2050);
+    testWaitForTimeout(50);
+  }
+  //Send_DiagRequest(GatewayReq.Packet);  //发送诊断请求
+  Send_DiagRequest(Data.Packet);  //发送诊断请求
+  if(Data.Packet.TargetID==EcuAddressTable[1].TargetID)//
+  {
+  //    等待发送完成    
+    if(0 == TestWaitForTextEvent("The diagnostic request was sent successfully.", 1000)) //0: Resume due to timeout
+    {
+      testStepFail("Chk","The diagnostic request was sent timeout.");
+    }
+    else
+    {
+      testStep("Chk","The diagnostic request was sent successfully.");
+    }
+  }
+}
+
+double GetTimerNow()
+{
+  return (timeNow()/100.0); //current time in 1ms
+}
+/*
+**网关诊断应答处理
+*/
+void CheckGatewayResponse()
+{
+  double delta_T;
+  if(GatewayReq.Req_SPRMIB == 1)
+  {
+    //
+  }
+  else
+  {
+    if(1 == TestWaitForTextEvent("The gateway's diagnostic response was received.", P2Clientdelay)) //1: Resume due to event occurred
+    {
+      CheckECU_Response(delta_T, GatewayReq, GatewayResp);//检测ECU的应答      
+    }
+    else
+    {       
+      testStepFail("Chk","The gateway's diagnostic response is timeout.");
+    }
+  }
+}
+
+/*功能寻址数组清空*/
+void FunRequestBufferClear()
+{ 
+  int i;
+  Request[0].Flag=0;  //功能请求标志位清零
+  for(i=0;i<@GW::FunRequestNum;i++)
+    memcpy(FunRequest[i],void_Request);
+}
+
+void RequestBufferClear()
+{ 
+  int i;
+  for(i=0; i<EcuSum; i++)
+	{
+    memcpy(RequestTrans[i],void_Request);
+  }
+}
+
+void ResponseBufferClear()
+{
+  int i;
+  for(i=0; i<EcuSum; i++)
+	{
+    memcpy(ResponseTrans[i],void_Request);
+  }
+}
+
+void CheckFunAddressingPriority()
+{
+  int i,j;
+  for(i=2; i<EcuSum; i++)
+	{
+    int flag;
+    flag=0;
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+    for(j=0;j<@GW::FunRequestNum;j++)
+    {
+      if(EcuAddressTable[i].domain==FunRequest[j].Network_num)
+      {
+        flag=1;
+        testStep("","");
+        testStepPass("chk","Functional addressing forwarding to the target network（Domian=%d Time=%f）",EcuAddressTable[i].domain,FunRequest[j].TimeStamp);  
+        CheckDataTransmit_Request(Request[0].Packet, FunRequest[j].Packet); 
+        if(FunRequest[j].TimeStamp<RequestTrans[i].TimeStamp)
+          testStepPass("chk","Functional addressing has higher priority than physical addressing");
+        else
+          testStepFail("chk","Functional addressing has lower priority than physical addressing");     
+        break;
+      }
+    }
+    if(flag==0)
+      testStepFail("chk","Functional addressing not forwarded to the target network（Domian=%d）",EcuAddressTable[i].domain);      
+  }
+  
+  for(j=0;j<@GW::FunRequestNum;j++)
+    memcpy(FunRequest[j],void_Request);
+}
+
+void CheckRequestTrans()
+{
+  int i;
+  for(i=0; i<EcuSum; i++)
+  {    
+    if(Request[i].flag==1 )
+    {
+      if(RequestTrans[i].Flag ==1)
+      {
+        if(i==0)
+        {
+          teststep("step","check transmit of Function Request");
+        }
+        else
+        {
+          teststep("step","check transmit of Request of 0x%x",EcuAddressTable[i].TargetID);
+        }
+        CheckDataTransmit_Request(Request[i].Packet, RequestTrans[i].Packet); //检测转发数据一致性   
+        memcpy(RequestTrans[i],void_Request);
+        Request[i].flag=0;         
+      }
+      else
+      {
+        Request[i].flag=0; 
+        testStepFail("Chk","Request data not receive on target network! EcuAddress is 0x%x",EcuAddressTable[i].TargetID);
+      }
+    }
+  }
+  RequestBufferClear(); 
+}
+
+/*
+**检测诊断应答转发
+*/
+void CheckResponseTrans()
+{
+  int x,i;
+  double respTrans_T,delta_T;
+  
+  for(i=2 ; i<EcuSum; i++)
+  { 
+    if(Response[i].flag==1 )
+    {
+      if(ResponseTrans[i].Flag==1)
+      {
+        testStep("step","");
+        teststep("step","check transmit of Response of 0x%x",EcuAddressTable[i].TargetID);
+       
+        CheckDataTransmit_Response(Response[i].Packet, ResponseTrans[i].Packet); //检测转发数据一致性     
+        memcpy(ResponseTrans[i],void_Request);
+        //标志位清零
+        Response[i].flag = 0;
+      }
+      else
+      {
+        Response[i].flag=0; 
+        testStepFail("Chk","Response data not receive on target network! EcuAddress is 0x%x",EcuAddressTable[i].TargetID);
+      }
+    }
+  }
+  ResponseBufferClear();
+}
+
+void CheckECU_Response_Fun(struct ServiceVars testerReq, struct ServiceVars ecuResp)
+{
+  if(ecuResp.Packet.Payload[0] == 0x7F)
+  {
+    testStepFail("Chk","Unexpect NegativeResponseServiceID 0x%x",ecuResp.Packet.Payload[0]);
+  }
+  else if(ecuResp.Packet.Payload[0] != (testerReq.Packet.Payload[0] + 0x40))
+  { 
+    if(SID2A_PeriodicResponse.Request_Enable == 1)
+    {
+      if(ecuResp.Packet.Payload[0] != SID2A_PeriodicResponse.PeriodicDataIdentifier[0])
+      {
+        testStepFail("Chk","Unexpect SID2A PeriodicResponseID 0x%x",ecuResp.Packet.Payload[0]);
+      }
+      else 
+      {
+        testStepPass("Chk","Expect SID2A PeriodicResponseID 0x%x",ecuResp.Packet.Payload[0]);
+        
+        CheckPeriodicResponse_SID2A(testerReq, ecuResp);
+      }
+    }
+    else 
+    {
+      testStepFail("Chk","Unexpect PositiveResponseServiceID 0x%x",ecuResp.Packet.Payload[0]);
+    }
+  }
+  else
+  {
+    testStepPass("Chk","PositiveResponseServiceID 0x%x",ecuResp.Packet.Payload[0]);
+    
+    switch(testerReq.Packet.Payload[0])
+    {
+      case 0x10: CheckPosResponse_SID10(testerReq, ecuResp); break;
+      case 0x11: CheckPosResponse_SID11(testerReq, ecuResp); break;
+      case 0x22: CheckPosResponse_SID22(testerReq, ecuResp); break;
+      case 0x27: CheckPosResponse_SID27(testerReq, ecuResp); break;
+      case 0x2A: CheckPosResponse_SID2A(testerReq, ecuResp); break;
+      case 0x2C: CheckPosResponse_SID2C(testerReq, ecuResp); break;
+      case 0x2E: CheckPosResponse_SID2E(testerReq, ecuResp); break;
+      case 0x31: CheckPosResponse_SID31(testerReq, ecuResp); break;
+      case 0x34: CheckPosResponse_SID34(testerReq, ecuResp); break;
+      case 0x35: CheckPosResponse_SID35(testerReq, ecuResp); break;
+      case 0x36: CheckPosResponse_SID36(testerReq, ecuResp); break;
+      case 0x37: CheckPosResponse_SID37(testerReq, ecuResp); break;
+      case 0x3E: CheckPosResponse_SID3E(testerReq, ecuResp); break;
+      default: break;
+    }
+  }
+}
+
+//Check Request Transmit by GW
+void CheckDataTransmit_Request(struct SDU_Data testerReq, struct SDU_Data ecuReq)
+{
+  if(1)
+  {
+    if(testerReq.Length == ecuReq.Length)
+    {
+      testStepPass("Chk","Transmit request data length：%d is correct", ecuReq.Length);
+    }
+    else
+    {
+      testStepFail("Chk","Transmit request data length:%d is not correct", ecuReq.Length);
+    } 
+    if(0 == memcmp(testerReq.Payload, ecuReq.Payload, ecuReq.Length))
+    {
+      testStepPass("Chk","Transmit request data is correct");
+    }
+    else
+    {
+      testStepFail("Chk","Transmit request data is not correct, 0x%02X ,0x%02X & 0x%02X ,0x%02X",ecuReq.Payload[0],ecuReq.Payload[1],testerReq.Payload[0],testerReq.Payload[1]);
+    }
+  }
+}
+//Check Response Transmit by GW
+void CheckDataTransmit_Response(struct SDU_Data testerResp, struct SDU_Data ecuResp)
+{
+  int i;
+  if(1)
+  {
+    testStepPass("Chk","response Transmit to target network");
+    if(ecuResp.Length == testerResp.Length)
+    {
+      testStepPass("Chk","Transmit response data length:%d is correct",testerResp.Length);
+    }
+    else
+    {
+      testStepFail("Chk","Transmit response data length:%d %d is not correct",testerResp.Length, ecuResp.Length);
+    }
+    
+    if(0 == memcmp(testerResp.Payload, ecuResp.Payload, testerResp.Length))
+    {
+      testStepPass("Chk","Transmit response data is correct");
+    }
+    else
+    {
+//      testStepFail("Chk","Transmit response data is not correct 0x%02X, 0x%02X",testerResp.Payload[10],ecuResp.Payload[10]);
+      for(i = 0; i < testerResp.Length; i++)
+      {
+        testStep("step","0x%02X, 0x%02X",testerResp.Payload[i],ecuResp.Payload[i]);
+      }
+    }
+  }
+  else
+  {
+    testStepPass("Chk","response has not Transmit to target network");
+  }
+}
+
+void SetResponseTask(int SN)
+{
+  qword Response_Indication;
+  Response_Indication = @GW::Response_Indication;
+  Response_Indication = Response_Indication | (1<<SN);
+  @GW::Response_Indication = Response_Indication;
+}
+
+void SetNRC78ResponseTask(int SN)
+{
+  qword Response_NRC78;
+  Response_NRC78 = @GW::Response_NRC78;
+  Response_NRC78 = Response_NRC78 | (1<<SN);
+  @GW::Response_NRC78 = Response_NRC78;
+}
+
+void Check3DHeader_send(int i,int j)
+{
+  if(i==0)
+  {
+    if(@GW::Flag_3DSend[j]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send) on network(DomainID=%d)! ",j);
+    }
+    else
+    {
+      testSteppass("step","3D header sent correctly on network(DomainID=%d)!",j);
+    }
+  }
+  else if(i==1)
+  {
+    if(@GW::Flag_3DSend[j]==1)
+    {
+      testStepFail("step","3D header not send correctly! still send on network(DomainID=%d)",j);
+    }
+    else
+    {
+      testSteppass("step","3D header sent correctly! stop send on network(DomainID=%d)",j);
+    }
+  }
+  else if(i==2)
+  {
+    for(j=1;j<(NetworkNumber+1);j++)
+    {
+      if(@GW::Flag_3DSend[j]==1)
+      {
+        testStepFail("step","3D header send after functionally addressed requests on network(DomianID=%d)",j);
+      }
+      else
+      {
+        testSteppass("step","3D header not send after functionally addressed requests on network(DomianID=%d)",j);
+      }
+    }
+  }
+}
+
+void Check3DHeader_send()
+{
+  int j;
+  for(j=1;j<(NetworkNumber+1);j++)
+  {
+    if(@GW::Flag_3DSend[j]==1)
+    {
+      testStepFail("step","3D header send after functionally addressed requests on network(DomianID=%d)",j);
+    }
+    else
+    {
+      testSteppass("step","3D header not send after functionally addressed requests on network(DomianID=%d)",j);
+    }
+  }
+}
+
+void Parallel_Queue_36CheckResponse(struct ECU_SDU txPackage)
+{
+  int i, x;
+  x = GetEcuSN(txPackage.SourceID);
+  write("x=%d",x);
+  if(Send36Confirm[x][0].NUM == txPackage.Payload[1] && Send36Confirm[x][0].flag == 1)
+  {
+    if(Send36Confirm[x][1].flag == 1)
+    {
+      Send36Confirm[x][0].flag = 0;
+    }
+  }
+  else
+  {
+    if(Send36Confirm[x][1].NUM == txPackage.Payload[1] && Send36Confirm[x][1].flag == 1)
+    {
+      if(Send36Confirm[x][0].flag == 1)
+      {
+        testStepFail("Step","phy diagnostic response 0x%x Lost 36 %d!",EcuAddressTable[x].TargetID,Send36Confirm[x][0].NUM);
+        Send36Confirm[x][0].flag = 0;
+        Send36Confirm[x][1].flag = 0;
+      }
+    }
+    else
+    {
+      if(Send36Confirm[x][1].flag == 1)
+      {
+        testStepFail("Step","phy diagnostic response 0x%x Lost 36 %d!",EcuAddressTable[x].TargetID,Send36Confirm[x][1].NUM);
+        Send36Confirm[x][1].flag = 0;
+      }
+//      else
+//      {
+//        testStepFail("Step","phy diagnostic request 0x%x Lost 36!",EcuAddressTable[x].TargetID);
+//        @GW::Check36==1; 
+//      }
+    }
+  }
+}

@@ -1,0 +1,2186 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+variables
+{
+  int Offset_Volt_CANH_State = 0 ;
+  int Offset_Volt_CANL_State = 0;
+  msTimer timer1;
+  msTimer timer2;
+  msTimer timer3;
+  msTimer timer4;
+  
+}
+On timer timer1
+{
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+On timer timer2
+{
+  DRB2_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+On timer timer3
+{
+  DRB3_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+On timer timer4
+{
+  DRB4_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+////////////////////////通道切换//////////////////////////////////
+//void CAN1_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+on sysvar_update sysvar::DRB::CAN1_Connect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,Connect);
+//  testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+//void CAN1_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH1,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN1_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+//void CAN2_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN2_Connect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+//void CAN2_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH2,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN2_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,DisConnect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+//void CAN3_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN3_Connect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+//void CAN3_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH3,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN3_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,DisConnect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+//void CAN4_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::CAN4_Connect
+{
+  DRB1_Cmd();
+  DRB_ECU(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN4_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN5_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN5_DisConnect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN6_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN6_DisConnect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN7_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN7_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN8_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN8_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN9_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN9_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+on sysvar_update sysvar::DRB::CAN10_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN10_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN11_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+on sysvar_update sysvar::DRB::CAN11_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH7,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+on sysvar_update sysvar::DRB::CAN12_Connect
+{
+  DRB4_Cmd ();
+  DRB_ECU(CH8,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,Connect);
+  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+
+
+on sysvar_update sysvar::DRB::CAN12_DisConnect
+{
+ DRB4_Cmd ();
+  DRB_ECU(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,100);
+}
+//void LIN1_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  
+//  //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  
+//}
+
+on sysvar_update sysvar::DRB::LIN1_Connect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,Connect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+  
+////  //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+////  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  
+}
+
+//void LIN1_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN1_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+  DRB3_Cmd ();
+  DRB_ECU(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN2_Connect()
+//{
+//DRB1_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN2_Connect
+{
+DRB1_Cmd ();
+  DRB_ECU(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,Connect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+  setTimer(timer1,50);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+// // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN2_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB3_Cmd ();
+//  DRB_ECU(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN2_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+ // //testWaitForTimeout(100);
+    DRB3_Cmd ();
+  DRB_ECU(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN3_Connect()
+//{
+//DRB1_Cmd ();
+//  DRB_ECU(CH7,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH7,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN3_Connect
+{
+DRB1_Cmd ();
+  DRB_ECU(CH7,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+ // //testWaitForTimeout(100);
+//  DRB3_Cmd ();
+//  DRB_ECU(CH7,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,Connect);
+// // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN3_DisConnect()
+//{
+// DRB1_Cmd ();
+//  DRB_ECU(CH7,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB3_Cmd ();
+//  DRB_ECU(CH7,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN3_DisConnect
+{
+ DRB1_Cmd ();
+  DRB_ECU(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+ // //testWaitForTimeout(100);
+   DRB3_Cmd ();
+  DRB_ECU(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN4_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_ECU(CH8,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB3_Cmd ();
+//  DRB_ECU(CH8,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN4_Connect
+{
+  DRB1_Cmd ();
+  DRB_ECU(CH8,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,Connect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+// // //testWaitForTimeout(100);
+//    DRB3_Cmd ();
+//  DRB_ECU(CH8,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,Connect);
+// // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN4_DisConnect()
+//{
+// DRB1_Cmd ();
+//  DRB_ECU(CH8,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB3_Cmd ();
+//  DRB_ECU(CH8,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN4_DisConnect
+{
+ DRB1_Cmd ();
+  DRB_ECU(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+   DRB3_Cmd ();
+  DRB_ECU(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN5_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN5_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,Connect);
+ // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+// // //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,Connect);
+////  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN5_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH1,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH1,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN5_DisConnect 
+{
+ DRB2_Cmd ();
+  DRB_ECU(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,DisConnect);
+//  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+   DRB4_Cmd ();
+  DRB_ECU(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH1,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+//
+//void LIN6_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN6_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+ // //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,Connect);
+// // //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN6_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH2,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH2,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH2,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN6_DisConnect
+{
+ DRB2_Cmd ();
+  DRB_ECU(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,DisConnect);
+ // //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+   DRB4_Cmd ();
+  DRB_ECU(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH2,DisConnect);
+//  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN7_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN7_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,Connect);
+ // ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+//  ////testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,Connect);
+//  ////testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN7_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH3,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH3,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH3,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN7_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB4_Cmd ();
+  DRB_ECU(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH3,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN8_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN8_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,Connect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+//  //testWaitForTimeout(100);
+//  DRB4_Cmd ();
+//  DRB_ECU(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN8_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN8_DisConnect
+{
+ DRB2_Cmd ();
+  DRB_ECU(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH4,DisConnect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH4,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN9_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN9_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,Connect);
+  //testWaitForTimeout(100);
+  setTimer(timer1,50);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN9_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH5,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN9_DisConnect
+{
+ DRB2_Cmd ();
+  DRB_ECU(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+   DRB4_Cmd ();
+  DRB_ECU(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH5,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN10_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN10_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,Connect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+//  //testWaitForTimeout(100);
+//    DRB4_Cmd ();
+//  DRB_ECU(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void LIN10_DisConnect()
+//{
+// DRB2_Cmd ();
+//  DRB_ECU(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//   DRB4_Cmd ();
+//  DRB_ECU(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH6,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::LIN10_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB4_Cmd ();
+  DRB_ECU(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH6,DisConnect);
+  //testWaitForTimeout(100);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void FR1_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH7,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::FR1_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH7,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,Connect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+}
+
+//void FR1_DisConnect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH7,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH7,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::FR1_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH7,DisConnect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+}
+
+//void FR2_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH8,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,Connect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+on sysvar_update sysvar::DRB::FR2_Connect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH8,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,Connect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+}
+
+//void FR2_DisConnect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ECU(CH8,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  DRB_Dev(CH8,DisConnect);
+//  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//}
+
+on sysvar_update sysvar::DRB::FR2_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_ECU(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  DRB_Dev(CH8,DisConnect);
+  //testWaitForTimeout(100);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  setTimer(timer1,50);
+}
+///////////////////设备切换///////////////////////////////////////
+//void VN1630_CAN_DisConnect()//DRB1(通道1~4)
+//{
+//  DRB1_Cmd ();
+//  DRB_Dev(CH1,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH2,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH3,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//
+//}
+on sysvar_update sysvar::DRB::VN1630_CAN1_DisConnect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN2_DisConnect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN3_DisConnect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN4_DisConnect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN5_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN6_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN7_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN8_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN9_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN10_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN11_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN12_DisConnect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+//void VN1630_CAN_Connect()//DRB1(通道1~4)
+//{
+//  DRB1_Cmd ();
+//  DRB_Dev(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB_Dev(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//
+//}
+on sysvar_update sysvar::DRB::VN1630_CAN1_Connect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+on sysvar_update sysvar::DRB::VN1630_CAN2_Connect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+
+on sysvar_update sysvar::DRB::VN1630_CAN3_Connect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+on sysvar_update sysvar::DRB::VN1630_CAN4_Connect//DRB1(通道1~4)
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+on sysvar_update sysvar::DRB::VN1630_CAN5_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN6_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN7_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN8_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN9_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN10_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN11_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH7,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+on sysvar_update sysvar::DRB::VN1630_CAN12_Connect//DRB4(通道1~8)
+{
+  DRB4_Cmd ();
+  DRB_Dev(CH8,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+//void VN1630_LIN_DisConnect()//DRB1通道1~4，DRB2通道1~6
+//{
+//  DRB1_Cmd ();
+//  DRB_Dev(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH7,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH8,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_Dev(CH1,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH2,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH3,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH4,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH5,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH6,DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//}
+
+on sysvar_update sysvar::DRB::VN1630_LIN_DisConnect //DRB1通道1~4，DRB2通道1~6
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH7,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH8,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_Dev(CH1,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH2,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH3,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH4,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH5,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH6,DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+//void VN1630_LIN_Connect()//DRB1通道1~4，DRB2通道1~6
+//{
+//  DRB1_Cmd ();
+//  DRB_Dev(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH7,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH8,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_Dev(CH1,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH2,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH3,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH4,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH5,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB_Dev(CH6,Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//}
+
+on sysvar_update sysvar::DRB::VN1630_LIN_Connect//DRB1通道1~4，DRB2通道1~6
+{
+  DRB1_Cmd ();
+  DRB_Dev(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH7,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH8,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_Dev(CH1,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH2,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH3,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH4,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH5,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB_Dev(CH6,Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+//void OSC_CAN_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_OSC(OSC_Single);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+on sysvar_update sysvar::DRB::OSC_CAN_Connect
+{
+  DRB1_Cmd ();
+  DRB_OSC(OSC_Single);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void OSC_CAN_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_OSC(OSC_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::OSC_CAN_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_OSC(OSC_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void OSC_LIN_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_OSC(OSC_Single);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_OSC(OSC_Single);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//}
+on sysvar_update sysvar::DRB::OSC_LIN_Connect
+{
+  DRB1_Cmd ();
+  DRB_OSC(OSC_Single);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_OSC(OSC_Single);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+
+//void OSC_LIN_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_OSC(OSC_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_OSC(OSC_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::OSC_LIN_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_OSC(OSC_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_OSC(OSC_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+//void OSC_FR_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_OSC(OSC_Single);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//}
+
+on sysvar_update sysvar::DRB::OSC_FR_Connect
+{
+  DRB2_Cmd ();
+  DRB_OSC(OSC_Single);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+
+//void OSC_FR_DisConnect()
+//{
+//  DRB2_Cmd ();
+//  DRB_OSC(OSC_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+
+on sysvar_update sysvar::DRB::OSC_FR_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_OSC(OSC_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+
+
+//void REF_Node_GND()
+//{
+//  DRB1_Cmd ();
+//  DRB_REFGND(Node_GND);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_REFGND(Node_GND);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+
+
+on sysvar_update sysvar::DRB::REF_Node_GND
+{
+  DRB1_Cmd ();
+  DRB_REFGND(Node_GND);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_REFGND(Node_GND);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void REF_SYS_GND()
+//{
+//  DRB1_Cmd ();
+//  DRB_REFGND(DEV_GND);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//  DRB2_Cmd ();
+//  DRB_REFGND(DEV_GND);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::REF_SYS_GND
+{
+  DRB1_Cmd ();
+  DRB_REFGND(DEV_GND);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+  DRB2_Cmd ();
+  DRB_REFGND(DEV_GND);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void MM_CANH_GND_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_PMM(PMM_CANH_VOL);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::MM_CANH_GND_Connect_DRB1
+{
+  DRB1_Cmd ();
+  DRB_PMM(PMM_CANH_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+on sysvar_update sysvar::DRB::MM_CANH_GND_Connect_DRB4
+{
+  DRB4_Cmd ();
+  DRB_PMM(PMM_CANH_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+
+//void MM_CANL_GND_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_PMM(PMM_CANL_VOL);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::MM_CANL_GND_Connect_DRB1
+{
+  DRB1_Cmd ();
+  DRB_PMM(PMM_CANL_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+on sysvar_update sysvar::DRB::MM_CANL_GND_Connect_DRB4
+{
+  DRB4_Cmd ();
+  DRB_PMM(PMM_CANL_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void MM_CANH_CANL_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_PMM(PMM_CANH_CANL_Res);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::MM_CANH_CANL_Connect_DRB1
+{
+  DRB1_Cmd ();
+  DRB_PMM(PMM_CANH_CANL_Res);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  write("PMM CANL_H Connect");
+  //testWaitForTimeout(100);
+}
+on sysvar_update sysvar::DRB::MM_CANH_CANL_Connect_DRB4
+{
+  DRB4_Cmd ();
+  DRB_PMM(PMM_CANH_CANL_Res);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  write("PMM CANL_H Connect");
+  //testWaitForTimeout(100);
+}
+
+//void MM_CAN_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_PMM(PMM_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::MM_CAN_DisConnect_DRB1
+{
+  DRB1_Cmd ();
+  DRB_PMM(PMM_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+on sysvar_update sysvar::DRB::MM_CAN_DisConnect_DRB4
+{
+  DRB4_Cmd ();
+  DRB_PMM(PMM_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+//void MM_LIN_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_PMM(PMM_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB2_Cmd ();
+//  DRB_PMM(PMM_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//}
+
+on sysvar_update sysvar::DRB::MM_LIN_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_PMM(PMM_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB2_Cmd ();
+  DRB_PMM(PMM_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+//void MM_LIN_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_PMM(PMM_CANH_VOL);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//    DRB1_Cmd ();
+//  DRB_PMM(PMM_CANH_VOL);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::MM_LIN_Connect
+{
+  DRB2_Cmd ();
+  DRB_PMM(PMM_CANH_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+    DRB1_Cmd ();
+  DRB_PMM(PMM_CANH_VOL);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+
+//void ENV_CAN_Connect()
+//{
+//    DRB1_Cmd ();
+//  DRB_ENV(ENV_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+
+on sysvar_update sysvar::DRB::ENV_CAN_Connect
+{
+    DRB1_Cmd ();
+  DRB_ENV(ENV_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+//void ENV_CAN_INPUT_ON()
+//{
+//    DRB1_Cmd ();
+//  DRB_ENV(ENV_IN_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+
+on sysvar_update sysvar::DRB::ENV_CAN_INPUT_ON
+{
+    DRB1_Cmd ();
+  DRB_ENV(ENV_IN_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_CAN_OUTPUT_ON()
+//{
+//    DRB1_Cmd ();
+//  DRB_ENV(ENV_OUT_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_CAN_OUTPUT_ON
+{
+    DRB1_Cmd ();
+  DRB_ENV(ENV_OUT_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_CAN_DisConnect()
+//{
+//  DRB1_Cmd ();
+// DRB_ENV(ENV_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_CAN_DisConnect
+{
+  DRB1_Cmd ();
+ DRB_ENV(ENV_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_FR_Connect()
+//{
+//    DRB2_Cmd ();
+//  DRB_ENV(ENV_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_FR_Connect
+{
+    DRB2_Cmd ();
+  DRB_ENV(ENV_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_FR_INPUT_ON()
+//{
+//    DRB2_Cmd ();
+//  DRB_ENV(ENV_IN_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_FR_INPUT_ON
+{
+    DRB2_Cmd ();
+  DRB_ENV(ENV_IN_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_FR_OUTPUT_ON()
+//{
+//    DRB2_Cmd ();
+//  DRB_ENV(ENV_OUT_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_FR_OUTPUT_ON
+{
+    DRB2_Cmd ();
+  DRB_ENV(ENV_OUT_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void ENV_FR_DisConnect()
+//{
+//  DRB2_Cmd ();
+//  DRB_ENV(ENV_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::ENV_FR_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_ENV(ENV_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+void DRB_ALL_RESET()
+{
+  DRB1_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+    DRB2_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+    DRB3_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+    DRB4_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  
+}
+
+on sysvar_update sysvar::DRB::DRB_ALL_RESET
+{
+  DRB1_Cmd ();
+  DRB_Reset();
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  setTimer(timer2,100);
+  //testWaitForTimeout(100);
+  setTimer(timer3,200);
+  //testWaitForTimeout(100);
+  setTimer(timer4,300);
+  //testWaitForTimeout(100);
+  
+}
+
+
+//void VH6501_CAN_Connect()
+//{
+//  DRB1_Cmd ();
+//  DRB_Stress(Stress_Input_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+
+on sysvar_update sysvar::DRB::VH6501_CAN_Connect
+{
+  DRB1_Cmd ();
+  DRB_Stress(Stress_Input_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void VH6501_CAN_Disconnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_Stress(Stress_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::VH6501_CAN_Disconnect
+{
+  DRB1_Cmd ();
+  DRB_Stress(Stress_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void Stress_Volt_CANH_Connect()//-3V测试,*一定不能和VH6501同时对CANH进行故障注入。
+//{
+////  DRB1_Cmd ();
+////  DRB_Stress(Stress_Output_Connect);
+////  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+////  write ("Offset_Volt_CANH_State = %d",Offset_Volt_CANH_State);
+////  //testWaitForTimeout(100);
+////  
+////  if (VH6501_CANH_State == 1)
+////    write ("-3V对CANH短路与VH6501对CANH进行故障注入有冲突");
+////    else
+////      {
+////        Offset_Volt_CANH_State = 1;//标记-3V在CANH
+////        Stress_DRB_CANH_Connect();
+////      }
+//}
+
+on sysvar_update sysvar::DRB::Stress_Volt_CANH_Connect//-3V测试,*一定不能和VH6501同时对CANH进行故障注入。
+{
+//  DRB1_Cmd ();
+//  DRB_Stress(Stress_Output_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  write ("Offset_Volt_CANH_State = %d",Offset_Volt_CANH_State);
+//  //testWaitForTimeout(100);
+//  
+//  if (VH6501_CANH_State == 1)
+//    write ("-3V对CANH短路与VH6501对CANH进行故障注入有冲突");
+//    else
+//      {
+//        Offset_Volt_CANH_State = 1;//标记-3V在CANH
+//        Stress_DRB_CANH_Connect();
+//      }
+  
+  DRB1_Cmd ();
+  DRB_Stress(Stress_Output_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void Stress_Volt_CANL_Connect()//-3V测试，*一定不能和VH6501同时对CANL进行故障注入。
+//{
+////  DRB1_Cmd ();
+////  DRB_Stress(Stress_Output_Connect);
+////  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+////  //testWaitForTimeout(100);
+////  
+////    if (VH6501_CANL_State == 1)
+////    write ("-3V对CANL短路与VH6501对CANL进行故障注入有冲突");
+////    else
+////      {
+////        Offset_Volt_CANL_State = 1;//标记-3V在CANL
+////        Stress_DRB_CANL_Connect();
+////      }
+//}
+on sysvar_update sysvar::DRB::Stress_Volt_CANL_Connect//-3V测试，*一定不能和VH6501同时对CANL进行故障注入。
+{
+//  DRB1_Cmd ();
+//  DRB_Stress(Stress_Output_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  
+//    if (VH6501_CANL_State == 1)
+//    write ("-3V对CANL短路与VH6501对CANL进行故障注入有冲突");
+//    else
+//      {
+//        Offset_Volt_CANL_State = 1;//标记-3V在CANL
+//        Stress_DRB_CANL_Connect();
+//      }
+  
+  DRB1_Cmd ();
+  DRB_Stress(Stress_Output_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+}
+
+//void VH6501_Offset_Volt_DisConnect()
+//{
+//  DRB1_Cmd ();
+//  DRB_Stress(Stress_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  Stress_DRB_CANH_DisConnect(); 
+//  Offset_Volt_CANH_State = 0;
+//  Offset_Volt_CANL_State = 0;
+//}
+
+
+on sysvar_update sysvar::DRB::VH6501_Offset_Volt_DisConnect
+{
+  DRB1_Cmd ();
+  DRB_Stress(Stress_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+//  Stress_DRB_CANH_DisConnect(); 
+  Offset_Volt_CANH_State = 0;
+  Offset_Volt_CANL_State = 0;
+}
+//void FRSTRESS_Connect()
+//{
+//  DRB2_Cmd ();
+//  DRB_Stress(Stress_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::FRSTRESS_Connect
+{
+  DRB2_Cmd ();
+  DRB_Stress(Stress_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void FRSTRESS_DisConnect()
+//{
+//  DRB2_Cmd ();
+//  DRB_Stress(Stress_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::FRSTRESS_DisConnect
+{
+  DRB2_Cmd ();
+  DRB_Stress(Stress_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+//void LIN_STRESS_Connect()
+//{
+//  DRB3_Cmd ();
+//  DRB_Stress(Stress_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB4_Cmd ();
+//  DRB_Stress(Stress_Connect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::LIN_STRESS_Connect
+{
+  DRB3_Cmd ();
+  DRB_Stress(Stress_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB4_Cmd ();
+  DRB_Stress(Stress_Connect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+//void LIN_STRESS_DisConnect()
+//{
+//  DRB3_Cmd ();
+//  DRB_Stress(Stress_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//  DRB4_Cmd ();
+//  DRB_Stress(Stress_DisConnect);
+//  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+//  //testWaitForTimeout(100);
+//}
+
+on sysvar_update sysvar::DRB::LIN_STRESS_DisConnect
+{
+  DRB3_Cmd ();
+  DRB_Stress(Stress_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+  DRB4_Cmd ();
+  DRB_Stress(Stress_DisConnect);
+  SendTcpData_BYTE(DRB_SendData,TEH_CAN1_Socket);
+  //testWaitForTimeout(100);
+}
+
+//void DRB_InitConfig()
+//{
+//  DRB_ALL_RESET();
+//}
+
+void DRB_InitConfig()
+{
+  DRB_ALL_RESET();
+}

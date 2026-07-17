@@ -1,0 +1,567 @@
+/*@!Encoding:936*/
+
+variables
+{
+  mstimer t_TeSim, t_FCSim;
+  
+  message 0x000 gTp_Message;
+  message 0x000 gRequestMultiFrame   ={dlc=8};
+  message 0x000 gRequestSingleFrame  ={dlc=8};
+  message 0x000 gSingleFrame         ={dlc=8,byte(0)=0x00};
+  message 0x000 gFirstFrame          ={dlc=8,byte(0)=0x10};
+  message 0x000 gConsecutiveFrame    ={dlc=8,byte(0)=0x20};
+  message 0x000 gFlowControlFrame    ={dlc=8,byte(0)=0x30,byte(1)=0x02,byte(2)=0x00};
+  message 0x000 gFlowControlFrame1   ={dlc=8,byte(0)=0x30,byte(1)=0x02,byte(2)=0x00};
+  message 0x000 gTE_Message          ={dlc=8,byte(0)=0x02,byte(1)=0x3e,byte(2)=0x80};
+  message 0x000 gTR;
+  mstimer t5,t4,t6;
+  message 0x001 interframe={dlc=8,byte(0)=0xFF,byte(1)=0xFF,byte(2)=0xFF,byte(3)=0xFF,byte(4)=0xFF,byte(5)=0xFF,byte(6)=0xFF,byte(7)=0xFF};
+  
+  byte gReqMultiFrame[8]={0x03,0x22,0xF1,0x93,0xAA,0xAA,0xAA,0xAA};
+  byte gReqSingleFrame[8]={0x02,0x10,0x01,0xAA,0xAA,0xAA,0xAA,0xAA};
+  byte gSendSingleFrame[8]={0x03,0x22,0xF1,0x8C,0xAA,0xAA,0xAA,0xAA};
+  byte gSendMultiFrame1[6]={0x22,0x01,0x02,0x03,0x04,0x05};//FF
+  byte gSendMultiFrame2[7]={0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C};//CF
+  byte gSendMultiFrame3[7]={0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13};//CF
+  byte gSendMultiFrame4[7]={0x14,0x15,0x16,0x17,0x18,0x19,0x1A};//CF
+  byte gSendMultiFrame5[7]={0x1B,0x1C,0x1D,0x1E,0x1F,0x20,0x21};//CF
+  byte gSendMultiFrame6[7]={0x22,0xAA,0xAA,0xAA,0xAA,0xAA,0xAA};//CF
+  
+  dword gTPTResponseID;
+  dword gTPTRequestID;
+  dword gTPTFuncRequestID;
+  byte  gCurrentFrameType;
+  byte  gReceivedData[8];
+  int   gNumberOfCFReceived;
+  int   gNumberCounter;
+  int   gTP_NRC78_Flag;
+  enum  FrameType {SF, FF, CF, FC, UF};
+  enum  FlowStateType {CTS = 0x00,WAIT = 0X01,OVFLOW = 0x02};
+  byte  gSF_DL;
+  byte  gFF_DL;
+  byte  gBS;
+  byte  gSTmin;
+  byte  gFCSTmin;
+  int   gN_As;
+  int   gN_Ar;
+  int   gN_Bs;
+  int   gN_Br;
+  int   gN_Cs;
+  int   gN_Cr;
+  
+  int TIMERFLAG = 0;
+  int TIMERFLAG1 = 0;
+}
+
+on timer t_TeSim
+{
+  output(gTE_Message);//send the tester present period=10ms
+ // Sim_TE(SV_on,10);
+}
+on timer t_FCSim
+{
+  output(gFlowControlFrame1); 
+ // setTimerCyclic(FCSim,10);
+}
+
+on timer t5
+{
+  //output(interframe);
+  //output(interframe);
+    if(TIMERFLAG%2 == 0)
+  {
+    //output(interframe);
+//    output(interframe);
+//    output(interframe);
+//    output(interframe);
+    output(interframe);
+  }
+  if(TIMERFLAG>10000)
+  {
+    TIMERFLAG = 0;
+  }
+  else
+  {
+    TIMERFLAG++;
+  }
+}
+
+on timer t6
+{
+  output(interframe);
+  output(interframe);
+  output(interframe);
+  if(TIMERFLAG1%3 == 0)
+  {
+    output(interframe);
+    //output(interframe);
+  }
+  if(TIMERFLAG1>10000)
+  {
+    TIMERFLAG1 = 0;
+  }
+  else
+  {
+    TIMERFLAG1++;
+  }
+}
+
+on timer t4
+{
+  output(interframe);
+  output(interframe);
+  output(interframe);
+  if(TIMERFLAG1%2 == 0)
+  {
+    output(interframe);
+    //output(interframe);
+  }
+  if(TIMERFLAG1>10000)
+  {
+    TIMERFLAG1 = 0;
+  }
+  else
+  {
+    TIMERFLAG1++;
+  }
+}
+
+
+dword GetMessageLength(byte High,byte Low)
+{ 
+  return ((High&0x0f)<<8) + Low; 
+}
+
+int SendFirstFrame( dword FF_DL ,byte Data[])
+{ 
+  int i;
+  
+  gFirstFrame.byte(0) = 0x10  + (FF_DL>>8);
+  gFirstFrame.byte(1) = FF_DL & 0x0FF;
+  if ( FF_DL >= 8 && FF_DL <=0xFFF )
+  {
+    ;
+  }
+  else
+  {
+    testStepWarning("Warning","FF_DL should >= 8, <=0xFFF");
+    //return 1;
+    //return 2;
+  }
+  if (elCount(Data) > 6)
+  {
+    testStepWarning("Warning","Number of Bytes > 6, send error");
+    i = 6;
+    return 1;
+  }
+  else
+  {
+    i = elCount(Data); 
+  }
+  for( ; i>=1; i--)
+  {
+    gFirstFrame.byte(i+1) = Data[i-1];
+  }
+  output(gFirstFrame);
+  return 2;
+}
+
+int CheckFlowControlMessage(message* TpRes)//测试流控帧FC
+{
+  if(TpRes.dlc==8 && (TpRes.byte(0)&0xF0) == 0x30)//==优先级高于&
+  {
+    if( TpRes.byte(3)==0xAA && TpRes.byte(4)==0xAA && TpRes.byte(5)==0xAA && TpRes.byte(6)==0xAA && TpRes.byte(7)==0xAA )
+     {
+      if(TpRes.byte(1)!=00)
+      {
+        Diag_SetReqCheckResult(6,3,RESULT_FAIL,"The parameter 'BS' of FC is not corrcet"); 
+        return 1;
+      }
+      
+      if(TpRes.byte(2)==gFCSTmin)
+      { 
+        gSTmin=TpRes.byte(2);
+        return 2;
+      }
+      else
+      {
+        Diag_SetReqCheckResult(6,2,RESULT_FAIL,"The parameter 'STmin' of FC is not corrcet");  
+        return 1;
+      }
+    }            
+    else
+     {
+      Diag_SetReqCheckResult(6,4,RESULT_FAIL,"The padding of FC is not correct");  
+      return 1;
+     }
+  }
+  else  
+  {
+    Diag_SetReqCheckResult(1,2,RESULT_FAIL,"The ECU doesn't send FC");  
+    return 0;
+  }
+}
+
+int SendConsecutiveFrame( byte SN ,byte Data[])
+{ 
+  int i;
+  if (SN > 0x0f)
+  {
+    Diag_SetReqCheckResult(6,5,RESULT_FAIL,"SN cannot > 0x0f, SN set to 0");  
+    SN = 0;
+    return 1;
+  }
+  else
+  {
+     ; 
+  }
+  gConsecutiveFrame.byte(0)=0x20 + SN;
+  
+  if (elCount(Data) > 7)
+  {
+    Diag_SetReqCheckResult(0,0,RESULT_WARNING,"Number of Bytes cannot > 7, send error");  
+    i = 7;
+    return 1;
+  }
+  else
+  {
+     i = elCount(Data); 
+  }
+  for( ;i >= 1; i--)
+  {
+    gConsecutiveFrame.byte(i) = Data[i-1];
+  }
+  output(gConsecutiveFrame);
+  return 2;
+}
+
+void SendSingleFrame( byte SF_DL ,byte Data[])
+{ 
+  int i;
+  if (SF_DL>=0 && SF_DL <=7  )
+  {
+    ;
+  }
+  else
+  {
+    testStepWarning("SendSingleFrame","SF_DL should >= 0, <=7");
+  }
+  gSingleFrame.byte(0)=0x00 + SF_DL;
+  
+  if (elCount(Data) > 7)
+  {
+    testStepWarning("SendSingleFrame","Number of Bytes > 7, send 7 bytes");
+    i = 7;
+  }
+  else
+  {
+    i = elCount(Data); 
+  }
+  for( ; i>=1; i--)
+  {
+    gSingleFrame.byte(i) = Data[i-1];
+  }
+  output(gSingleFrame);
+}
+
+void SendFlowControl( enum FlowStateType fcs,byte BS,byte STmin)
+{ 
+  gFlowControlFrame.byte(0)=0x30+fcs;
+  gFlowControlFrame.byte(1)=BS;
+  gFlowControlFrame.byte(2)=STmin;
+  output(gFlowControlFrame);
+}
+
+void Tp_SendMessage(byte Data[],int Len)
+{ //将数组中的数据一位一位地装入到CAN帧的数据位
+  //message Id 在初始化函数中赋值
+  int i;
+  if (Len > 8)
+  {
+    testStepWarning("Tp_SendMessage","Len cannot > 8, dlc set to 8");
+    gTp_Message.dlc = 8;
+  }
+  else
+  {
+     gTp_Message.dlc = Len; 
+  }
+  for(i=0;i<Len;i++)
+  {
+    gTp_Message.byte(i) = Data[i];
+  }
+  output(gTp_Message);
+  
+//  switch (Len) 
+//  {////////////////////////////////
+//   case(1) :
+//     testStep("Step","SendMessage 0x%2x",Data[0]); break;
+//   case(2) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x",Data[0],Data[1]); break;
+//   case(3) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x",Data[0],Data[1],Data[2]); break;
+//   case(4) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x 0x%2x",Data[0],Data[1],Data[2],Data[3]); break;   
+//   case(5) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x",Data[0],Data[1],Data[2],Data[3],Data[4]); break;
+//   case(6) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x",Data[0],Data[1],Data[2],Data[3],Data[4],Data[5]); break;   
+//   case(7) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x ",Data[0],Data[1],Data[2],Data[3],Data[4],Data[5],Data[6]); break;
+//   case(8) :
+//     testStep("Step","SendMessage 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x ",Data[0],Data[1],Data[2],Data[3],Data[4],Data[5],Data[6],Data[7]); break;   
+//   default :
+//     testStepFail("","error: wrong parameter Len(%d)",Len);break;
+//    // testStepFail("error: wrong parameter Len (%d)",Len);break;
+//  }
+}
+
+
+void Tp_SendMessage(byte Data[],int Len,dword id)
+{ //将数组中的数据一位一位地装入到CAN帧的数据位
+ 
+  int i; 
+  gTp_Message.id =  id;
+  
+  if (Len > 8)
+  {
+    testStepWarning("Tp_SendMessage","Len cannot > 8, dlc set to 8");
+    gTp_Message.dlc = 8;
+  }
+  else
+  {
+     gTp_Message.dlc = Len; 
+  }
+  
+  for(i=0;i<Len;i++)
+  {
+    gTp_Message.byte(i) = Data[i];
+  }
+  output(gTp_Message);
+}
+
+int RequestSingleFrame()
+{ 
+  byte Data1[8]={0x02,0x10,0x01,0xAA,0xAA,0xAA,0xAA,0xAA};
+  int i;
+
+  for(i=0 ; i<8; i++)
+  {
+    gRequestSingleFrame.byte(i) = gReqSingleFrame[i];
+  }
+  output(gRequestSingleFrame);
+  
+  return 2;
+}
+
+void RequestMultiFrame()
+{ 
+  int i;
+
+  for(i=0 ; i<8; i++)
+  {
+    gRequestMultiFrame.byte(i) = gReqMultiFrame[i];
+  }
+  output(gRequestMultiFrame);
+}
+
+int AllCFReceivedConfirm()
+{
+  long res, NumberOfCFComputed, NumberOfCFNeedUpdate;
+  NumberOfCFComputed = -1;
+  if((gFF_DL-6)%7>0)
+   NumberOfCFComputed = (gFF_DL-6)/7 + 1;
+  else
+   NumberOfCFComputed = (gFF_DL-6)/7;
+  
+  for(NumberOfCFNeedUpdate=0 ; ; )
+  { 
+    //SendFlowControl(CTS,1,0);
+    testWaitForTimeout(gN_Cr);
+    if(gNumberOfCFReceived > NumberOfCFNeedUpdate)
+    {
+      NumberOfCFNeedUpdate = gNumberOfCFReceived; 
+    }  
+    else
+      break;
+  }
+  testStep ("Inf","NumberOfCFComputed = %d, NumberOfCFReceived = %d",NumberOfCFComputed,gNumberOfCFReceived);
+  if(gNumberOfCFReceived == NumberOfCFComputed)
+  {
+    Diag_SetReqCheckResult(1,8,RESULT_PASS,"Recive all CFs with the exact amount.");
+    return 2;
+  }
+    
+  else if(gNumberOfCFReceived > NumberOfCFComputed)
+  {
+    Diag_SetReqCheckResult(1,16,RESULT_FAIL,"Recive more CFs than expected."); 
+    return 1;
+  }
+  else
+  {
+    Diag_SetReqCheckResult(1,16,RESULT_FAIL,"Recive less CFs than expected"); 
+    return -1;
+  }        
+}
+
+void CheckNRC78(message* TR) //判断是否为NRC78
+{
+  int i;
+  int Res;
+  
+  gTP_NRC78_Flag = 0;
+  gTPTResponseID=gCAN_ResponseID;
+  for(i=0;i<1;)
+  {
+    if ( TR.byte(1)==0x7F && TR.byte(3)==0x78)
+     {
+        testJoinMessageEvent(gTPTResponseID);
+        if(testWaitForAnyJoinedEvent(2000)>0)
+        {
+          testGetWaitEventMsgData(TR);
+        }
+        else
+        {
+          teststepfail("Fail","Dut don't response during P2* Server");
+          break;
+        }
+        gTP_NRC78_Flag = 1;
+     }
+    else
+      break;
+  }
+}
+
+int CheckSingleFrameMessage(message* TpRes)//测试SF帧
+{ 
+  if(TpRes.dlc == 8 && ((TpRes.byte(0)&0xF0) == 0x00 ))
+  { 
+    Diag_SetReqCheckResult(0,0,RESULT_PASS,"ECU responses a SF");
+    return 2;
+  }   
+  else
+  {
+    Diag_SetReqCheckResult(1,8,RESULT_FAIL,"ECU doesn't response a SF"); 
+    testStepFail("Chk","ECU doesn'tresponse a FF");
+    return 1;
+  }   
+}
+
+int CheckFirstFrameMessage(message* TpRes)//测试FF帧
+{ 
+  if(TpRes.dlc == 8 && ((TpRes.byte(0)&0xF0) == 0x10 ))
+  { 
+    Diag_SetReqCheckResult(0,0,RESULT_PASS,"ECU responses a FF"); 
+    return 2;
+  }   
+  else
+  {
+    Diag_SetReqCheckResult(1,8,RESULT_FAIL,"ECU doesn'tresponse a FF"); 
+    testStepFail("Chk","ECU doesn'tresponse a FF");
+    return 1;
+  }   
+}
+
+long CheckConsecutiveFrameMessage(message* TpRes)//测试CF帧
+{ 
+  if(TpRes.dlc == 8 && ((TpRes.byte(0)&0xF0) == 0x20 ))
+  { 
+     Diag_SetReqCheckResult(0,0,RESULT_PASS,"ECU responses a CF");
+     return 2;
+  }   
+  else
+  {
+    Diag_SetReqCheckResult(1,10,RESULT_FAIL,"ECU doesn'tresponse a CF");
+    return 1;
+  }   
+}
+
+int CheckCFPadding(int msgdlc_1)
+{ 
+  int msgtpd;
+  int i;
+  msgtpd = (msgdlc_1 - 6)%7;//最后一帧填充的字节数
+  
+  if(msgtpd==0)
+    msgtpd=7;
+  
+  for(i=7;i>msgtpd;i--)
+  {
+    if(gReceivedData[i]!=0xAA)
+      Diag_SetReqCheckResult(6,4,RESULT_FAIL,"The padding of CF is right");
+      return 1;
+  }
+  Diag_SetReqCheckResult(0,0,RESULT_PASS,"The padding of CF is right");
+  return 2;
+    
+}
+long CheckResponse_3EInterference(message* TpRes,int service)
+{
+   if(TpRes.dlc==8 && (TpRes.byte(0)&0xFF) == 0x03&&TpRes.byte(1)==0x7F&TpRes.byte(2)==service)//==优先级高于&
+  {
+    if( TpRes.byte(4)==0xAA && TpRes.byte(5)==0xAA && TpRes.byte(6)==0xAA && TpRes.byte(7)==0xAA )
+     {
+      testStepPass("Chk","Response message is correct");
+      return 1;
+      }
+      
+    else
+     {
+     testStepFail("Chk","The padding of Response message is not correct");
+     return -1;
+     }
+  }
+  else  
+  {
+    testStepFail("Chk","Response message is not correct");
+    return -1;
+  }
+}
+
+void interfering_Open1()
+{
+ setTimerCyclic(t4,0,1);
+}
+
+void interfering_close()
+{
+ cancelTimer(t4); 
+}
+
+void interfering_Open(int Time)
+{
+ output(interframe);
+//  output(interframe);
+//  output(interframe);
+//  output(interframe);
+//  output(interframe);
+ setTimerCyclic(t5,0,1);
+ testwaitfortimeout(Time);
+ cancelTimer(t5);
+}
+
+void CANTPTestParameterInit(dword ReqID,dword ResID,dword FunReqID,int AS,int AR,int BS,int BR,int CS,int CR,int BlockSize,int STmin)
+{
+  gTPTResponseID = ResID;
+  gTPTRequestID = ReqID;
+  gTPTFuncRequestID = FunReqID;
+  gN_As = AS;
+  gN_Ar = AR;
+  gN_Bs = BS;
+  gN_Br = BR;
+  gN_Cs = CS;
+  gN_Cr = CR;
+  gBS   = BlockSize;
+  gSTmin = STmin;
+  gFCSTmin = STmin;
+  
+  gTp_Message.id           = gTPTRequestID;
+  gRequestMultiFrame.id    = gTPTRequestID;
+  gRequestSingleFrame.id   = gTPTRequestID;
+  gSingleFrame.id          = gTPTRequestID;
+  gFirstFrame.id           = gTPTRequestID;
+  gConsecutiveFrame.id     = gTPTRequestID;
+  gFlowControlFrame.id     = gTPTRequestID;
+  gFlowControlFrame1.id    = gTPTRequestID;
+  
+  gTE_Message.id           = gTPTFuncRequestID;
+}

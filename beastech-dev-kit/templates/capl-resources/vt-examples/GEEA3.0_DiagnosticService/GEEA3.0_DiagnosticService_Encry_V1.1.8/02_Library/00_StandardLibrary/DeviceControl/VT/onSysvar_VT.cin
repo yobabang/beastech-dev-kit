@@ -1,0 +1,29 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "VT_lower.cin"
+}
+
+variables
+{
+  enum T_mode {T_off,T_on};
+  
+  enum T_mode kl30_sw, kl15_sw, kl31_sw;
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL30
+{
+  kl30_sw = (enum T_mode)@this;
+  testSupplyTextEvent("KL30");
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL15
+{
+  kl15_sw = (enum T_mode)@this;
+  testSupplyTextEvent("KL15");
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL31
+{
+  kl31_sw = (enum T_mode)@this;
+}

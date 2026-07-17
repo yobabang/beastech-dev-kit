@@ -1,0 +1,1588 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: COM_TP.cin
+|  Comment:   Network layer interface of the UDS_Service.cin
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+| 20190929     1.1  LJY               Add IP.cin
+| 20200220     1.2  LJY
+|1.Add two dll file in this cin: Ethernet_IL.dll, LINtp.dll
+|2.Change the naming rule of the variables and functions to adapt to the standardized requirement of Polelink
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2020 by Polelink Information Technology Co.Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+//  #include "CAN_TP.cin"
+//  #include "LIN_TP.cin"
+//  #include "IP_TP.cin"
+//  #include "CANFD_TP.cin"
+//  #include "Fr_TP.cin"
+
+}
+
+variables
+{
+  int    gBusFlag = 0;//CAN:1 CANFD:2 LIN:3 FlexRay:4 Ethernet:5
+  int    gNRC78Flag = 0;
+  enum   ResponseState {TIMEOUT,POS,NEG};
+  enum   TP_Switch {TP_ON = 1,TP_OFF = 0};
+  enum   Bus_Type {TP_CAN = 1,TP_CANFD = 2,TP_LIN = 3,TP_FLEXRAY = 4,TP_ETHERNET = 5};
+  enum   AddressMode {PHYSICAL = 0,FUNCTIONAL = 1};
+  byte   gTpRxData[65535];
+  dword  gTpRxLength;
+//  const int    gTPWaitTimeForP2 = 3000;
+//  const int    gTPWaitTimeForP2star = 5000;
+  
+  int gAPPFlag;
+  int gNMFlag;
+  float TP_T1,TP_T2,TP_T3,TP_T4,TP_T5,TesTime,P4time,P2startime;
+  float  gETH_t1,gETH_t2;      //Used to calculate send and receive time 
+  
+
+  int gP2ClientDelay=2000;
+  int gP2StarClientDelay=7000;
+  int gP6ClientDelay=5000;
+  enum Session{others=0,APP=1,BOOT=2};
+  enum Session SessionFlag = APP;
+
+  
+  long gSlaveResponseTableIndex=1;
+  //
+  
+  
+  
+}
+
+/*
+1.基本函数包含以下内容
+① int TP_Send(byte Data[],int Mode)
+  重载1：int TP_Send(byte Data[],int length,int Mode)
+② void TP_Init()
+③ void TP_Release()
+④ void TP_TesterPresentSet()
+⑤ void TP_BusContextSet(char BusName[])
+⑥ void TP_BusSet(enum Bus_Type Type)
+2.各总线参数配置函数在各自总线cin文件内添加并将函数接口信息添加到说明书中
+3.函数命名规则：
+① 各总线内函数使用总线+TP+函数名进行命名，例如：CAN_TP_Send()
+② 各总线内打印测试步骤使用总线+TP进行命名，例如：testStep("CAN_TP","Err:Don't receive complete data");
+③ 各总线内打印至Write窗口使用总线+TP进行命名，例如：write( "CAN_TP:Received %d byte  %x ..." , elcount(data), data[0]);
+
+
+*/
+/*
+1.TP_Send函数的寻址方式参数改为枚举类型：enum   AddressMode
+*/
+
+
+
+//void TP_Init()
+//{
+//  CAN_TP_Init();
+//  testWaitForTimeout(5);
+////  CANFD_TP_Init();
+//  testWaitForTimeout(5);
+//  LIN_TP_Init();
+//  testWaitForTimeout(5);
+//  ETH_TP_Init();
+//  testWaitForTimeout(5);
+//  FR_TP_Init();
+//  testWaitForTimeout(5);
+//}
+
+//void TP_Release()
+//{
+////  CAN_TP_Release();
+////  testWaitForTimeout(5);
+////  CANFD_TP_Release();
+////  testWaitForTimeout(5);
+////  LIN_TP_Release();
+////  testWaitForTimeout(5);
+////  ETH_TP_Release();
+////  testWaitForTimeout(5);
+//
+//}
+
+on sysvar_update sysvar::Diagnostic::Receive_ConFirst
+{
+  if(@this==1)
+  {
+
+    if((gBusFlag==1)||(gBusFlag==2)) 
+      testSupplyTextEvent("CANTPreciveFirstData");
+    else if(gBusFlag==3)
+      testSupplyTextEvent("LINTPFirstCFrecived");
+    else if(gBusFlag==5)
+      {};
+  }
+}
+on sysvar_update sysvar::Diagnostic::Receive_ConAll
+{
+  if(@this==1)
+  {
+    if((gBusFlag==1)||(gBusFlag==2)) 
+      testSupplyTextEvent("CANTPreciveData");
+    else if(gBusFlag==3)
+      testSupplyTextEvent("LINTPreciveData");
+    else if(gBusFlag==5)
+      testSupplyTextEvent("ETHTPreciveData");;
+  }
+}
+on sysvar_update sysvar::Diagnostic::Send_Con
+{
+  if(@this==1)
+  { 
+    if((gBusFlag==1)||(gBusFlag==2))
+    {
+      testSupplyTextEvent("CANTPSendDataSuccessfully");
+       TP_T1 = timeNowFloat()/10000;
+    }
+    else if(gBusFlag==3)
+    {
+      testSupplyTextEvent("LINTPSendDataSuccessfully");
+       TP_T1 = timeNowFloat()/10000;
+    }
+    else if(gBusFlag==5)
+    {
+      testSupplyTextEvent("ETHSendDiagMessage");
+       TP_T1 = timeNowFloat()/10000;
+    }
+    @Diagnostic::Receive_ConFirst = 0;
+  }
+
+}
+on sysvar_update sysvar::Diagnostic::Send_DoipAckReceved
+{
+  if(@this==1)
+  {
+    testSupplyTextEvent("ETHAckReceived");
+  }
+}
+
+on sysvar_update sysvar::Diagnostic::ErrorMessage
+{
+  char tempstring[100];
+  sysGetVariableString( sysvar::Diagnostic::ErrorMessage,tempstring,elcount(tempstring));
+  teststep("TP","%s",tempstring);
+}
+
+
+
+on sysvar Diagnostic::ETH_TCPConnectionStatus
+{
+  if(@this == 0) { testStep("TCPInfo","TCPDisconnect"); testSupplyTextEvent("TCPDisconnected"); }
+  else           { testStep("TCPInfo","TCPReconnect");  testSupplyTextEvent("TCPConnected"); }
+}
+
+void DiagParameterinit()
+{
+  char ECUinfoPath[400];
+  char gAbsPath[400];
+  char tempstring[100];
+  getAbsFilePath("",gAbsPath,500);
+  snprintf(ECUinfoPath,500,"%s\\01_Input\\",gAbsPath);
+  setFilePath(ECUinfoPath,2);//初始化ini文件地址
+//CAN Parameter
+  gCAN_As=                    getProfileInt("ECUinfo","CAN_TP_AS",1000,"DiagParameter.ini");
+  gCAN_Ar=                    getProfileInt("ECUinfo","CAN_TP_AR",1000,"DiagParameter.ini");
+  gCAN_Bs=                    getProfileInt("ECUinfo","CAN_TP_BS",1000,"DiagParameter.ini");
+  gCAN_Br=                    getProfileInt("ECUinfo","CAN_TP_BR",1000,"DiagParameter.ini");
+  gCAN_Cs=                    getProfileInt("ECUinfo","CAN_TP_CS",1000,"DiagParameter.ini");
+  gCAN_Cr=                    getProfileInt("ECUinfo","CAN_TP_CR",1000,"DiagParameter.ini");
+  gCAN_BlockSize=             getProfileInt("ECUinfo","CAN_TP_BlockSize",0,"DiagParameter.ini");
+  gCAN_STmin=                 getProfileInt("ECUinfo","CAN_TP_STmin",0,"DiagParameter.ini");
+  gCAN_RequestID=             getProfileInt("ECUinfo","CAN_RequestID",0x700,"DiagParameter.ini");
+  gCAN_ResponseID=            getProfileInt("ECUinfo","CAN_ResponseID",0x600,"DiagParameter.ini");
+  gCAN_FuncRequestID=         getProfileInt("ECUinfo","CAN_FuncRequestID",0x7FF,"DiagParameter.ini");
+  gCAN_FDFrameLength=         getProfileInt("ECUinfo","CAN_FDFrameLength",64,"DiagParameter.ini");
+  gCAN_FDbitRateSwitch=       getProfileInt("ECUinfo","CAN_FDbitRateSwitch",1,"DiagParameter.ini");
+  gCAN_Padding=               getProfileInt("ECUinfo","CAN_Padding",0xAA,"DiagParameter.ini");
+//CAN Parameter
+  
+//ETH Parameter
+  gTesterLogicAddress=        getProfileInt("ECUinfo","TesterLogicAddress",0x0E80,"DiagParameter.ini");
+  gECULogicAddress=           getProfileInt("ECUinfo","ECULogicAddress",0x1000,"DiagParameter.ini");
+  gFunctionalLogicAddress=    getProfileInt("ECUinfo","FunctionalLogicAddress",0x1FFF,"DiagParameter.ini");
+  getProfileString("ECUinfo", "ECUIpv4Address","198.18.32.17",gECUIpv4Address,elcount(gECUIpv4Address),"DiagParameter.ini");
+  getProfileString("ECUinfo", "TesterIpv4Address","198.18.32.1",gTesterIpv4Address,elcount(gTesterIpv4Address),"DiagParameter.ini");
+  getProfileString("ECUinfo", "Netmask","255.255.0.0",gNetmask,elcount(gNetmask),"DiagParameter.ini");
+  getProfileString("ECUinfo", "EthNodeType","InternalNode",tempstring,elcount(tempstring),"DiagParameter.ini");
+  if(strncmp(tempstring,"InternalNode",elcount(tempstring))==0)
+  {
+    EthNodeTypeNow=InternalNode;
+    @Diagnostic::ETH_NodeType = 2;
+    @Diagnostic::ETH_ECULogicAddress=gECULogicAddress;
+  }
+  else if(strncmp(tempstring,"EdgeNode",elcount(tempstring))==0)
+  {
+    EthNodeTypeNow=EdgeNode;
+    @Diagnostic::ETH_NodeType = 1;
+    @Diagnostic::ETH_ECULogicAddress=gECULogicAddress;
+  }
+//ETH Parameter
+  
+//LIN Parameter
+  gLIN_TP_NAD =               getProfileInt("ECUinfo","LIN_TP_NAD",0x50,"DiagParameter.ini");
+  gLIN_TP_STmin =             getProfileInt("ECUinfo","LIN_TP_STmin",0x20,"DiagParameter.ini");
+//LIN Parameter
+  
+//UDS Parameter
+  gP2Client_BOOT=               getProfileInt("ECUinfo","P2Client_BOOT",500,"DiagParameter.ini");
+  gP2Client_APP=                getProfileInt("ECUinfo","P2Client_APP",500,"DiagParameter.ini");
+  gP2StarClient=                getProfileInt("ECUinfo","P2StarClient",1500,"DiagParameter.ini");
+  gP2StarClientFor10Check=      gP2StarClient/10;
+  gP4Client=                    getProfileInt("ECUinfo","P4Client",10000,"DiagParameter.ini");
+
+  gP6Client=                    getProfileInt("ECUinfo","P6Client",10000,"DiagParameter.ini");
+  gS3Client=                    getProfileInt("ECUinfo","S3Client",2000,"DiagParameter.ini");
+//UDS Parameter
+  getProfileString("ECUinfo", "BusType","0",gBusContext,elcount(gBusContext),"DiagParameter.ini");
+  
+  testWaitForTimeout(100);
+}
+
+void DiagEnable()
+{
+  InitTPParameter();//初始化TP层参数
+  if((gBusFlag==1)||(gBusFlag==2))
+  {
+    setBusContext(GetBusNameContext("CAN1"));
+  }
+
+  testWaitForTimeout(1000);
+
+  write("Start to initialize diagnostic application layer.... ");
+  UDS_ParametersSet(gP2Client_APP,gP2Client_BOOT,gP2ClientDelay,gP6Client,gP6ClientDelay,gS3Client,gS3Server);//初始化应用层参数
+  
+}
+
+void TP_BusSet(enum Bus_Type Type)
+{
+  
+  switch (Type)
+  {
+    case TP_CAN:
+      gBusFlag = 1;
+      break;
+    case TP_CANFD:
+      gBusFlag = 2;
+      break;
+    case TP_LIN:
+      gBusFlag = 3;
+      break;
+    case TP_FLEXRAY:
+      gBusFlag = 4;
+      break;
+    case TP_ETHERNET:
+      gBusFlag = 5;
+      break;
+  }
+  //write("Bus set to %s",BusType);
+}
+
+void TP_BusContextSet(char BusName[])
+{
+  int g;
+  g = getBusNameContext(BusName);
+  setBusContext(getBusNameContext(BusName));
+  write("bus context is %d",g);
+}
+
+void TP_TesterPresentSet(enum TP_Switch sw)
+{
+	if(sw == TP_ON)
+	{
+		@Diagnostic::TP_TesterPresentSet=1;
+	}
+	else
+	{
+		@Diagnostic::TP_TesterPresentSet=0;
+	}
+}
+
+void TP_Send(byte Data[],enum AddressMode Mode)
+{
+//  if(Mode==FUNCTIONAL)
+//    testWaitForTimeout(FuntionalRequestIntervalTime);
+  
+  P4ServerInit(Data);//初始化P4Server参数
+  //teststep("gP4client","%f ms",gP4Client);
+  
+  if((gBusFlag == 3) && (timeNowFloat()/100.0 - @Diagnostic::Time_TesterPresentSend < TestStepIntervalTimeLIN)) { testWaitForTimeout(TestStepIntervalTimeLIN); }
+  
+  syssetVariableData(sysvar::Diagnostic::Send_Data,Data,elcount(Data));
+  @Diagnostic::AddressingMode=Mode;//0物理,1功能;
+  @Diagnostic::Send_Flag=1;
+  
+  if((gBusFlag==1)||(gBusFlag==2))
+  {
+    if(testWaitForTextEvent("CANTPSendDataSuccessfully",500) == 1) { /* write("CAN/CANFD data send successfully!"); */ }
+    else { write("%f: CAN/CANFD data send unsuccessfully!",timeNow()/100000.0); }
+  }
+  
+  if(gBusFlag==5)
+  {
+    if(testWaitForTextEvent("ETHSendDiagMessage",500) != 1)
+    {
+      write("Ethernet data send unsuccessfully!  %f",timeNow()/100.0);
+    }
+    if(EthNodeTypeNow==EdgeNode)
+    {
+      if(testWaitForTextEvent("ETHAckReceived",500) != 1)
+      {
+        write("Ethernet Ack not received!");
+      }
+    }
+  }
+  //发送成功确认 
+}
+
+void TP_Send(byte Data[],long lenth,enum AddressMode Mode)
+{
+//  if(Mode==FUNCTIONAL)
+//    testWaitForTimeout(FuntionalRequestIntervalTime);
+  
+  P4ServerInit(Data);//初始化P4Server参数
+  //teststep("gP4client","%f ms",gP4Client);
+  
+  if((gBusFlag == 3) && (timeNowFloat()/100.0 - @Diagnostic::Time_TesterPresentSend < TestStepIntervalTimeLIN)) { testWaitForTimeout(TestStepIntervalTimeLIN); }
+  
+  syssetVariableData(sysvar::Diagnostic::Send_Data,Data,lenth);
+  @Diagnostic::AddressingMode=Mode;//0物理,1功能;
+  @Diagnostic::Send_Flag=1;
+  
+  if((gBusFlag==1)||(gBusFlag==2))
+  {
+    if(testWaitForTextEvent("CANTPSendDataSuccessfully",500) == 1) { /* write("CAN/CANFD data send successfully!"); */ }
+    else { write("%f: CAN/CANFD data send unsuccessfully!",timeNow()/100000.0); }
+  }
+
+  if(gBusFlag==5)
+  {
+    if(testWaitForTextEvent("ETHSendDiagMessage",500) != 1)
+    {
+      write("Ethernet data send unsuccessfully!  %f",timeNow()/100.0);
+    }
+    if(EthNodeTypeNow==EdgeNode)
+    {
+      if(testWaitForTextEvent("ETHAckReceived",500) != 1)
+      {
+        write("Ethernet Ack not received!");
+      }
+    }
+  }
+  if(gBusFlag==3)
+  {
+     testWaitForTextEvent("SendMsg",2000);//LIN 请求等待发送完成 20251226 石太佳 
+    
+  }
+  //发送成功确认 
+}
+
+void TP_Send_SmallBuffer(byte Data[],int DataLen,int TpLen,enum AddressMode Mode)
+{
+
+  syssetVariableData(sysvar::Diagnostic::Send_Data,Data,DataLen);
+  @Diagnostic::AddressingMode=Mode;//0物理,1功能;
+  
+  @Diagnostic::CAN_SendSmallBufferDataLen=TpLen;
+  P4ServerInit(Data);//初始化P4Server参数
+}
+
+int TP_GetReceivedData(byte InputData[])
+{
+  int i;
+  
+  if(gTpRxLength > elCount(InputData))
+  {
+    testStepWarning("TP_Err","Input array too small to get all received data");
+    for(i=0;i<elCount(InputData);i++)
+    {
+      InputData[i]=gTpRxData[i];
+    }
+  }
+  else
+  {
+    for(i=0;gTpRxLength;i++)
+    {
+      InputData[i]=gTpRxData[i];
+    }
+  }
+      
+  return gTpRxLength;
+}
+
+enum ResponseState ECU_Response(int P2,int CheckService)
+{
+  enum ResponseState TempResult;
+  
+  switch (gBusFlag)
+  {
+    case 1:
+      TempResult = CAN_ECU_Response_stj(P2,CheckService);
+      break;
+    case 2:
+      TempResult = CAN_ECU_Response_stj(P2,CheckService);
+      break;
+    case 3:
+      TempResult = LIN_ECU_Response_stj(P2,CheckService);
+      break;      
+    case 5:
+      TempResult = ETH_ECU_Response_stj(P2,CheckService);
+      break;
+    default:
+      break;      
+  }
+  @Diagnostic::Receive_ConAll = 0;
+  return TempResult;
+}
+
+void LocalWakeUpCondition()
+{
+  dword i;
+
+  for(i=1;i<0x3a;i++)
+  {
+    setBusContext(getBusNameContext("LIN1"));
+    LinSendHeader(i);
+    testWaitForTimeout(20);
+  }
+  testStep("Step","Wakeup network!");
+}
+
+void LinSendHeader (byte frameId)
+{
+  #pragma warning(disable: 2003)
+  
+  linFrame 0x0  tst_Frame; 
+  tst_Frame.MsgChannel = 1;
+  tst_Frame.ID = frameId;
+  tst_Frame.RTR=1;    //RTR of lin message?  maybe RTR here is indicate that the master request a response from slave node?
+  output(tst_Frame); // set header
+}
+
+/// <ECU_Response>
+enum ResponseState CAN_ECU_Response(int P2,int CheckService)
+{
+  long Responselength;
+  
+  gNRC78Flag=0;
+  if(SessionFlag==APP)
+  {
+    if(P2!=gP2StarClientDelay)
+    {
+      gNRC78Flag = 0;
+    }
+  }
+  
+  if(P2 != gP2StarClientDelay)
+  {
+    if(1 != @Diagnostic::Receive_ConFirst)
+    {
+    	if(testWaitForTextEvent("CANTPreciveFirstData",gP2ClientDelay)==0)
+    		return TIMEOUT;
+    }
+    TP_T2 = timeNowFloat()/10000;
+    TesTime = (TP_T2-TP_T1)*100;
+   
+    if(TesTime>P2)
+    {
+      if(WaringOrErrorFlag==1)
+      {
+        testStepWarning("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+      else
+      {
+        testStepFail("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+    }
+  }
+  else
+  {
+    if(testWaitForTextEvent("CANTPreciveFirstData",gP2StarClientDelay)>0)
+    {
+      TP_T5 = timeNowFloat()/10000;
+      P2startime=(TP_T5-TP_T4)*100;
+      if(P2startime>gP2StarClient)
+        testStepFail("TP","ECU P2*Server timeout,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+      
+      else if(P2startime<(gP2StarClient*0.3) && gTpRxData[0] == 0x7F && gTpRxData[1] == CheckService && gTpRxData[2] == 0x78)
+        testStepFail("TP","ECU P2*Server expect between 0.3*P2*ServerMax and ServerMax,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+        
+    }
+    else
+      return TIMEOUT;
+  }
+	if(testWaitForTextEvent("CANTPreciveData",gUDS_P6Client)==0)
+	{
+		testStep("TP","Don't receive complete data");
+		return TIMEOUT;
+	}
+  Responselength=@Diagnostic::Receive_DataLength;
+  gTpRxLength=Responselength;
+  sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+	if(gTpRxData[0]==0x7f)
+	{
+		switch(gTpRxData[2])
+		{
+  		case 0x78:
+        if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+        {
+          testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+        }
+        TP_T4 = timeNowFloat()/10000;
+  			gNRC78Flag = 1;
+        
+        if(NRC78AllowFlag!=1)
+        {
+          testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+        }
+  			return CAN_ECU_Response(gP2StarClientDelay,CheckService);
+  		case 0x22:
+  			break;
+  		default:
+  			break;
+		}
+		return NEG;
+	}
+	else
+  {
+    if(gNRC78Flag==1)
+    {
+      TP_T3=timeNowFloat()/10000;
+      P4time=(TP_T3-TP_T1)*100;
+      if(P4time>gP4Client)
+        testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time);
+    }
+		return POS;
+  }
+}
+
+float timesec()
+{
+  
+    return  timeNowFloat()/100000.0;
+  
+}
+
+/// <石太佳>
+enum ResponseState CAN_ECU_Response_stj(int P2,int CheckService)
+{
+    long Responselength;
+    float starttime;
+    long res;
+    long firstframeindex,responseindex,firstframe_flag;
+    float nrc78_time;
+    long timeout;
+    dword waitcount;
+    int nrc78_counter=0;
+    firstframe_flag=0;
+    starttime=timesec();
+    
+    gNRC78Flag=0;
+    
+    write("receive response with shi taijia function");
+    
+    if(1 !=testWaitForTextEvent("CANTPreciveFirstData",P2*10)) 
+         return TIMEOUT;
+    
+    if(timesec()-starttime>P2*0.001)//判断收到首帧 或者 单帧的时间是否在P2时间内
+    {
+       if(NRC78_Fail_Print_Enable==1)
+       testStepFail("","DHU should start to give response within P2(%dms)",P2); 
+    }
+      
+    nrc78_counter=0;
+    timeout=gP2ClientDelay;
+    waitcount=0;
+    while(timesec()-starttime<300)
+    {
+          write("gP2StarClient = %d",gP2StarClient);
+          //第一次等P2时间，以后等待 会长一些
+          if(waitcount==0) timeout=gP2ClientDelay*3;
+          else timeout=gUDS_P6Client;
+      
+          //firstframeindex=testJoinTextEvent("CANTPreciveFirstData");
+          
+//          responseindex=testJoinTextEvent("CANTPreciveData");
+          
+//          res = testWaitForAnyJoinedEvent(timeout);
+          res = testWaitForTextEvent("CANTPreciveData",timeout);
+          
+          if(res==0)
+          {
+              testStep("TP","Don't receive complete data");
+          		return TIMEOUT;
+          }
+          //既然签名没有返回超时 可以判断响应了
+          Responselength=@Diagnostic::Receive_DataLength;
+          gTpRxLength=Responselength;
+          sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+          //teststep("","st = %f,now=%f,b=%x,b1=%x,b2=%x",starttime,timesec(),gTpRxData[0],gTpRxData[1],gTpRxData[2]);
+          
+        	if(gTpRxData[0]==0x7f)
+        	{
+        		if(gTpRxData[2] == 0x78)
+        		{
+            		nrc78_counter+=1;//NRC78 计数
+                if(nrc78_counter>1)//如果不是第一次收到NRC78
+                {
+                   if(timesec()-nrc78_time>0.8*gP2StarClient*0.001 ||  timesec()-nrc78_time<0.3*gP2StarClient*0.001)//监测NRC78的间隔
+                    {
+                        if(NRC78_Fail_Print_Enable==1)
+                            testStepFail("TP","range time  between consecutive NRC78 should be 0.3*P2*ServerMax ~ 0.8*P2*ServerMax");     
+                    }
+                }
+                else
+                {
+                  if ((timesec() - starttime)<P2*0.001*0.8)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                         testStepFail("TP","the first negative message with response code 0x78 to diagnostic request should be close to P2server_max,requirement ID 662500");
+                  }
+                  
+                }
+                nrc78_time=timesec();//更新NRC78的时间戳
+                if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                      testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+                }
+                TP_T4 = timesec();
+          			gNRC78Flag = 1;//设置标志位
+                
+                if(NRC78AllowFlag!=1)
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                      testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+                }
+            			
+        		}
+            else
+            {
+               if(gNRC78Flag==1)//如果返回的是负响应，但是也回了NRC78 判断 负响应与 NRC78的间隔是否超出了P2*
+                {
+                  
+                  if(timesec()-nrc78_time > 5)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                         testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                    
+                  }
+//                  if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//                  {
+//                     testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//                  }
+                  
+                }
+              P4time=@Diagnostic::CAN_FirstData_Time-starttime;
+              if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+              {
+                  if(NRC78_Fail_Print_Enable==1)
+                  testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+              }
+               return NEG; 
+            }
+        		
+        	}
+        	else
+          {
+            P4time=@Diagnostic::CAN_FirstData_Time-starttime;
+            if(gNRC78Flag==1)//如果返回的是正响应，但是回了NRC78 判断 负响应与 NRC78的间隔是否超出了P2*
+            {
+              
+              if(timesec()-nrc78_time > 5)
+              {
+                 if(NRC78_Fail_Print_Enable==1)
+                      testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                
+              }
+              
+//              if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//                  {
+//                     testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//                  }
+              
+            }
+           if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+          {
+              if(NRC78_Fail_Print_Enable==1)
+                  testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+          }
+        		return POS;
+          }
+              
+    }
+    return TIMEOUT;
+  
+}
+
+
+/// <石太佳>
+enum ResponseState ETH_ECU_Response_stj(int P2,int CheckService)
+{
+    long Responselength;
+    float starttime;
+    long res;
+    long firstframeindex,responseindex,firstframe_flag;
+    float nrc78_time;
+    long timeout;
+    dword waitcount;
+    int nrc78_counter=0;
+    firstframe_flag=0;
+    starttime=timesec();
+    
+    gNRC78Flag=0;
+    
+    write("receive response with shi taijia function");
+     
+    nrc78_counter=0;
+    timeout=gP2ClientDelay;
+    waitcount=0;
+    while(timesec()-starttime<300)
+    {
+          //第一次等P2时间，以后等待 会长一些
+          if(waitcount==0) timeout=gP2ClientDelay*3;
+          else timeout=gUDS_P6Client;
+      
+          //firstframeindex=testJoinTextEvent("CANTPreciveFirstData");
+          
+          //responseindex=testJoinTextEvent("ETHTPreciveData");
+          
+          res = testWaitForTextEvent("ETHTPreciveData",timeout);
+          
+          if(res==0)
+          {
+              testStep("TP","Don't receive complete data");
+          		return TIMEOUT;
+          }
+          
+          if(timesec()-starttime>P2*0.001)//判断收到首帧 或者 单帧的时间是否在P2时间内
+          {
+             if(NRC78_Fail_Print_Enable==1)
+                 testStepFail("","DHU should start to give response within P2(%dms)",P2); 
+          }
+          
+          //既然签名没有返回超时 可以判断响应了
+          Responselength=@Diagnostic::Receive_DataLength;
+          gTpRxLength=Responselength;
+          sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+          //teststep("","st = %f,now=%f,b=%x,b1=%x,b2=%x",starttime,timesec(),gTpRxData[0],gTpRxData[1],gTpRxData[2]);
+          
+        	if(gTpRxData[0]==0x7f)
+        	{
+        		if(gTpRxData[2] == 0x78)
+        		{
+            		nrc78_counter+=1;//NRC78 计数
+                if(nrc78_counter>1)//如果不是第一次收到NRC78
+                {
+                    if(timesec()-nrc78_time>0.8*gP2StarClient*0.001 ||  timesec()-nrc78_time<0.3*gP2StarClient*0.001)//监测NRC78的间隔
+                    {
+                        if(NRC78_Fail_Print_Enable==1)
+                            testStepFail("TP","range time  between consecutive NRC78 should be 0.3*P2*ServerMax ~ 0.8*P2*ServerMax");     
+                    }
+                }
+                else
+                {
+                  if ((timesec() - starttime)<P2*0.001*0.8)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                          testStepFail("TP","the first negative message with response code 0x78 to diagnostic request should be close to P2server_max,requirement ID 662500");
+                  }
+                  
+                }
+                nrc78_time=timesec();//更新NRC78的时间戳
+                if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                       testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+                }
+                TP_T4 = timesec();
+          			gNRC78Flag = 1;//设置标志位
+                
+                if(NRC78AllowFlag!=1)
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                       testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+                }
+            			
+        		}
+            else
+            {
+                if(gNRC78Flag==1)//如果返回的是负响应，但是也回了NRC78 判断 负响应与 NRC78的间隔是否超出了P2*
+                {
+                  
+                  if(timesec()-nrc78_time > 5)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                          testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                    
+                  }
+//                  if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//                  {
+//                     testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//                  }
+                  
+                  
+                  
+                }
+                P4time=timesec()-starttime;
+                if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+                {
+                    if(NRC78_Fail_Print_Enable==1)
+                       testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+                }
+               return NEG; 
+            }
+        		
+        	}
+        	else
+          {
+            if(gNRC78Flag==1)
+            {
+              
+              if(timesec()-nrc78_time > 5)
+              {
+                 if(NRC78_Fail_Print_Enable==1)
+                     testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                
+              }
+              
+//              if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//              {
+//                 testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//              }
+              
+              
+            }
+            P4time=timesec()-starttime;
+            if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+            {
+                if(NRC78_Fail_Print_Enable==1)
+                testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+            }
+        		return POS;
+          }
+            
+    }
+    return TIMEOUT;
+  
+}
+
+
+/// <石太佳>
+enum ResponseState LIN_ECU_Response_stj(int P2,int CheckService)
+{
+    long Responselength;
+    float starttime,firstframetime;
+    long res;
+    long firstframeindex,responseindex,firstframe_flag;
+    float nrc78_time;
+    long timeout;
+    dword waitcount;
+    int nrc78_counter=0;
+    firstframe_flag=0;
+    starttime=timesec();
+    
+    gNRC78Flag=0;
+    
+    write("receive response with shi taijia function");
+    
+    if(1 !=testWaitForTextEvent("LINTPFirstCFrecived",P2*10)) 
+         return TIMEOUT;
+    
+    firstframetime=timesec();
+    
+    if(timesec()-starttime>P2*0.001)//判断收到首帧 或者 单帧的时间是否在P2时间内
+    {
+       if(NRC78_Fail_Print_Enable==1)
+           testStepFail("","DHU should start to give response within P2(%dms)",P2); 
+    }
+      
+    nrc78_counter=0;
+    timeout=gP2ClientDelay;
+    waitcount=0;
+    while(timesec()-starttime<300)
+    {
+          //第一次等P2时间，以后等待 会长一些
+          if(waitcount==0) timeout=gP2ClientDelay*3;
+          else timeout=gUDS_P6Client;
+      
+          //firstframeindex=testJoinTextEvent("CANTPreciveFirstData");
+          
+//          responseindex=testJoinTextEvent("CANTPreciveData");
+          
+//          res = testWaitForAnyJoinedEvent(timeout);
+          res = testWaitForTextEvent("LINTPreciveData",timeout);
+          
+          if(res==0)
+          {
+              testStep("TP","Don't receive complete data");
+          		return TIMEOUT;
+          }
+          //既然签名没有返回超时 可以判断响应了
+          Responselength=@Diagnostic::Receive_DataLength;
+          gTpRxLength=Responselength;
+          sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+          //teststep("","st = %f,now=%f,b=%x,b1=%x,b2=%x",starttime,timesec(),gTpRxData[0],gTpRxData[1],gTpRxData[2]);
+          
+        	if(gTpRxData[0]==0x7f)
+        	{
+        		if(gTpRxData[2] == 0x78)
+        		{
+            		nrc78_counter+=1;//NRC78 计数
+                if(nrc78_counter>1)//如果不是第一次收到NRC78
+                {
+                    if(timesec()-nrc78_time>0.8*gP2StarClient*0.001 ||  timesec()-nrc78_time<0.3*gP2StarClient*0.001)//监测NRC78的间隔
+                    {
+                        if(NRC78_Fail_Print_Enable==1)
+                            testStepFail("TP","range time  between consecutive NRC78 should be 0.3*P2*ServerMax ~ 0.8*P2*ServerMax");     
+                    }
+                }
+                else//判断第一个NRC78 是否在0.8*P2 ，如果是 ，报错
+                {
+                  if ((timesec() - starttime)<P2*0.001*0.8)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                          testStepFail("TP","the first negative message with response code 0x78 to diagnostic request should be close to P2server_max,requirement ID 662500");
+                  }
+                  
+                }
+                nrc78_time=timesec();//更新NRC78的时间戳
+                if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                       testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+                }
+                TP_T4 = timesec();
+          			gNRC78Flag = 1;//设置标志位
+                
+                if(NRC78AllowFlag!=1)
+                {
+                  if(NRC78_Fail_Print_Enable==1)
+                       testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+                }
+            			
+        		}
+            else
+            {
+                if(gNRC78Flag==1)//如果返回的是负响应，但是也回了NRC78 判断 负响应与 NRC78的间隔是否超出了P2*
+                {
+                  
+                  if(timesec()-nrc78_time > 5)
+                  {
+                     if(NRC78_Fail_Print_Enable==1)
+                         testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                    
+                  }
+//                  if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//                  {
+//                     testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//                  }
+                  
+                  
+                }
+                P4time=firstframetime-starttime;//20251226 改为从回复首帧开始计算
+                if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+                {
+                    if(NRC78_Fail_Print_Enable==1)
+                    testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+                }
+               return NEG; 
+            }
+        		
+        	}
+        	else
+          {
+            if(gNRC78Flag==1)
+            {
+              
+              if(timesec()-nrc78_time > 5)
+              {
+                 if(NRC78_Fail_Print_Enable==1)
+                     testStepFail("TP","ECU response timestamp - last NRC78 timestamp>P2*!");
+                
+              }
+//              if ((nrc78_time -  starttime)<P2*0.001 && (timesec()-starttime)<P2*0.001)
+//              {
+//                 testStepFail("TP","if ECU can give finall response within P2, it should not give NRC78 firstly");
+//              }
+              
+              
+            }
+            P4time=firstframetime-starttime;//20251226 改为从回复首帧开始计算
+            if(P4time>gP4Client*0.001 &&  gNRC78Flag==1)
+            {
+                if(NRC78_Fail_Print_Enable==1)
+                     testStepFail("TP","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time*1000);
+            }
+        		return POS;
+          }
+              
+    }
+    return TIMEOUT;
+  
+}
+
+/// <TPInit>
+void CAN_TP_Init()
+{ 
+  @Diagnostic::CAN_Enable=1;
+  @Diagnostic::CAN_TP_AS =gCAN_As;
+  @Diagnostic::CAN_TP_AR =gCAN_Ar;
+  @Diagnostic::CAN_TP_BS =gCAN_Bs;
+  @Diagnostic::CAN_TP_BR =gCAN_Br;
+  @Diagnostic::CAN_TP_CS =gCAN_Cs;
+  @Diagnostic::CAN_TP_CR =gCAN_Cr;
+  @Diagnostic::CAN_FDFlag=0;
+  
+  @Diagnostic::CAN_BlockSize=gCAN_BlockSize;
+  @Diagnostic::CAN_STmin=gCAN_STmin;
+  @Diagnostic::CAN_RequestID=gCAN_RequestID;
+  @Diagnostic::CAN_ResponseID=gCAN_ResponseID;
+  @Diagnostic::CAN_FunctionalID=gCAN_FuncRequestID;
+  @Diagnostic::S3Client=gS3Client;
+  @Diagnostic::CAN_Padding=gCAN_Padding;
+  
+  testWaitForTimeout(2);
+  @Diagnostic::CAN_TPparameterInit=1;
+  
+}
+
+/// <TPInit>
+void CANFD_TP_Init()
+{
+  @Diagnostic::CAN_Enable=1;
+  @Diagnostic::CAN_TP_AS =gCAN_As;
+  @Diagnostic::CAN_TP_AR =gCAN_Ar;
+  @Diagnostic::CAN_TP_BS =gCAN_Bs;
+  @Diagnostic::CAN_TP_BR =gCAN_Br;
+  @Diagnostic::CAN_TP_CS =gCAN_Cs;
+  @Diagnostic::CAN_TP_CR =gCAN_Cr;
+  
+  @Diagnostic::CAN_FDFlag=1;
+  @Diagnostic::CAN_FDFrameLength=gCAN_FDFrameLength;
+  
+  @Diagnostic::CAN_BlockSize=gCAN_BlockSize;
+  @Diagnostic::CAN_STmin=gCAN_STmin;
+  @Diagnostic::CAN_RequestID=gCAN_RequestID;
+  @Diagnostic::CAN_ResponseID=gCAN_ResponseID;
+  @Diagnostic::CAN_FunctionalID=gCAN_FuncRequestID;
+  @Diagnostic::S3Client=gS3Client;
+  @Diagnostic::CAN_FDbitRateSwitch=gCAN_FDbitRateSwitch;
+  @Diagnostic::CAN_Padding=gCAN_Padding;
+  
+  testWaitForTimeout(2);
+  @Diagnostic::CAN_TPparameterInit=1;
+}
+/// <TPInit>
+void LIN_TP_Init()
+{ @Diagnostic::LIN_Enable=1;
+  @Diagnostic::LIN_TP_STmin=gLIN_TP_STmin;
+  @Diagnostic::LIN_TP_NAD =gLIN_TP_NAD;
+  @Diagnostic::S3Client=gS3Client;
+  testWaitForTimeout(2);
+  @Diagnostic::LIN_TPparameterInit=1;
+  
+}
+/// <TPInit>
+void ETH_TP_Init()
+{
+  long Count;
+  
+  Count = 0;
+  
+  if(@Diagnostic::ETH_NodeType == 2 || (@Diagnostic::ETH_AnnouncementMessageReceived == 0))
+  {
+    sysSetVariableString( sysvar::Diagnostic::ETH_TesterIPAddress,gTesterIpv4Address);
+    sysSetVariableString( sysvar::Diagnostic::ETH_VehicleIPAddress, gECUIpv4Address);
+  }
+  @Diagnostic::ETH_Enable=1;
+  
+  @Diagnostic::ETH_TesterLogicAddress=gTesterLogicAddress;
+  @Diagnostic::ETH_FunctionalLogicAddress=gFunctionalLogicAddress;
+  if(EthNodeTypeNow==EdgeNode)
+    @Diagnostic::ETH_NodeType=1;
+  else if(EthNodeTypeNow==InternalNode)
+    @Diagnostic::ETH_NodeType=2;
+  
+  
+  sysSetVariableString( sysvar::Diagnostic::ETH_ETHNetMask,gNetmask);
+  @Diagnostic::S3Client=gS3Client;
+  testWaitForTimeout(2);
+  
+  /* 边缘节点判断车辆声明报文 */
+  if(@Diagnostic::ETH_NodeType == 1)
+  {
+    while(@Diagnostic::ETH_AnnouncementMessageReceived == 0)
+    {
+      testWaitForTimeout(100);
+      Count++;
+      if(Count%10 == 0) { @Diagnostic::ETH_SendVehicleAnnouncementRequest = 1; }
+      if(Count >= 200) { testStepWarning("ETH_TP_Init","@Diagnostic::ETH_AnnouncementMessageReceived == 0"); break; }
+    }
+  }
+  @Diagnostic::ETH_TPparameterInit=1;
+  
+  Count = 0;
+  while(@Diagnostic::ETH_TCPConnectionStatus == 0)
+  {
+    testWaitForTimeout(1000);
+    Count++;
+    if(Count >= gTimeForTCPConnect/1000) { testStepFail("ETH_TP_Init","@Diagnostic::ETH_TCPConnectionStatus = 0"); stop(); }
+  }
+}
+/// <ECU_Response>
+enum ResponseState ETH_ECU_Response(int P2,int CheckService)
+{
+  long Responselength;
+//  write("p2=%d %f",P2,P2);
+//  write("FLAG=%d,p2app=%d,p2boot=%d",SessionFlag,gP2Client_APP,gP2Client_BOOT);
+	if(P2 != gP2StarClientDelay)
+	{
+		gNRC78Flag = 0;
+	}
+  if(P2 != gP2StarClientDelay)
+  {
+  	if(testWaitForTextEvent("ETHTPreciveData",gP2ClientDelay)==0)
+  		return TIMEOUT;
+    TP_T2 = timeNowFloat()/10000;
+    TesTime = (TP_T2-TP_T1)*100;
+//    write("real=%f expect=%f",TesTime,P2);
+//    write("real=%d expect=%d",TesTime,P2);
+    if(TesTime>P2)
+    {
+      if(WaringOrErrorFlag==1)
+      {
+        testStepWarning("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+      else
+      {
+        testStepFail("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+      
+    }
+  }
+  else
+  {
+    if(testWaitForTextEvent("ETHTPreciveData",gP2StarClientDelay)>0)
+     {
+      TP_T5 = timeNowFloat()/10000;
+      P2startime=(TP_T5-TP_T4)*100;
+      if(P2startime>gP2StarClient)
+        testStepFail("TP","ECU P2*Server timeout,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+      else if(P2startime<(gP2StarClient*0.3) && gTpRxData[0] == 0x7F && gTpRxData[1] == CheckService && gTpRxData[2] == 0x78)
+        testStepFail("TP","ECU P2*Server expect between 0.3*P2*ServerMax and ServerMax,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+     }
+     else
+      return TIMEOUT;
+  }
+  Responselength=@Diagnostic::Receive_DataLength;
+  gTpRxLength=Responselength;
+  sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+	if(gTpRxData[0]==0x7f)
+	{
+		switch(gTpRxData[2])
+		{
+  		case 0x78:
+        if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+        {
+          testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+        }
+        TP_T4 = timeNowFloat()/10000;
+  			gNRC78Flag = 1;
+        if(NRC78AllowFlag!=1)
+        {
+          testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+        } 
+  			return ETH_ECU_Response(gP2StarClientDelay,CheckService);
+  		case 0x22:
+  			break;
+  		default:
+  			break;
+		}
+		return NEG;
+	}
+	else
+  {
+    if(gNRC78Flag==1)
+    {
+      TP_T3=timeNowFloat()/10000;
+      P4time=(TP_T3-TP_T1)*100;
+      if(P4time>gP4Client)
+        testStepFail("Chk","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time);
+    }
+		return POS;
+  }
+}
+
+/// <ECU_Response>
+enum ResponseState LIN_ECU_Response(int P2,int CheckService)
+{
+  long Responselength;
+  
+	if(P2 != gP2StarClientDelay)
+	{
+		gNRC78Flag = 0;
+	}
+  if(P2 != gP2StarClientDelay)
+  {
+  	if(testWaitForTextEvent("LINTPFirstCFrecived",gP2ClientDelay)==0)
+  		return TIMEOUT;
+    TP_T2 = timeNowFloat()/10000;
+    TesTime = (TP_T2-TP_T1)*100;
+    if(TesTime>P2)
+    {
+      if(WaringOrErrorFlag==1)
+      {
+        testStepWarning("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+      else
+      {
+        testStepFail("TP","ECU P2Server timeout,real P2 is %fms,expect P2 is %dms",TesTime,P2);
+      }
+    }
+  }
+  else
+  {
+    if(testWaitForTextEvent("LINTPFirstCFrecived",gP2StarClientDelay)>0)
+     {
+      TP_T5 = timeNowFloat()/10000;
+      P2startime=(TP_T5-TP_T4)*100;
+      if(P2startime>gP2StarClient)
+      testStepFail("TP","ECU P2*Server timeout,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+      else if(P2startime<(gP2StarClient*0.3) && gTpRxData[0] == 0x7F && gTpRxData[1] == CheckService && gTpRxData[2] == 0x78)
+        testStepFail("TP","ECU P2*Server expect between 0.3*P2*ServerMax and ServerMax,real P2* is %fms,expect P2* is %dms",P2startime,gP2StarClient);
+     }
+    else
+     return TIMEOUT;
+  }
+	if(testWaitForTextEvent("LINTPreciveData",gUDS_P6Client)==0)
+	{
+		testStep("TP","LIN_TP:Don't receive complete data");
+		return TIMEOUT;
+	}
+
+  Responselength=@Diagnostic::Receive_DataLength;
+  gTpRxLength=Responselength;
+  sysGetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,Responselength);
+	if(gTpRxData[0]==0x7f)
+	{
+		switch(gTpRxData[2])
+		{
+		case 0x78:
+      if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+      {
+        testStepFail("Chk","The ECU responds to the NRC78 with unexpected service 0x%02x for the service 0x%02x",gTpRxData[1],CheckService);
+      }
+			gNRC78Flag = 1;
+      
+      if(NRC78AllowFlag!=1)
+      {
+        testStepFail("Chk","The NRC78 is not allowed when the UDS service is 0x%02x.",CheckService);
+      }
+      TP_T4 = timeNowFloat()/10000;
+			return LIN_ECU_Response(gP2StarClientDelay,CheckService);
+		default:
+			break;
+		}
+		return NEG;
+	}
+	else
+  {
+    if(gNRC78Flag==1)
+    {
+      TP_T3=timeNowFloat()/10000;
+      P4time=(TP_T3-TP_T1)*100;
+      if(P4time>gP4Client)
+        testStepFail("Chk","ECU P4Server timeout,expect P4 is %fms,and actual P4 is %fms!",gP4Client,P4time);
+    }
+		return POS;
+  }
+}
+void P4ServerInit(byte Data[])
+{
+//  byte ServiceID;
+  byte SubFunction;
+  word DataID;
+  int DataLength; 
+  byte ServiceMatchFlag=0;
+  byte SubFunctionMatchFlag=0;
+  byte IDMatchFlag=0;
+  int i=0,j=0,k=0;// i=Level 1 cycle,j=Level 2 cycle,k=Level 3 cycle.
+  
+  ServiceMatchFlag=0;
+  SubFunctionMatchFlag=0;
+  IDMatchFlag=0;
+  
+  DataLength=elcount(Data);
+  ServiceIDNow = Data[0];
+
+  for(i=0;i<ServiceNum;i++)
+  {
+    if(ServiceIDNow==P4ServerTime[i].ServiceID)
+    {
+      if(P4ServerTime[i].SupportNRC78Flag==0)
+      {
+        NRC78AllowFlag=0;
+        break;
+      }
+      else if(P4ServerTime[i].SupportNRC78Flag==1)
+      {
+        NRC78AllowFlag=1;
+        if(P4ServerTime[i].SubFunctionSeparate==0xFF)
+        {
+          if(P4ServerTime[i].DataIDSeparateNum>0)
+          {
+            if(DataLength>=4)
+            {
+              DataID = Data[2] << 8 | Data[3];
+              if((P4ServerTime[j].DataIDSeparateNum=0)||P4ServerTime[j].DataIDSeparateNum>100)
+              {
+                gP4Client=P4DefaultValue*1.2;
+                write("1  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                return;
+              }
+              for(j=0;j<P4ServerTime[i].DataIDSeparateNum;j++)
+              {
+                if(P4ServerTime[i].DataIDForSepP4[j].Data==DataID)
+                {
+                  if(P4ServerTime[i].DataIDForSepP4[j].SeparateValue!=0)
+                  {
+                    gP4Client=P4ServerTime[i].DataIDForSepP4[j].SeparateValue*1.2;
+                    IDMatchFlag=1;
+                  }
+                  else
+                  {
+                    gP4Client=P4DefaultValue*1.2;
+                    write("2  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                    return;
+                  }
+                }
+                else if((j==P4ServerTime[i].DataIDSeparateNum)&&(IDMatchFlag!=1))
+                {
+                  if(P4ServerTime[i].DefaultValue!=0)
+                  {
+                    gP4Client=P4ServerTime[i].DefaultValue*1.2;
+                    return;
+                  }
+                  else
+                  {
+                    gP4Client=P4DefaultValue*1.2;
+                    write("3  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                    return;
+                  }
+                }
+                else 
+                  continue;
+              }              
+            }
+            else
+            {
+              gP4Client=P4DefaultValue*1.2;
+              write("4  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+              return;
+            }
+          }
+          else
+          {
+            if(P4ServerTime[i].DefaultValue!=0)
+            {
+              gP4Client=P4ServerTime[i].DefaultValue*1.2;
+              return;
+            }
+            else
+            {
+              gP4Client=P4DefaultValue*1.2;
+              write("5  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+              return;
+            }
+          }
+        }
+        else //find mantchd subfunction
+        {
+          if(DataLength>=2)
+          {
+            SubFunction = Data[1];
+            for(j=0;j<ServiceNum;j++)
+            {
+              if((P4ServerTime[j].ServiceID==ServiceIDNow)&&(P4ServerTime[j].SubFunctionSeparate==SubFunction))
+              {
+                SubFunctionMatchFlag=1;
+                if(P4ServerTime[j].DataIDSeparateNum>0)
+                {
+                  if(DataLength>=4)
+                  {
+                    DataID = Data[2] << 8 | Data[3];
+                    if((P4ServerTime[j].DataIDSeparateNum=0)||P4ServerTime[j].DataIDSeparateNum>100)
+                    {
+                      gP4Client=P4DefaultValue*1.2;
+                      write("6  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                      return;
+                    }
+                    for(k=0;k<P4ServerTime[j].DataIDSeparateNum;k++)
+                    {
+                      if(P4ServerTime[j].DataIDForSepP4[k].Data==DataID)
+                      {
+                        if(P4ServerTime[j].DataIDForSepP4[k].SeparateValue!=0)
+                        {
+                          gP4Client=P4ServerTime[j].DataIDForSepP4[k].SeparateValue*1.2;
+                          IDMatchFlag=1;
+                        }
+                        else
+                        {
+                          gP4Client=P4DefaultValue*1.2;
+                          write("7  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                          return;
+                        }
+                      }
+                      else if((j==P4ServerTime[j].DataIDSeparateNum)&&(IDMatchFlag!=1))
+                      {
+                        if(P4ServerTime[j].DefaultValue!=0)
+                        {
+                          gP4Client=P4ServerTime[j].DefaultValue*1.2;
+                          return;
+                        }
+                        else
+                        {
+                          gP4Client=P4DefaultValue*1.2;
+                          write("8  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                          return;
+                        }
+                      }
+                      else 
+                        continue;
+                    }              
+                  }
+                  else
+                  {
+                    gP4Client=P4DefaultValue*1.2;
+                    write("9  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                    return;
+                  }
+                }
+                else
+                {
+                  if(P4ServerTime[j].DefaultValue!=0)
+                  {
+                    gP4Client=P4ServerTime[j].DefaultValue*1.2;
+                    return;
+                  }
+                  else
+                  {
+                    gP4Client=P4DefaultValue*1.2;
+                    write("10  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                    return;
+                  }
+                }
+              }
+              else if((j==(ServiceNum-1))&&(SubFunctionMatchFlag!=1))
+              {
+                gP4Client=P4DefaultValue*1.2;
+                write("11  there is not a legal or Clearly defined request_,The p4 value is set to default value--%dms",P4DefaultValue);
+                return;
+              }
+              else
+                continue;
+            }
+              
+          }
+          else 
+          {
+            gP4Client=P4DefaultValue*1.2;
+            write("12  there is not a legal or Clearly defined request,The p4 value is set to default value--%dms",P4DefaultValue);
+            return;
+          }
+        } 
+      }
+      else
+      {
+        NRC78AllowFlag=1;
+        gP4Client=P4DefaultValue*1.2;
+        write("13  there is not a legal or Clearly defined request,The p4 value is set to default value--%dms",P4DefaultValue);
+        return;
+      }
+    }
+    else if((i==(ServiceNum-1)&&(ServiceMatchFlag!=1)))
+    {
+      NRC78AllowFlag=1;
+      gP4Client=P4DefaultValue*1.2;
+      write("14  there is not a legal or Clearly defined request,The p4 value is set to default value--%dms",P4DefaultValue);
+      return;
+    }
+    else
+      continue;
+  }
+}
+void GeelyParameterParsing()
+{
+  char ECUinfoPath[400];
+  char gAbsPath[400];
+  int i=0;
+//  char tempstring[100];
+  getAbsFilePath("",gAbsPath,500);
+  snprintf(ECUinfoPath,500,"%s\\01_Input\\",gAbsPath);
+  setFilePath(ECUinfoPath,2);//初始化ini文件地址
+  
+  if(strncmp(BusType,"CAN",10) == 0)
+  {
+    writeProfileString("ECUinfo", "BusType",BusType,"DiagParameter.ini");
+    writeProfileint("ECUinfo", "CAN_RequestID",0x700+(ECUAddress_Temp&0x00FF),"DiagParameter.ini");
+    writeProfileint("ECUinfo", "CAN_ResponseID",0x600+(ECUAddress_Temp&0x00FF),"DiagParameter.ini");
+  }
+  else if(strncmp(BusType,"CANFD",10) == 0)
+  {
+    writeProfileString("ECUinfo", "BusType",BusType,"DiagParameter.ini");
+    writeProfileint("ECUinfo", "CAN_RequestID",0x700+(ECUAddress_Temp&0x00FF),"DiagParameter.ini");
+    writeProfileint("ECUinfo", "CAN_ResponseID",0x600+(ECUAddress_Temp&0x00FF),"DiagParameter.ini");
+  }
+  else if(strncmp(BusType,"LIN",10) == 0)
+  {
+    writeProfileString("ECUinfo", "BusType",BusType,"DiagParameter.ini");
+    writeProfileint("ECUinfo", "LIN_TP_NAD",ECUAddress_Temp&0xFF,"DiagParameter.ini");
+  }
+  else if(strncmp(BusType,"ETH_InternalNode",10) == 0)
+  {
+    writeProfileString("ECUinfo", "BusType","Ethernet","DiagParameter.ini");
+    writeProfileString("ECUinfo", "EthNodeType","InternalNode","DiagParameter.ini");
+    writeProfileint("ECUinfo", "ECULogicAddress",ECUAddress_Temp,"DiagParameter.ini");
+    
+//    for(i=0;i<elcount(gSpecificDUTInfo);i++)
+//    {
+//      if(ECUAddress_Temp == gSpecificDUTInfo[i].LogicAddress)
+//      {
+//        writeProfileString("ECUinfo", "ECUIpv4Address",gSpecificDUTInfo[i].IPv4Address,"DiagParameter.ini");
+//        break;
+//      }
+//      else if(i==elcount(gSpecificDUTInfo)-1)
+//      {
+//        writeProfileString("ECUinfo", "ECUIpv4Address","0","DiagParameter.ini");
+//      }
+//    }
+  }
+  else if(strncmp(BusType,"ETH_EdgeNode",10) == 0)
+  {
+    writeProfileString("ECUinfo", "BusType","Ethernet","DiagParameter.ini");
+    writeProfileString("ECUinfo", "EthNodeType","EdgeNode","DiagParameter.ini");
+    writeProfileint("ECUinfo", "ECULogicAddress",ECUAddress_Temp,"DiagParameter.ini");
+  }
+}

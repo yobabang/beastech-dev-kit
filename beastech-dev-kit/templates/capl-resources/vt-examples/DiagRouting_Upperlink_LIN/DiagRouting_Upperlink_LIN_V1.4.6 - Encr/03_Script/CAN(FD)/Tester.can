@@ -1,0 +1,3508 @@
+/*@!Encoding:936*/
+includes
+{
+  #pragma library("..\..\02_Library\02_DLL\capldll.dll")
+  #pragma library("..\..\02_Library\02_DLL\CodeMeter.dll")
+  #include "..\..\01_Input\TestParameter.cin"
+  #include "..\Context.cin"
+  #include "CANFD_TP.cin"
+  #include "..\UDS_Client.cin"
+  #include "..\TaskScheduling.cin"
+  #include "TesterConfig.cin"
+  #include "..\UserDetection.cin"
+}
+
+variables
+{
+  char tim[50]="";
+  char logpath[100]="";
+  float t_CAN_tx[EcuSum];
+}
+
+void CheckRequestTran_Fun()
+{ 
+  int i,j;
+  linWakeup();
+  linSetWakeupParams(100,2);
+  linSendWakeup(150,3,250);
+  for(i=2; i<EcuSum; i++)
+	{
+    int flag;
+    flag=0;
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+    for(j=0;j<@GW::FunRequestNum;j++)
+    {
+      if(EcuAddressTable[i].domain==FunRequest[j].Network_num)
+      {
+        flag=1;
+        testStep("","");
+        testStepPass("chk","Functional addressing forwarding to the target network（Domian=%d Time=%f）",EcuAddressTable[i].domain,FunRequest[j].TimeStamp);  
+        CheckDataTransmit_Request(Request[0].Packet, FunRequest[j].Packet); 
+        if((FunRequest[j].TimeStamp-t_CAN_tx[0])<=MaxTransTime)
+          testStepPass("chk","Diagnosis request forwarding time is %f less than %dms",(FunRequest[j].TimeStamp-t_CAN_tx[0]),MaxTransTime);
+        else
+          testStepFail("chk","Diagnosis request forwarding time is %f more than %dms",(FunRequest[j].TimeStamp-t_CAN_tx[0]),MaxTransTime);
+        break;
+      }
+    }
+    if(flag==0)
+      testStepFail("chk","Functional addressing not forwarded to the target network（Domian=%d）",EcuAddressTable[i].domain);      
+  }
+  
+  for(j=0;j<@GW::FunRequestNum;j++)
+    memcpy(FunRequest[j],void_Request);
+}
+
+on linWakeupFrame
+{
+  linWakeup();
+  linSetWakeupParams(100,2);
+  linSendWakeup(150,3,250);
+}
+
+/// <TestGroup01_LINMasterRoutingFunctionalRequests>
+/*********************************************************************************
+Testcase     :  LIN master Time routing incoming Diagnostic request
+Description  :  
+Reference    :  
+Calls        :
+History      :  Create by Polelink LiXiong
+*********************************************************************************/
+testcase TC1322471_FunctionallyAddressedResetRequest_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322471_FunctionallyAddressedResetRequest_DefaultSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322471","Reset of gateway with pending requests DefaultSession");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+   
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(diagnosticSessionType = [programmingSession = 0x02], suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+
+  testWaitForTimeout(ECUResetTime);  
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+ 
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup01_LINMasterRoutingFunctionalRequests>
+testcase TC1322515_FunctionallyAddressedResetRequest_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322515_FunctionallyAddressedResetRequest_ExtendedSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322515","Reset of gateway with pending requests ExtendedSession");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);     
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(diagnosticSessionType = [programmingSession = 0x02], suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  
+  testWaitForTimeout(ECUResetTime); 
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+/// <TestGroup01_LINMasterRoutingFunctionalRequests>
+testcase TC1322513_FunctionallyAddressedResetRequest_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322513_FunctionallyAddressedResetRequest_ProgrammingSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+  testCaseTitle("TC1322513","Reset of gateway with pending requests ProgrammingSession");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(HardReset, suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID11_ECUReset(SID11_Request[HardReset_SPRMIB],  Request[0]);
+//  Request[0].Packet.Length=3;
+//  Request[0].Packet.Payload[0]=0x22;Request[0].Packet.Payload[1]=0xF1;Request[0].Packet.Payload[0]=0x86;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup02_NADFormatTransfer>
+testcase TC1322546_NADFormatTransfer_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322546_NADFormatTransfer_DefaultSession_R2";
+  int i, j;
+  
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+	testCaseTitle("TC1322546","NAD Format Transfer DefaultSession");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition();
+   
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  for(i=2;i<EcuSum;i++)
+  {    
+    SetResponseTask(i);
+        
+    testStep("","");
+    teststep("Step3","send request");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(1000);  
+    CheckRequestTrans(); 
+    testWaitForTimeout(1000);
+    
+    testStep("","");
+    teststep("Step4","send response");
+    CheckResponseTrans();
+    @GW::Response_Indication=0;
+  }
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+ 
+  TestCasePostcondition();
+}
+
+/// <TestGroup02_NADFormatTransfer>
+testcase TC1322666_NADFormatTransfer_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322666_NADFormatTransfer_ExtendedSession_R2";
+  int i, j;
+  
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+	testCaseTitle("TC1322666","NAD Format Transfer ExtendedSession");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition();
+
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  for(i=2;i<EcuSum;i++)
+  {    
+    SetResponseTask(i);
+        
+    testStep("","");
+    teststep("Step3","send request");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(1000);  
+    CheckRequestTrans(); 
+    testWaitForTimeout(1000);
+    
+    testStep("","");
+    teststep("Step4","send response");
+    CheckResponseTrans();
+    @GW::Response_Indication=0;
+  }
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+  
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");  
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans();
+
+  TestCasePostcondition();
+}
+
+/// <TestGroup03_DiagnosticRequestRoutingTime>
+testcase TC1322667_DiagnosticRequestRoutingTime_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322667_DiagnosticRequestRoutingTime_DefaultSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322667","Diagnostic Request Routing Time");
+   
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(diagnosticSessionType = [programmingSession = 0x02], suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  
+  testWaitForTimeout(ECUResetTime); 
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+ 
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup03_DiagnosticRequestRoutingTime>
+testcase TC1322668_DiagnosticRequestRoutingTime_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322668_DiagnosticRequestRoutingTime_ExtendedSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322668","Diagnostic Request Routing Time");
+   
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);     
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(diagnosticSessionType = [programmingSession = 0x02], suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  
+  testWaitForTimeout(ECUResetTime); 
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup04_FunctionallyAddressedRequestTransfer>
+testcase TC1322681_FunctionallyAddressedRequestTransfer_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322681_FunctionallyAddressedRequestTransfer_DefaultSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322681","Functionally Addressed Request Transfer");
+   
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  
+  testStep("","");
+  teststep("Step3","Sending function addressing 3E 00");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckECU_Response_Fun(Request[FunctionalReq],GatewayResp);
+  CheckRequestTran_Fun();
+  testStep("","");
+  Check3DHeader_send();
+  
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::FunRequestNum = 0;
+  @GW::EnDetect_3E80 = 1;
+  testStep("","");
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckRequestTran_Fun();  
+  testStep("","");
+  Check3DHeader_send();
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::EnDetect_3E80 = 0;
+  
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup04_FunctionallyAddressedRequestTransfer>
+testcase TC1322686_FunctionallyAddressedRequestTransfer_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322686_FunctionallyAddressedRequestTransfer_ExtendedSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322686","Functionally Addressed Request Transfer");
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);     
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  
+  testStep("","");
+  teststep("Step3","Sending function addressing 3E 00");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckECU_Response_Fun(Request[FunctionalReq],GatewayResp);
+  CheckRequestTran_Fun();
+  testStep("","");
+  Check3DHeader_send();
+  
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::FunRequestNum = 0;
+  @GW::EnDetect_3E80 = 1;
+  testStep("","");
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckRequestTran_Fun();  
+  testStep("","");
+  Check3DHeader_send();
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::EnDetect_3E80 = 0;
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup05_PriorityRoutingForFunctionallyAddressedRequest>
+testcase TC1322687_PriorityRoutingForFunctionallyAddressedRequest_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322687_PriorityRoutingForFunctionallyAddressedRequest_DefaultSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322687","Priority Routing For Functionally Addressed Request");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  @GW::EnDetect_3E80 = 1;
+  
+  for(i=2;i<EcuSum;i++)
+  {            
+    testStep("","");
+    teststep("Step3","send request");
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;       
+
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(50);
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  Request[FunctionalReq].Flag=0;
+  
+  testWaitForTimeout(2000);
+  testStep("","");
+    
+  CheckFunAddressingPriority();
+  CheckRequestTrans();
+  testWaitForTimeout(1000); 
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  @GW::EnDetect_3E80 = 0;
+
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup05_PriorityRoutingForFunctionallyAddressedRequest>
+testcase TC1322691_PriorityRoutingForFunctionallyAddressedRequest_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322691_PriorityRoutingForFunctionallyAddressedRequest_ExtendedSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322691","Priority Routing For Functionally Addressed Request");
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  @GW::EnDetect_3E80 = 1;
+  
+  for(i=2;i<EcuSum;i++)
+  {            
+    testStep("","");
+    teststep("Step3","send request");
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;       
+
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(50);
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  Request[FunctionalReq].Flag=0;
+    
+  testWaitForTimeout(2000);
+  testStep("","");
+    
+  CheckFunAddressingPriority();
+  CheckRequestTrans();
+  testWaitForTimeout(1000); 
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  @GW::EnDetect_3E80 = 0;
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup06_TimeoutForDiagnosticRequest>
+testcase TC1322692_TimeoutForDiagnosticRequest_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322692_TimeoutForDiagnosticRequest_DefaultSession_R2";
+  int i, j, N;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322692","Timeout For Diagnostic Request");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step4","等待90ms"); 
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step5","等待110ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+
+    testStep("","");
+    testWaitForTimeout(1000);
+    teststep("Step6","Send diagnostic request：22 F1 86");  
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();    
+    @GW::Response_NRC78=0;
+    SetNRC78ResponseTask(i);
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step7","等待90ms"); 
+    testStep("","");
+    teststep("Step8","Send diagnostic response：7F 22 78");   
+    testStep("","");
+    testWaitForTimeout(20);
+    teststep("Step9","等待20ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;    
+  }
+
+  testStep("","");
+  teststep("Step10","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup06_TimeoutForDiagnosticRequest>
+testcase TC1322799_TimeoutForDiagnosticRequest_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322799_TimeoutForDiagnosticRequest_ExtendedSession_R2";
+  int i, j, N;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322799","Timeout For Diagnostic Request"); 
+   
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step4","等待90ms"); 
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step5","等待110ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+
+    testStep("","");
+    testWaitForTimeout(1000);
+    teststep("Step6","Send diagnostic request：22 F1 86");  
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();    
+    @GW::Response_NRC78=0;
+    SetNRC78ResponseTask(i);
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step7","等待90ms"); 
+    testStep("","");
+    teststep("Step8","Send diagnostic response：7F 22 78");   
+    testStep("","");
+    testWaitForTimeout(20);
+    teststep("Step9","等待20ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;    
+  }
+  
+  testStep("","");
+  teststep("Step10","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step11","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup07_TimeoutForNRC78>
+testcase TC1322800_TimeoutForNRC78_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322800_TimeoutForNRC78_DefaultSession_R2";
+  int i, j;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322800","Timeout For NRC78"); 
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    @GW::Response_NRC78=0;
+    teststep("Step4","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    
+    testStep("","");
+    teststep("Step5","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    CheckRequestTrans();
+    testWaitForTimeout(100);
+    
+    @GW::Response_NRC78=0;
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    testStep("","");
+    teststep("Step6","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+    testWaitForTimeout(1000);
+    testStep("","");
+  	teststep("Step7","Send diagnostic request：22 F1 86");
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    teststep("Step8","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step9","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckRequestTrans();
+    
+    @GW::Response_NRC78=0;
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    @GW::Response_multsend=1;
+    testStep("","");
+    teststep("Step10","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step11","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;
+    @GW::Response_multsend=0;
+  }
+
+  testStep("","");
+  teststep("Step12","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup07_TimeoutForNRC78>
+testcase TC1322805_TimeoutForNRC78_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322805_TimeoutForNRC78_ExtendedSession_R2";
+  int i, j;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322805","Timeout For NRC78"); 
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    @GW::Response_NRC78=0;
+    teststep("Step4","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    
+    testStep("","");
+    teststep("Step5","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    CheckRequestTrans();
+    testWaitForTimeout(100);
+    
+    @GW::Response_NRC78=0;
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    testStep("","");
+    teststep("Step6","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+
+    testWaitForTimeout(1000);
+    testStep("","");
+  	teststep("Step7","Send diagnostic request：22 F1 86");
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    teststep("Step8","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step9","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckRequestTrans();
+    
+    @GW::Response_NRC78=0;
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    @GW::Response_multsend=1;
+    testStep("","");
+    teststep("Step10","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step11","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;
+    @GW::Response_multsend=0;
+  }
+
+  testStep("","");
+  teststep("Step12","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step13","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup08_ParallelRequests>
+testcase TC1322806_ParallelRequests_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322806_ParallelRequests_DefaultSession_R2";
+  int i,j,flag,N;
+  word k[NetworkNumber];
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322806","Parallel Requests"); 
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  testStep("","");
+  teststep("Step3","Send segementented request to 2 target ECU/TA ids on same network");
+  flag=0;
+  for(N=2; N<EcuSum; N++)
+	{
+    if(EcuAddressTable[N].domain == EcuAddressTable[N-1].domain)
+    {
+      k[EcuAddressTable[N].domain-1]++;
+      if(k[EcuAddressTable[N].domain-1] >= 1)
+      {
+        flag=1;
+        break; 
+      }     
+    }
+  }
+  if(flag==0)
+  {
+    testStepWarning("","The number of ECUs for each network is less than 2,the case is not applicable");
+    return;
+  }
+  
+  for(i=N-1; i<N+1; i++)
+  {
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(2000);
+  CheckRequestTrans();  
+  CheckResponseTrans();
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup08_ParallelRequests>
+testcase TC1322808_ParallelRequests_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322808_ParallelRequests_ExtendedSession_R2";
+  int i,j,flag,N;
+  word k[NetworkNumber];
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322808","Parallel Requests"); 
+  TestCasePrecondition();
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  testStep("","");
+  teststep("Step3","Send segementented request to 2 target ECU/TA ids on same network");
+  flag=0;
+  for(N=2; N<EcuSum; N++)
+	{
+    if(EcuAddressTable[N].domain == EcuAddressTable[N-1].domain)
+    {
+      k[EcuAddressTable[N].domain-1]++;
+      if(k[EcuAddressTable[N].domain-1] >= 1)
+      {
+        flag=1;
+        break; 
+      }     
+    }
+  }
+  if(flag==0)
+  {
+    testStepWarning("","The number of ECUs for each network is less than 2,the case is not applicable");
+    return;
+  }
+  
+  for(i=N-1; i<N+1; i++)
+  {
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(2000);
+  CheckRequestTrans();  
+  CheckResponseTrans();
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup10_MinRAMForRequest>
+testcase TC1322813_MinRAMForRequest_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322813_MinRAMForRequest_DefaultSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322813","Min RAM For Request"); 
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step3","Send Physical segementent request to target ECU on each network");
+  for(i=2; i<EcuSum; i++)
+  {    
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+    {
+      k[EcuAddressTable[i].domain-1]++;
+      if(k[EcuAddressTable[i].domain-1] >= requestBufferAPP_NUM)
+        continue;       
+    }
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID; 
+    if(k[EcuAddressTable[i].domain-1]==requestBufferAPP_NUM)
+      Request[i].Packet.Length=requestBufferAPP1;
+    else
+      Request[i].Packet.Length = requestBufferAPP2;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]);
+  }
+  
+  testWaitForTimeout(10000);
+  CheckRequestTrans();  
+  testWaitForTimeout(2000);
+
+  testStep("","");
+  teststep("Step4","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup10_MinRAMForRequest>
+testcase TC1322815_MinRAMForRequest_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322815_MinRAMForRequest_ExtendedSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322815","Min RAM For Request"); 
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  testStep("","");
+  teststep("Step3","Send Physical segementent request to target ECU on each network");
+  for(i=2; i<EcuSum; i++)
+  {    
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+    {
+      k[EcuAddressTable[i].domain-1]++;
+      if(k[EcuAddressTable[i].domain-1] >= requestBufferAPP_NUM)
+        continue;       
+    }
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID; 
+    if(k[EcuAddressTable[i].domain-1]==requestBufferAPP_NUM)
+      Request[i].Packet.Length=requestBufferAPP1;
+    else
+      Request[i].Packet.Length = requestBufferAPP2;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(10000);
+  CheckRequestTrans();  
+  testWaitForTimeout(2000);
+
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup11_MinRAMForResponse>
+testcase TC1322822_MinRAMForResponse_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1322822_MinRAMForResponse_DefaultSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322822","Min RAM For Response"); 
+  
+  TestCasePrecondition(); 
+  teststep("Step1","");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  @GW::Response_data = 1; 
+  @GW::Response_Indication=0;
+   
+  teststep("Step3","Send diagnostic request");  
+  for(i=2; i<EcuSum; i++)
+  {  
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;
+    SetResponseTask(i);
+
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length=3;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(2000);  
+    CheckRequestTrans(); 
+    CheckResponseTrans();
+    testWaitForTimeout(4000); 
+  }
+  @GW::Response_data = 0; 
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup11_MinRAMForResponse>
+testcase TC1322824_MinRAMForResponse_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1322824_MinRAMForResponse_ExtendedSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322824","Min RAM For Response"); 
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  @GW::Response_data = 1; 
+  @GW::Response_Indication=0;
+   
+  teststep("Step3","Send diagnostic request");  
+  for(i=2; i<EcuSum; i++)
+  {   
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;
+    SetResponseTask(i);
+    
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length=3;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(2000);  
+    CheckRequestTrans(); 
+    CheckResponseTrans();
+    testWaitForTimeout(4000); 
+  }
+  @GW::Response_data = 0; 
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup02_NADFormatTransfer>
+testcase TC1322664_NADFormatTransfer_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322664_NADFormatTransfer_ProgrammingSession_R2";
+  dword i, j;
+  
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+	testCaseTitle("TC1322664","NAD Format Transfer ProgrammingSession");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition();
+  
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  for(i=2;i<EcuSum;i++)
+  {    
+    SetResponseTask(i);
+        
+    testStep("","");
+    teststep("Step3","send request");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(1000);  
+    CheckRequestTrans(); 
+    testWaitForTimeout(1000);
+    
+    testStep("","");
+    teststep("Step4","send response");
+    CheckResponseTrans();
+    @GW::Response_Indication=0;
+  }
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+  
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");  
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+ 
+  TestCasePostcondition();
+}
+
+/// <TestGroup03_DiagnosticRequestRoutingTime>
+testcase TC1331455_DiagnosticRequestRoutingTime_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1331455_DiagnosticRequestRoutingTime_ProgrammingSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1331455","Diagnostic Request Routing Time");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+
+  testStep("","");
+  teststep("Step3","DiagnosticSessionControl_Request(HardReset, suppressPosRspMsgIndicationBit = [TRUE])");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID11_ECUReset(SID11_Request[HardReset_SPRMIB],  Request[0]);
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTran_Fun();
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup04_FunctionallyAddressedRequestTransfer>
+testcase TC1322685_FunctionallyAddressedRequestTransfer_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322685_FunctionallyAddressedRequestTransfer_ProgrammingSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322685","Functionally Addressed Request Transfer");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);  
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  
+  testStep("","");
+  teststep("Step3","Sending function addressing 3E 00");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckECU_Response_Fun(Request[FunctionalReq],GatewayResp);
+  CheckRequestTran_Fun();
+  testStep("","");
+  Check3DHeader_send();
+  
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::FunRequestNum = 0;
+  @GW::EnDetect_3E80 = 1;
+  testStep("","");
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  testWaitForTimeout(2000);
+  
+  CheckRequestTran_Fun();  
+  testStep("","");
+  Check3DHeader_send();
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  for(i=1;i<(NetworkNumber+1);i++)
+    @GW::Flag_3DSend[i] = 0;
+  @GW::EnDetect_3E80 = 0;
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup05_PriorityRoutingForFunctionallyAddressedRequest>
+testcase TC1322690_PriorityRoutingForFunctionallyAddressedRequest_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322690_PriorityRoutingForFunctionallyAddressedRequest_ProgrammingSession_R2";
+  int i, j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322690","Priority Routing For Functionally Addressed Request");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);    
+  
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 1;
+  @GW::EnDetect_3E80 = 1;
+  
+  for(i=2;i<EcuSum;i++)
+  {            
+    testStep("","");
+    teststep("Step3","send request");
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;       
+
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(50);
+  teststep("Step4","Sending function addressing 3E 80");
+  Request[FunctionalReq].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[FunctionalReq].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SID3E_TesterPresent(SID3E_Request[TesterPresent_SPRMIB],Request[FunctionalReq]);
+  SendDiagRequest(Request[FunctionalReq]);
+  Request[FunctionalReq].Flag=0;
+  
+  testWaitForTimeout(2000);
+  testStep("","");
+    
+  CheckFunAddressingPriority();
+  CheckRequestTrans();
+  testWaitForTimeout(1000); 
+  @GW::FunRequestNum = 0;
+  @GW::FunRequest_flag = 0;
+  @GW::EnDetect_3E80 = 0;
+  
+  testStep("","");
+  teststep("Step5","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step6","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup06_TimeoutForDiagnosticRequest>
+testcase TC1322798_TimeoutForDiagnosticRequest_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322798_TimeoutForDiagnosticRequest_ProgrammingSession_R2";
+  int i, j, N;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322798","Timeout For Diagnostic Request");
+
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);   
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step4","等待90ms"); 
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step5","等待110ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+
+    testStep("","");
+    testWaitForTimeout(1000);
+    teststep("Step6","Send diagnostic request：22 F1 86");  
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    testWaitForTimeout(70);
+    CheckRequestTrans();    
+    @GW::Response_NRC78=0;
+    SetNRC78ResponseTask(i);
+    testWaitForTimeout(20);
+    testStep("","");
+    teststep("Step7","等待90ms"); 
+    testStep("","");
+    teststep("Step8","Send diagnostic response：7F 22 78");   
+    testStep("","");
+    testWaitForTimeout(20);
+    teststep("Step9","等待20ms"); 
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(20);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;    
+  }
+  
+  testStep("","");
+  teststep("Step10","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step11","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup07_TimeoutForNRC78>
+testcase TC1322804_TimeoutForNRC78_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322804_TimeoutForNRC78_ProgrammingSession_R2";
+  int i, j;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322804","Timeout For NRC78");
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);   
+  
+  for(i=2;i<EcuSum;i++)
+  {
+    if(EcuAddressTable[i].domain==EcuAddressTable[i-1].domain)
+      continue;
+      
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;
+    testStep("","");
+  	teststep("Step3","Send diagnostic request：22 F1 86");
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[i]);   
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    @GW::Response_NRC78=0;
+    teststep("Step4","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    
+    testStep("","");
+    teststep("Step5","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    CheckRequestTrans();
+    testWaitForTimeout(100);
+    
+    @GW::Response_NRC78=0;
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    testStep("","");
+    teststep("Step6","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    Check3DHeader_send(1,EcuAddressTable[i].domain);
+    
+    @GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] = 0;  
+
+    testWaitForTimeout(1000);
+    testStep("","");
+  	teststep("Step7","Send diagnostic request：22 F1 86");
+    SendDiagRequest(Request[i]); 
+    t1 = timeNow()/100.0;
+    while(@GW::Flag_DataReceived_LIN[EcuAddressTable[i].domain] == 0) 
+    { 
+      testWaitForTimeout(1); 
+      t2 = timeNow()/100.0;
+      if(t2-t1>MaxTransTime) 
+        break;
+    }
+    if(t2-t1>MaxTransTime) 
+    { 
+      testStepFail("Fail","Diagnostic request not forwarded to LIN network segment"); 
+      return; 
+    }
+    teststep("Step8","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step9","等待4950ms");
+    testWaitForTimeout(4850);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckRequestTrans();
+    
+    @GW::Response_NRC78=0;
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    if(@GW::Flag_3DSend[EcuAddressTable[i].domain]==0)
+    {
+      testStepFail("step","3D header not send correctly(stop send)! ");
+      continue;
+    }
+    
+    @GW::Response_multsend=1;
+    testStep("","");
+    teststep("Step10","Send diagnostic response：7F 22 78");
+    SetNRC78ResponseTask(i);
+    testStep("","");
+    teststep("Step11","等待100ms"); 
+    testWaitForTimeout(100);
+    for(j=1;j<(NetworkNumber+1);j++)
+      @GW::Flag_3DSend[j] = 0;
+    testWaitForTimeout(100);
+    CheckResponseTrans();
+    testStep("","");
+    Check3DHeader_send(0,EcuAddressTable[i].domain);
+    @GW::Response_NRC78=0;
+    @GW::Response_multsend=0;
+  }
+  
+  testStep("","");
+  teststep("Step12","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step13","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup08_ParallelRequests>
+testcase TC1322807_ParallelRequests_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322807_ParallelRequests_ProgrammingSession_R2";
+  int i,j,flag,N;
+  word k[NetworkNumber];
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322807","Parallel Requests");  
+  
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);   
+  
+  testStep("","");
+  teststep("Step3","Send segementented request to 2 target ECU/TA ids on same network");
+  flag=0;
+  for(N=2; N<EcuSum; N++)
+	{
+    if(EcuAddressTable[N].domain == EcuAddressTable[N-1].domain)
+    {
+      k[EcuAddressTable[N].domain-1]++;
+      if(k[EcuAddressTable[N].domain-1] >= 1)
+      {
+        flag=1;
+        break; 
+      }     
+    }
+  }
+  if(flag==0)
+  {
+    testStepWarning("","The number of ECUs for each network is less than 2,the case is not applicable");
+    return;
+  }
+  
+  for(i=N-1; i<N+1; i++)
+  {
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(2000);
+  CheckRequestTrans();  
+  CheckResponseTrans();
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup09_QueuedRequests>
+testcase TC1322809_QueuedRequests_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322809_QueuedRequests_ProgrammingSession_R2";
+  int i, j;
+  float t1,t2;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322809","Queued Requests");
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+  
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  @GW::QueRequest_flag=1;
+  for(i=2; i<EcuSum; i++)
+    @GW::QueRequestNum[i]=0;
+  
+	teststep("Step3","Send queue requests");
+  for(i=2; i<EcuSum; i++)
+  {
+    SetResponseTask(i);
+    Send36Confirm[i][0].NUM=0x1;
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length = 100;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=Send36Confirm[i][0].NUM;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    SendDiagRequest(Request[i]); 
+    Send36Confirm[i][0].flag=1;
+    
+    Send36Confirm[i][1].NUM=0x2;
+    QueRequest[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    QueRequest[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    QueRequest[i].Packet.Length = 100;
+    QueRequest[i].Packet.Payload[0]=0x36;QueRequest[i].Packet.Payload[1]=Send36Confirm[i][1].NUM;
+    for(j=2;j<QueRequest[i].Packet.Length;j++)
+      QueRequest[i].Packet.Payload[j]=0xA5;
+    SendDiagRequest(QueRequest[i]);  
+    Send36Confirm[i][1].flag=1;
+    
+    testWaitForTimeout(1000);
+  }
+  
+  testWaitForTimeout(4000);
+  @GW::QueRequest_flag=0;
+  for(i=2; i<EcuSum; i++)
+    @GW::QueRequestNum[i]=0;
+
+  for(i=2; i<EcuSum; i++)
+  {
+    teststep("step","check transmit of Request of 0x%x",EcuAddressTable[i].TargetID);
+    CheckDataTransmit_Request(Request[i].Packet, QueRequestTrans[i][0].Packet); 
+    CheckDataTransmit_Request(QueRequest[i].Packet, QueRequestTrans[i][1].Packet); 
+    memcpy(ResponseTrans[i],void_Request);
+    Response[i].flag=0;
+  }  
+  @GW::Response_Indication=0;
+  
+	teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+	SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");  
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+
+	TestCasePostcondition();
+}
+
+/// <TestGroup10_MinRAMForRequest>
+testcase TC1322814_MinRAMForRequest_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322814_MinRAMForRequest_ProgrammingSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322814","Min RAM For Request");
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+  
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  testStep("","");
+  teststep("Step3","Send Physical segementent request to target ECU on each network");
+  for(i=2; i<EcuSum; i++)
+  {    
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+    {
+      k[EcuAddressTable[i].domain-1]++;
+      if(k[EcuAddressTable[i].domain-1] >= requestBufferBoot_NUM)
+        continue;       
+    }
+    SetResponseTask(i);
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID; 
+    Request[i].Packet.Length = requestBufferBoot1;
+    Request[i].Packet.Payload[0]=0x36;Request[i].Packet.Payload[1]=0x01;
+    for(j=2;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+  }
+  
+  testWaitForTimeout(10000);
+  CheckRequestTrans();  
+  testWaitForTimeout(2000);
+  
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup11_MinRAMForResponse>
+testcase TC1322823_MinRAMForResponse_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1322823_MinRAMForResponse_ProgrammingSession_R2";
+  int i, j;
+  word k[NetworkNumber];
+
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1322823","Min RAM For Response"); 
+  TestCasePrecondition();
+  
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+  
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  @GW::Response_data = 2; 
+  @GW::Response_Indication=0;
+   
+  teststep("Step3","Send diagnostic request");  
+  for(i=2; i<EcuSum; i++)
+  {  
+    if(EcuAddressTable[i].domain == EcuAddressTable[i-1].domain)
+      continue;
+    SetResponseTask(i);
+
+    Request[i].Packet.SourceID = EcuAddressTable[i].SourceID;
+    Request[i].Packet.TargetID = EcuAddressTable[i].TargetID;
+    Request[i].Packet.Length=3;
+    for(j=0;j<Request[i].Packet.Length;j++)
+      Request[i].Packet.Payload[j]=0xA5;
+    Request[i].Flag=1;
+    SendDiagRequest(Request[i]); 
+    testWaitForTimeout(2000);  
+    CheckRequestTrans(); 
+    CheckResponseTrans();
+    testWaitForTimeout(4000); 
+  }
+  @GW::Response_data = 0; 
+  @GW::Response_Indication=0;
+
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup12_DomianFunctionallyAddressedRequest>
+/*********************************************************************************
+Testcase     :  ResetOfGatewayWithPendingRequests
+Description  :  
+Reference    :  
+Calls        :
+History      :  Create by Polelink
+*********************************************************************************/
+testcase TC1366353_DomianFunctionallyAddressedRequest_DefaultSession_R2()
+{
+  char TestcaseName[80]="TC1366353_DomianFunctionallyAddressedRequest_DefaultSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1366353","Reset of gateway with pending requests R2");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+	 
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000); 
+  
+  if(elcount(EcuAddressTable_Fun)==1)
+  {
+    testStepFail("Chk","DUT does not support domain functional addressing");
+    return;
+  }
+
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  for(i=1; i<elcount(EcuAddressTable_Fun); i++)
+	{
+    testStep("","");
+    teststep("Step3","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+    @GW::FunRequestNum=0;  
+    Request[0].Packet.SourceID = EcuAddressTable_Fun[i].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable_Fun[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[0]);
+    SendDiagRequest(Request[0]);
+    testWaitForTimeout(1000);
+    if(EcuAddressTable_Fun[i].domain==0)
+    {
+      CheckECU_Response_Fun(Request[0],GatewayResp);
+    }
+    else
+    {
+      int j,flag;
+      flag=0;
+      for(j=0;j<@GW::FunRequestNum;j++)
+      {
+        if(FunRequest[j].Network_num==EcuAddressTable_Fun[i].domain)
+        {
+          flag=1;
+          testStepPass("chk","Functional addressing forwarding to the target network（Domian=%d Time=%f）",EcuAddressTable_Fun[i].domain,FunRequest[j].TimeStamp);  
+          break;
+        }
+      }
+      if(flag==0)
+        testStepFail("chk","Functional addressing not forwarded to the target network（Domian=%d）",EcuAddressTable_Fun[i].domain);      
+    }
+    FunRequestBufferClear();    
+    testWaitForTimeout(2000);
+  }
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+  
+  TestCasePostcondition();
+}
+/// <TestGroup12_DomianFunctionallyAddressedRequest>
+testcase TC1366355_DomianFunctionallyAddressedRequest_ExtendedSession_R2()
+{
+  char TestcaseName[80]="TC1366355_DomianFunctionallyAddressedRequest_ExtendedSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging(); 
+  testCaseTitle("TC1366355","Reset of gateway with pending requests R2");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+
+	TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); 
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);     
+  
+  if(elcount(EcuAddressTable_Fun)==1)
+  {
+    testStepFail("Chk","DUT does not support domain functional addressing");
+    return;
+  }
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位    
+  for(i=1; i<elcount(EcuAddressTable_Fun); i++)
+	{
+    testStep("","");
+    teststep("Step3","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+    @GW::FunRequestNum=0;  
+    Request[0].Packet.SourceID = EcuAddressTable_Fun[i].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable_Fun[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[0]);
+    SendDiagRequest(Request[0]);
+    testWaitForTimeout(1000);
+    if(EcuAddressTable_Fun[i].domain==0)
+    {
+      CheckECU_Response_Fun(Request[0],GatewayResp);
+    }
+    else
+    {
+      int j,flag;
+      flag=0;
+      for(j=0;j<@GW::FunRequestNum;j++)
+      {
+        if(FunRequest[j].Network_num==EcuAddressTable_Fun[i].domain)
+        {
+          flag=1;
+          testStepPass("chk","Functional addressing forwarding to the target network（Domian=%d Time=%f）",EcuAddressTable_Fun[i].domain,FunRequest[j].TimeStamp);  
+          break;
+        }
+      }
+      if(flag==0)
+        testStepFail("chk","Functional addressing not forwarded to the target network（Domian=%d）",EcuAddressTable_Fun[i].domain);      
+    }
+    FunRequestBufferClear();    
+    testWaitForTimeout(2000);
+  }
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+/// <TestGroup12_DomianFunctionallyAddressedRequest>
+testcase TC1366354_DomianFunctionallyAddressedRequest_ProgrammingSession_R2()
+{
+  char TestcaseName[80]="TC1366354_DomianFunctionallyAddressedRequest_ProgrammingSession_R2";
+  int i,j;
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+  testCaseTitle("TC1366354","Reset of gateway with pending requests R2");
+	testCaseDescription("This test verifies when sending functional requests DiagnosticSessionControl will be transmitted through the gateway Before the domain gateway will reset itself.");
+	testCaseComment("Purpose:\n Criteria:GW will sent out functional request before ECU reset is executed.");
+
+  TestCasePrecondition(); 
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  CheckRequestTrans();
+    
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2500);  
+ 
+  if(elcount(EcuAddressTable_Fun)==1)
+  {
+    testStepFail("Chk","DUT does not support domain functional addressing");
+    return;
+  }
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  for(i=1; i<elcount(EcuAddressTable_Fun); i++)
+	{
+    testStep("","");
+    teststep("Step3","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+    @GW::FunRequestNum=0;  
+    Request[0].Packet.SourceID = EcuAddressTable_Fun[i].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable_Fun[i].TargetID;
+    SID22_ReadDataByIdentifier(SID22_Request[Read_F186], Request[0]);
+    SendDiagRequest(Request[0]);
+    testWaitForTimeout(1000);
+    if(EcuAddressTable_Fun[i].domain==0)
+    {
+      CheckECU_Response_Fun(Request[0],GatewayResp);
+    }
+    else
+    {
+      int j,flag;
+      flag=0;
+      for(j=0;j<@GW::FunRequestNum;j++)
+      {
+        if(FunRequest[j].Network_num==EcuAddressTable_Fun[i].domain)
+        {
+          flag=1;
+          testStepPass("chk","Functional addressing forwarding to the target network（Domian=%d Time=%f）",EcuAddressTable_Fun[i].domain,FunRequest[j].TimeStamp);  
+          break;
+        }
+      }
+      if(flag==0)
+        testStepFail("chk","Functional addressing not forwarded to the target network（Domian=%d）",EcuAddressTable_Fun[i].domain);      
+    }
+    FunRequestBufferClear();    
+    testWaitForTimeout(2000);
+  }
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  	
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);  
+   
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup13_FunctionalRequestStressTesting>
+testcase TC1375992_FunctionalRequestStressTesting_DefaultSession_R2()
+{
+  int i, j,M=0;
+  char TestcaseName[100]="TC1375992_FunctionalRequestStressTesting_DefaultSession_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375992","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition();
+
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  for(i=0;i<100;i++)
+  {
+    testStep("","");
+    testStep("","Number of cycles:%d",i+1);   
+    @GW::FunRequestNum=0;
+    @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+//    @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+      
+    testStep("","");
+    teststep("Step3","Send functional request immediately!");
+    Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+    Request[0].Packet.Length = 2; 
+    Request[0].Packet.Payload[0] =0x3E;
+    Request[0].Packet.Payload[1] =0x80;
+    Request[0].Flag=1;
+    SendDiagRequest(Request[0]);
+    
+    teststep("chk","Check functional Request transmit on target network!");
+    testWaitForTimeout(2000);
+    CheckRequestTran_Fun();
+     
+    @GW::FunRequestNum=0;
+    @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+//    @GW::EnDetect_3E80 = 0;  
+  }
+  
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+ 
+  TestCasePostcondition();
+}
+
+/// <TestGroup13_FunctionalRequestStressTesting>
+testcase TC1375994_FunctionalRequestStressTesting_ExtendedSession_R2()
+{
+  int i, j,M=0;
+  word k[NetworkNumber];
+  char TestcaseName[100]="TC1375994_FunctionalRequestStressTesting_ExtendedSession_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375994","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+  
+  TestCasePrecondition();
+
+	testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  for(i=0;i<100;i++)
+  {
+    testStep("","");
+    testStep("","Number of cycles:%d",i+1);   
+    @GW::FunRequestNum=0;
+    @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+//    @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+      
+    testStep("","");
+    teststep("Step3","Send functional request immediately!");
+    Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+    Request[0].Packet.Length = 2; 
+    Request[0].Packet.Payload[0] =0x3E;
+    Request[0].Packet.Payload[1] =0x80;
+    Request[0].Flag=1;
+    SendDiagRequest(Request[0]);
+    
+    teststep("chk","Check functional Request transmit on target network!");
+    testWaitForTimeout(2000);
+    CheckRequestTran_Fun();
+     
+    @GW::FunRequestNum=0;
+//    @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+    @GW::EnDetect_3E80 = 0;  
+  }
+  
+  testStep("","");
+	teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+	SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);
+  
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+	TestCasePostcondition();
+}
+
+/// <TestGroup13_FunctionalRequestStressTesting>
+testcase TC1375993_FunctionalRequestStressTesting_R2()
+{
+  int i, j,M=0;
+  word k[NetworkNumber];
+  char TestcaseName[100]="TC1375993_FunctionalRequestStressTesting_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375993","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition(); 
+  
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  for(i=0;i<100;i++)
+  {
+    testStep("","");
+    testStep("","Number of cycles:%d",i+1);   
+    @GW::FunRequestNum=0;
+    @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+//    @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+      
+    testStep("","");
+    teststep("Step3","Send functional request immediately!");
+    Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+    Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+    Request[0].Packet.Length = 2; 
+    Request[0].Packet.Payload[0] =0x3E;
+    Request[0].Packet.Payload[1] =0x80;
+    Request[0].Flag=1;
+    SendDiagRequest(Request[0]);
+    
+    teststep("chk","Check functional Request transmit on target network!");
+    testWaitForTimeout(2000);
+    CheckRequestTran_Fun();
+     
+    @GW::FunRequestNum=0;
+    @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+//    @GW::EnDetect_3E80 = 0;  
+  }
+  
+  testStep("","");
+	teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+	SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);
+  
+  testStep("","");
+  teststep("Step5","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(1000);
+  CheckRequestTrans(); 
+  
+  TestCasePostcondition();
+}
+
+/// <TestGroup14_FunctionalAddressingSimultaneousForwardingTest>
+testcase TC1375995_FunctionalRequestStressTesting_DefaultSession_R2()
+{
+  int i, j,M=0;
+  char TestcaseName[100]="TC1375995_FunctionalRequestStressTesting_DefaultSession_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375995","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition();
+
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [DefaultSession= 0x01], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[DefaultSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(DefaultSession);
+  testWaitForTimeout(2000);
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+  
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+    
+  testStep("","");
+  teststep("Step3","Send 2 functional request immediately!");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  Request[0].Packet.Length = 2; 
+  Request[0].Packet.Payload[0] =0x3E;
+  Request[0].Packet.Payload[1] =0x80;
+  SendDiagRequest(Request[0]);
+  
+  testWaitForTimeout(1);
+  
+  Request[0].Packet.Payload[0] =0x11;
+  Request[0].Packet.Payload[1] =0x81;
+  SendDiagRequest(Request[0]);
+  
+  CurrentSessionchange(DefaultSession); 
+  testWaitForTimeout(ECUResetTime);
+  teststep("chk","Check functional Request transmit on target network!");
+  if(@GW::FunRequestNum==NetworkNumber*2)
+    testStepPass("chk","Both functional addressing can be forwarded normally");
+  else
+    testStepFail("chk","Functionally addressed forwarding exception %d/%d",@GW::FunRequestNum,NetworkNumber*2);
+   
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 0;  
+  
+  testStep("","");
+  teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000); 
+ 
+  TestCasePostcondition();
+}
+
+/// <TestGroup14_FunctionalAddressingSimultaneousForwardingTest>
+testcase TC1375997_FunctionalRequestStressTesting_ExtendedSession_R2()
+{
+  int i, j,M=0;
+  word k[NetworkNumber];
+  char TestcaseName[100]="TC1375997_FunctionalRequestStressTesting_ExtendedSession_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375997","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+  
+  TestCasePrecondition();
+
+	testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ExtendedSession= 0x03], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ExtendedSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ExtendedSession);
+  testWaitForTimeout(2000);
+  
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+    
+  testStep("","");
+  teststep("Step3","Send 2 functional request immediately!");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  Request[0].Packet.Length = 2; 
+  Request[0].Packet.Payload[0] =0x3E;
+  Request[0].Packet.Payload[1] =0x80;
+  SendDiagRequest(Request[0]);
+  
+  testWaitForTimeout(1);
+  
+  Request[0].Packet.Payload[0] =0x11;
+  Request[0].Packet.Payload[1] =0x81;
+  SendDiagRequest(Request[0]);
+  
+  CurrentSessionchange(DefaultSession); 
+  testWaitForTimeout(ECUResetTime);
+  teststep("chk","Check functional Request transmit on target network!");
+  if(@GW::FunRequestNum==NetworkNumber*2)
+    testStepPass("chk","Both functional addressing can be forwarded normally");
+  else
+    testStepFail("chk","Functionally addressed forwarding exception");
+   
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 0;  
+  
+  testStep("","");
+	teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+	SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);
+  
+	TestCasePostcondition();
+}
+
+/// <TestGroup14_FunctionalAddressingSimultaneousForwardingTest>
+testcase TC1375996_FunctionalRequestStressTesting_R2()
+{
+  int i, j,M=0;
+  word k[NetworkNumber];
+  char TestcaseName[100]="TC1375996_FunctionalRequestStressTesting_R2";
+  stopLogging();
+  SetLogPath(TestcaseName,1);
+  startLogging();
+	testCaseTitle("TC1375996","Functional Request Stress Testing R2");
+	testCaseDescription("This test verifies that functional requests are not delayed through the gateway.");
+	testCaseComment("Purpose:\nCriteria:");
+
+	TestCasePrecondition(); 
+  
+  testStep("","");
+  teststep("Step1","DiagnosticSessionControl_Request(diagnosticSessionType = [ProgrammingSession= 0x02], suppressPosRspMsgIndicationBit = [FALSE])");
+  SID10_DiagnosticSessionControl(SID10_Request[ProgrammingSession], Request[0]);
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  SendDiagRequest(Request[0]);
+  CurrentSessionchange(ProgrammingSession);
+  testWaitForTimeout(ECUResetTime);
+  
+  CheckRequestTrans();
+  
+  testStep("","");
+	teststep("Step2","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+  SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(2000);
+    
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=1;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 1;//开启功能寻址3E80检测  
+    
+  testStep("","");
+  teststep("Step3","Send 2 functional request immediately!");
+  Request[0].Packet.SourceID = EcuAddressTable[FunctionalReq].SourceID;
+  Request[0].Packet.TargetID = EcuAddressTable[FunctionalReq].TargetID;
+  Request[0].Packet.Length = 2; 
+  Request[0].Packet.Payload[0] =0x3E;
+  Request[0].Packet.Payload[1] =0x80;
+  SendDiagRequest(Request[0]);
+  
+  testWaitForTimeout(1);
+  
+  Request[0].Packet.Payload[0] =0x11;
+  Request[0].Packet.Payload[1] =0x81;
+  SendDiagRequest(Request[0]);
+  
+  CurrentSessionchange(DefaultSession); 
+  testWaitForTimeout(ECUResetTime);
+  teststep("chk","Check functional Request transmit on target network!");
+  if(@GW::FunRequestNum==NetworkNumber*2)
+    testStepPass("chk","Both functional addressing can be forwarded normally");
+  else
+    testStepFail("chk","Functionally addressed forwarding exception");
+   
+  @GW::FunRequestNum=0;
+  @GW::FunRequest_flag=0;//功能寻址数据存储标志位
+  @GW::EnDetect_3E80 = 0;  
+  
+  testStep("","");
+	teststep("Step4","ReadDataByIdentifier_Request(dataIdentifier = [ActiveDiagnosticSession = 0xF186])");
+	SID22_ReadDataByIdentifier(SID22_Request[Read_F186], GatewayReq); //CheckCurrentSession
+  SendDiagRequest(GatewayReq);
+  CheckGatewayResponse();
+  testWaitForTimeout(1000);
+  
+  TestCasePostcondition();
+}

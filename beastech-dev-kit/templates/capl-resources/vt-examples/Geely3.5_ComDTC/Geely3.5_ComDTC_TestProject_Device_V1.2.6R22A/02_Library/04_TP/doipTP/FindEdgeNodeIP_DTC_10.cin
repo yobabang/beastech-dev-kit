@@ -1,0 +1,82 @@
+/*@!Encoding:936*/
+variables
+{
+  char gTesterIP[30] = "169.254.19.2";
+  char gEdgeNodeIP[30] = "169.254.19.1";
+  long gEdgeNodeLogicAddress = 0x1001;
+  byte broadcastMacAddress[6] = { 0x00,0x00,0x00,0x00,0x00,0x00};
+}
+
+on prestart
+{
+  EthReceiveRawPacket( 0x1, emptyMacAddress, broadcastMacAddress, 0x0800, "OnEthRawPacket_VehicleAnnouncement" );
+}
+
+void OnEthRawPacket_VehicleAnnouncement(long channel, long dir, long packetLength)
+{
+  byte rx_data[2048];
+  long i,rx_length;
+  
+  if(rx_data[23] == 0x11)//UDP
+  {
+    if(EthGetThisMotorolaValue16(36) == 13400 && EthGetThisMotorolaValue16(44) == 0x4)/* DoIP车辆声明触发 */
+    {
+      long logicAddress;
+      long ipv4_source;
+      logicAddress = EthGetThisMotorolaValue16(67);
+      ipv4_source = EthGetThisMotorolaValue32(26);
+      onDoIP_Announcement_Received(ipv4_source,logicAddress);
+    }
+  }
+}
+
+/* 参数中即边缘节点的源IP地址和逻辑地址 */
+void onDoIP_Announcement_Received(long scrIp,long ECULogicAddress)
+{
+  char VehicleIpAddress_str[30];
+  ipGetAddressAsString(scrIp,VehicleIpAddress_str,elcount(VehicleIpAddress_str));
+  write("onDoIPUDPPacketReceived：scrip = %s, logic address = %04X",VehicleIpAddress_str,ECULogicAddress);
+  
+  /*  以下是开发者相关  */
+  memcpy(gEdgeNodeIP,VehicleIpAddress_str,elcount(gEdgeNodeIP));
+  gEdgeNodeLogicAddress = ECULogicAddress;
+  IP_GetAddressWithinSameCluster(gTesterIP,gEdgeNodeIP);
+  /* END */
+}
+
+/* 取同网段的IP地址 */
+void IP_GetAddressWithinSameCluster(char dst[],char scr[])
+{
+  char[10] address[long];
+  long pos_dot[long];
+  long offset;
+  offset = 0;
+
+  while(1)
+  {
+    long index;
+    index = pos_dot.size();
+    pos_dot[index] = strstr_off(scr,offset,".");
+    if(pos_dot[index] < 0)
+      break;
+    offset = pos_dot[index] + 1;
+  }
+  
+  for(long index : pos_dot)
+  {
+    if(index == 0)
+      substr_cpy(address[index],scr,0,pos_dot[index],elcount(scr));
+    else
+      substr_cpy(address[index],scr,pos_dot[index-1] + 1,pos_dot[index] - pos_dot[index-1] - 1,elcount(scr));
+  }
+  
+  /* 改变最后一个字节 */
+  if(atol( address[3]) != 254)
+    snprintf(address[3],elcount(address[3]),"%d",atol( address[3]) + 1 );
+  else
+    snprintf(address[3],elcount(address[3]),"%d",atol( address[3]) - 1 );
+  snprintf(dst,elcount(dst),"%s.%s.%s.%s",address[0],address[1],address[2],address[3]);
+  
+  address.clear();
+  pos_dot.clear();
+}

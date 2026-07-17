@@ -1,0 +1,21 @@
+/*@!Encoding:936*/
+
+includes
+{
+  #include "onSysvar_IPClient.cin"
+}
+
+void MainTest ()
+{
+  IPClient();
+}
+ 
+testcase IPClient()
+{
+  IPClient_Init();/* 建立连接 */
+  while(1)
+  {
+    testWaitForTimeout(1000000);
+  }
+}
+

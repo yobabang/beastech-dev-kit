@@ -1,0 +1,68 @@
+
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{
+  #pragma warning(disable: 2058)
+  struct SignalMatrix
+  {
+    char signame[256];
+    int sigLength;
+    int startBit;//lsb
+    int sigUB;//-1代表无信号UB
+  };
+  struct SignalGroupMatrix
+  {
+    char sigGroupName[100];
+    char pduName[100];
+    int sigGroupUB;//-1代表无信号组UB
+  };
+  struct DUTMatrix
+  {
+    char BusName[100];
+    char MsgName[256];
+    char MsgDir[10];
+    dword MsgID;
+    int DataLength;
+    long CycleTime;
+    int isCANFD;
+    int MsgType;//0:Cycle,1:EVENT,2:CE;3:NM; 4:Diag
+    int simFrFlg;
+    long sigNum;
+    long sigGroupNum;
+    struct SignalMatrix TxSignalList[512];
+    struct SignalGroupMatrix TxSignalGroupList[64];//DBC不使用
+  };
+  struct ChannelMap
+  {
+    char BusName[64];
+    char BusType[64];//"CAN","CANFD"
+    int Channel;
+    int IfAlive;
+    int IfSimNM;
+    int isTerminal;
+    float ArbBaudrate;
+    float DataBaudrate;
+    int errorflag;
+    int VH6501_In;
+    float Vstop_low,Vstart_low,Vstop_high,Vstart_high;
+  };
+  const int ChannelMapNum=9;
+  struct ChannelMap ChannelMap[ChannelMapNum]=
+	{ 
+		{"ChassisCAN1","CAN",1,0,1,1,500000,500000},
+		{"PropulsionCAN","CAN",2,0,1,1,500000,500000},
+		{"BodyExposedCAN","CAN",3,0,1,1,500000,500000},
+		{"ZCU_CANFD1","CANFD",4,0,1,1,500000,2000000},
+		{"ZCU_CANFD2","CANFD",5,0,1,1,500000,2000000},
+		{"ZCUD_CAN1","CAN",6,0,1,1,500000,500000},
+		{"ChassisCANFD2","CANFD",7,0,1,1,500000,2000000},
+		{"ZCUD_CANFD3","CANFD",8,0,1,1,500000,2000000},
+		{"ZCUD_CANFD4","CANFD",9,0,1,1,500000,2000000}
+	};
+
+}

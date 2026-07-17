@@ -1,0 +1,29 @@
+/*@!Encoding:936*/
+includes
+{
+  
+  #include "ParameterOfSigGroups.cin"
+  #include "..\02_Library\00_StandardLibrary\SignalSimulation\SimSigGroup.cin"
+}
+
+variables
+{
+ int gTestTypeFlag=1;
+}
+
+
+
+testcase NewTestCase()
+{
+  SimTRC();
+  testWaitForTimeout(5000);
+  
+}
+
+
+
+void MainTest ()
+{
+  NewTestCase();
+}
+

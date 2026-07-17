@@ -1,0 +1,671 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+ //ZCUD测试需要仿真VehMtnStVehMtnSt  Engste  Vehspd igIDcDcActLoSide 下面变量定义发送这些信号组使用的CAN通道
+ int VehMtnSt_CAN=2;
+ int VehSpdLgt_CAN=3;
+ int Engste_CAN=3;
+ int Dcdc_CAN=4;
+
+
+  dword TolerateTimeForTCPConnect = 60000;////偏离后建立TCP的时间
+  
+  ////for Sleep
+  dword gTolerateTimeForCAN = 10;//检测10秒内休眠
+  dword gTolerateTimeForFR = 60;//检测60秒内休眠
+  int   CounterFlag=1;
+  int   StartBit;
+  int   StartBitExt;
+  int   StartBitExt2=17;
+  int   SimulateEx2Enabled=0;
+  int   SameFrFlag=0;
+  message CAN1.0x00 VehMtnStCANFD;
+
+  byte RID[2];
+  byte Record[1];
+  char ecuName[10];
+  dword  gDUTIPv4Address;
+  struct  SpecificDUTInfo     //单个ECU存在多个IP和逻辑地址用于DoIP通信时，将信息输入此结构体，建立TCP时进行处理
+  {
+    word LogicAddress;
+    char IPv4Address[20];
+  };
+  struct SpecificDUTInfo gSpecificDUTInfo[4] = //DHU: 0x1201/0x1202
+  {
+    {0x1301,"198.18.44.49"},
+    {0x1304,"198.18.44.52"},
+    {0x1302,"198.18.44.50"},
+    {0x1303,"198.18.44.51"}
+  };
+  
+  struct e2eSignal
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;////////////////
+  };
+  
+  struct e2eFrame
+  {
+    char cluster[50];
+    char FrameName[32];
+    int FrameCycle;/////////////
+    int dlc;///////////////////
+    char sigGroupName[64];
+    dword e2eChkDTC;///////////////
+    dword e2eCntrDTC;///////////////
+    dword ID;
+    char e2eDir[10];
+    char frameDir[10];
+    word dataID;
+    int sigGroup_UB;
+    int sigNum;
+    struct e2eSignal e2eSignalList[100];
+  };
+  
+  struct e2eFrFrame
+  {
+    char cluster[50];
+    char FrameName[32];
+    int dlc;////////////////////
+    char sigGroupName[64];
+    dword e2eChkDTC;///////////////
+    dword e2eCntrDTC;///////////////
+    int slotID;
+    int baseCycle;
+    int RepetitionCycle;
+    char e2eDir[10];
+    char frameDir[10];
+    word dataID;
+    int sigGroup_UB;//32
+    int pduStartBit;//
+    int sigNum;
+    struct e2eSignal e2eSignalList[100];
+  };
+  
+  struct e2eFrameList_VehMtnSt
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;////////////////
+  };
+  message 0x0 Sim_VehSpd;
+  message 0x0 Sim_IDcDcActLoSide;
+  
+  struct VehMtnStVehMtnSt
+  {
+    char cluster[50];
+    char FrameName[32];
+    int FrameCycle;/////////////
+    int dlc;///////////////////
+    char sigGroupName[64];
+    dword e2eChkDTC;///////////////
+    dword e2eCntrDTC;///////////////
+    dword ID;
+    char e2eDir[10];
+    char frameDir[10];
+    word dataID;
+    int sigGroup_UB;
+    int sigNum;
+    int pduStartBit;//
+    struct e2eFrameList_VehMtnSt e2eSignalList[100];
+    
+  };
+  struct VehMtnStVehMtnSt e2eFrameList_VehMtnSt[1]=//25R2 已适配
+  {
+    {
+      "CAN","BcmZCUCANFD1Fr18",10,64,"igVehMtnSt_0",0x0,0x0,0x82,"In","In",54,416,3,0,
+      {
+        {"isVehMtnStChks_0",8,415,0x0},
+        {"isVehMtnStCntr_0",4,423,0x0},
+        {"isVehMtnStVehMtnSt_0",3,419,0x0}
+      }
+    }
+  };
+  
+  struct VehMtnStVehMtnSt VehSpdLgt=
+  {
+    "ChassisCANFD2","BbmChassisCANFD2Fr03",10,64,"igVehSpdLgt_0",0,0,0x9F,"In","In",55,471,4,0,//25R2已适配
+    {
+      {"isVehSpdLgtChks_0",8,208,0x0},
+      {"isVehSpdLgtCntr_0",4,216,0x0},
+      {"isVehSpdLgtA_0",15,207,0x0},
+      {"isVehSpdLgtQf_0",2,228,0x0}
+    }
+  };
+  //  struct VehMtnStVehMtnSt VehSpdLgt=
+  // {
+  //   "ZCU_CANFD1","BcmZCUCANFD1Fr18",10,64,"igVehSpdLgt_0",0,0,0X82,"In","In",55,383,4,0,
+  //   {
+  //     {"isVehSpdLgtChks_0",8,399,0x0},
+  //     {"isVehSpdLgtCntr_0",4,407,0x0},
+  //     {"isVehSpdLgtA_0",15,382,0x0},
+  //     {"isVehSpdLgtQf_0",2,403,0x0}
+  //   }
+  // };
+ message 0x00 Sim_EngSts;
+  struct VehMtnStVehMtnSt EngSts[2]=
+  {
+    {
+    "Propulsion","EcmPropFr11",0,8,"igEngSt1WdSts_0",0,0,0x4B,"In","In",137,8,3,0,
+      {
+        {"isEngSt1WdStsChks_0",8,23,0x1},
+        {"isEngSt1WdStsCntr_0",4,31,0x1},
+        {"isEngSt1WdStsEngSt1WdSts_0",4,27,0x1}
+      }
+    },
+    {
+    "PropulsionCAN","CddIgmPropFr02",0,8,"igIDcDcActLoSide_0",0,0,329,"In","In",20,20,3,0,
+      {
+        {"isIDcDcActLoSideChks_0",8,31,0x0},
+        {"isIDcDcActLoSideCntr_0",4,19,0x0},
+        {"isIDcDcActLoSideIDcDcActLoSide_0",12,39,0x0}
+      }
+    }
+  };
+  ////////For ECM///////
+  //message CAN3.0x00 ECM_Sim_UsgMode_CAN;   //////ChassisCAN2
+  //message CAN3.0x000 ECM_VehCfgPrm;   //////ChassisCAN2
+  //message CAN2.0x000 ECM_VehCfgPrmExt;//////ChassisCAN1
+  
+  ////////For CAN Network///////
+
+  message CAN1.0x00 Sim_UsgMode_CAN;
+  //message CAN1.0x000 VehCfgPrm;
+  //message CAN1.0x000 VehCfgPrmExt;
+  //message CAN1.0x000 VehCfgPrmExt2;
+
+
+  
+  const int e2eCanNum=10;
+  #pragma warning(disable: 2008)
+  struct e2eFrame e2eCanFrameList[e2eCanNum]={
+    {
+      "CAN","CEMBodyFr12",80,8,"igVehModMngtGlbSafe1",0x0,0x0,240,"In","In",116,7,10,//3.5不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,39,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,2,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,5,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,6,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+      "CAN","CemBodyExpoCommonFr21",20,8,"igVehModMngtGlbSafe1",0x0,0x0,64,"In","In",158,32,10,//3.5不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,35,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,36,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+      "CAN","VddmChas1Fr19",70,8,"igVehModMngtGlbSafe1",0x0,0x0,0x2E0,"In","In",116,32,10,//25 R2已适配
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x1},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,23,0x1},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+      "CAN","VddmChas2Fr19",80,8,"igVehModMngtGlbSafe1",0x0,0x0,736,"In","In",116,32,10,//3.5 平台不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+      "CAN","VgmConnFr01",10,8,"igVehModMngtGlbSafe1",0x0,0x0,288,"In","In",116,7,10,   //3.5平台不用 ，网段，帧名，循环，dlc，组名，e2echkdtc,e2ecntdtc,id,"In","In",,帧起始bit，信号数量
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},   //信号名，长度，起始，数值
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,11,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,27,0x0}
+      }
+    },
+    {
+      "CAN","AsdmPassSafeCANFr14",25,8,"igVehModMngtGlbSafe1",0x0,0x0,338,"In","In",116,7,10,//3.5平台不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,11,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,27,0x0}
+      }
+    },
+    {
+      "CAN","VddmPropFr18",15,8,"igVehModMngtGlbSafe1",0x0,0x0,0x57,"In","In",116,32,10,//25R2 已适配
+      {
+        {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+      "CAN","BbmAdRedundancyFr07",15,8,"igVehModMngtGlbSafe1",0x0,0x0,260,"In","In",116,32,10,//3.5平台不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,31,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,39,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,63,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,60,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,35,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,47,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,57,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,43,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,55,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,51,0x0}
+      }
+    },
+    {
+      "CAN","ZCUDZCUDCAN1Fr04",30,8,"igVehModMngtGlbSafe1",0x0,0x0,0xf0,"In","In",116,7,10,            //ZCUD_CAN1     25R2已适配
+      {
+        {"isVehModMngtGlbSafe1Chks",8,39,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,2,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,5,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,31,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,6,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,23,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}
+      }
+    },
+    {
+       "CAN","XCU_VehModSts",80,8,"XCU_VehModMngtGlbSafe1",0x0,0x0,1026,"In","In",116,24,10,            //PrivInfoCan  3.5平台不用
+      {
+        {"isVehModMngtGlbSafe1Chks",8,32,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,40,0x0},
+        {"XCU_VehModMngtGlbSafe1CarModSts1",3,26,0x0},//XCU_VehModMngtGlbSafe1CarModSts1
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,44,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,48,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,52,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,56,0x0},
+        {"XCU_VehModMngtGlbSafe1PwrLwlElecMai",4,7,0x0},//XCU_VehModMngtGlbSafe1PwrLwlElecMai
+        {"XCU_VehModMngtGlbSafe1PwrLvlElecSubtyp",4,11,0x0},//XCU_VehModMngtGlbSafe1PwrLvlElecSubtyp
+        {"XCU_VehModMngtGlbSafe1UsgModSts",4,3,0x0}//XCU_VehModMngtGlbSafe1UsgModSts
+      }
+    }    
+  };
+  
+  ////////For CANFD Network///////
+  message CAN1.0x00 Sim_UsgMode_CANFD;
+  
+  const int e2eCanFdNum=7;
+  struct e2eFrame e2eCanFdFrameList[e2eCanFdNum]={
+    {
+      "CAN","ASDMSafetyCANFD4Fr02",20,64,"igVehModMngtGlbSafe1",0x0,0x0,105,"In","In",116,7,10,//3.5平台不用  0
+      {
+        {"isVehModMngtGlbSafe1Chks",8,255,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,263,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,287,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,284,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,259,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,271,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,281,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,267,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,279,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,275,0x0}
+      }
+    },
+    {
+      "CAN","ASDMSafetyCANFD2Frame4",20,64,"igVehModMngtGlbSafe1",0x0,0x0,288,"In","In",116,7,10,//3.5平台不用  1
+      {
+        {"isVehModMngtGlbSafe1Chks",8,351,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,359,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,383,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,380,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,355,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,367,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,377,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,363,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,375,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,371,0x0}
+      }
+    },
+    {
+      "CAN","ZcudZCUCANFD1Fr10",20,64,"igVehModMngtGlbSafe1_0",0x0,0x0,0x61,"In","In",116,479,10,//25R2 已适配  2
+      {
+        {"isVehModMngtGlbSafe1Chks_0",8,79,0x0},
+        {"isVehModMngtGlbSafe1Cntr_0",4,87,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1_0",3,111,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp_0",3,108,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai_0",4,83,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp_0",4,95,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts_0",1,105,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai_0",4,91,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp_0",4,103,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts_0",4,99,0x0}
+      }
+      },
+    {
+      "CAN","DhuConnCANFDFr02",40,64,"igVehModMngtGlbSafe1",0x0,0x0,0x180,"In","In",116,336,10,//25R2 已适配  3
+      {
+        {"isVehModMngtGlbSafe1Chks",8,311,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,319,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,343,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,340,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,315,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,327,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,337,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,323,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,335,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,331,0x0}
+      }
+    },
+    {
+      "CAN","ZcudChassisCANFD2Fr02",10,64,"igVehModMngtGlbSafe1",0x0,0x0,0x86,"In","In",116,176,10,//ChassiaCANFD2 25R2已适配  4
+      {
+        {"isVehModMngtGlbSafe1Chks",8,151,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,159,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,183,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,180,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,155,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,167,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,177,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,163,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,175,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,171,0x0}
+      }
+    },
+    {
+      "CAN","AsSDMSafetyCANFD3fRAME1",50,64,"igVehModMngtGlbSafe1",0x0,0x0,0x120,"In","In",116,376,10,//SaftCANFD3 25R2已适配    5
+      {
+        {"isVehModMngtGlbSafe1Chks",8,351,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,359,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,383,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,380,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,355,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,367,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,377,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,363,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,375,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,371,0x0}
+      }
+    } ,
+    {
+      "CAN","ZcudZCUDCANFD3Fr01",10,64,"igVehModMngtGlbSafe1",0x0,0x0,0x55,"In","In",116,80,10,//ZCUCANFD3  6
+      {
+        {"isVehModMngtGlbSafe1Chks",8,55,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,63,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,87,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,84,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,59,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,71,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,81,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,67,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,79,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,75,0x0}
+      }
+    } 
+    
+    
+    
+  };
+  
+  ////////For FlexRay Network//////
+  frFrame MsgChannel1.(36,0,1) sim_CEM_Usgmode={fr_PayloadLength = 16,fr_flags=0x20};
+  
+  frFrame MsgChannel1.(8,1,4) CemBackBoneFr06={fr_PayloadLength=16,fr_flags=0x20};////CCP1~CCP504
+  frFrame MsgChannel1.(39,5,8) CemBackBoneFr23={fr_PayloadLength=16,fr_flags=0x20};////CCP505~CCP999
+  
+  const int e2eFrNum=1;
+  struct e2eFrFrame e2eFrFrameList[e2eFrNum]=
+  {
+    {
+      "FlexRay","CemBackBoneFr02",32,"igVehModMngtGlbSafe1",0x0,0x0,36,0,1,"In","In",116,7,0,10,//2.0项目遗留
+      {
+        {"isVehModMngtGlbSafe1Chks",8,79,0x0},
+        {"isVehModMngtGlbSafe1Cntr",4,87,0x0},
+        {"isVehModMngtGlbSafe1CarModSts1",3,111,0x0},
+        {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,108,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecMai",4,83,0x0},
+        {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,95,0x0},
+        {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,105,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecMai",4,91,0x0},
+        {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,103,0x0},
+        {"isVehModMngtGlbSafe1UsgModSts",4,99,0x0}
+      }
+    }
+  };
+  
+  //char VCPNetworkStrInfo[8][30] = {"BodyCAN","BodyExposedCAN","ChassisCAN1","ChassisCAN2","ConnectivityCAN","PassiveSafetyCAN","ProPulsionCAN","CANFD4"};
+  
+}
+
+
+
+void VCPSignalsInit()
+{
+//   if(@ProjectInformation::VCPCANChannel==2)
+//   {
+//     VehCfgPrm.CAN = 2;
+//     VehCfgPrmExt.CAN = 2;
+//   }
+//   if(@ProjectInformation::VCPCANFlag == 1)
+//   {
+//     switch (@ProjectInformation::VCPNetworkInfoCAN)
+//     {
+//       case 0://BodyCAN 3.5平台不用
+//         VehCfgPrm.id = 0x340;
+//         VehCfgPrmExt.id = 0x132;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 1://BodyExposedCAN 3.5平台不用
+//         VehCfgPrm.id = 0x180;
+//         VehCfgPrmExt.id = 0x183;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 2://ChassisCAN1 25R2已检查
+//         VehCfgPrm.id = 0x250;
+//         VehCfgPrmExt.id = 0x3F7;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 3://ChassisCAN2 3.5平台不用
+//         VehCfgPrm.id = 0x250;
+//         VehCfgPrmExt.id = 0x455;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 4://ConnectivityCAN 3.5平台不用
+//         VehCfgPrm.id = 0x330;
+//         VehCfgPrmExt.id = 0x400;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;  
+        
+//       case 5://PassiveSafetyCAN 3.5平台不用
+//         VehCfgPrm.id = 0x30D;
+//         VehCfgPrmExt.id = 0x2EB;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 6://PropulsionCAN 25R2已检查
+//         CANFDFlag=0;
+//         VehCfgPrm.id = 0x256;
+//         VehCfgPrmExt.id = 0x263;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+        
+//       case 7://Lotus_ADRedundancyCAN 3.5平台不用
+//         VehCfgPrm.id = 0x219;
+//         VehCfgPrmExt.id = 0x220;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+// //        
+// //      case 8://FlexRay
+// //        /////////////////UB位置1/////////////////////////
+// //        CemBackBoneFr06.byte(13) = 0x80;
+// //        CemBackBoneFr23.byte(8) = 0x80;
+// //        break;
+        
+//       case 9://ECM
+//         VehCfgPrm.can = getBusNameContext("CAN2");
+//         VehCfgPrmExt.can = getBusNameContext("CAN3");
+//         VehCfgPrm.id = 0x235;
+//         VehCfgPrmExt.id = 0x3F7;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+//       case 10://ZCUD_CAN1         25R2已检查
+//         CANFDFlag=0;
+//         VehCfgPrm.id = 0x340;
+//         VehCfgPrmExt.id = 0x132;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;
+//       case 11://Pri         /////////////////////////////////////////////////////////
+//         CANFDFlag=0;
+//         VehCfgPrm.id = 0x211;
+//         VehCfgPrmExt.id = 0x230;
+//         VehCfgPrm.dlc = 8;
+//         VehCfgPrmExt.dlc = 8;
+//         break;        
+
+//     }
+//   }
+//   else if(@ProjectInformation::VCPCANFDFlag==1)
+//   {
+//     switch (@ProjectInformation::VCPNetworkInfoCANFD)
+//     {
+//       case 0://SafetyCANFD4
+//         VehCfgPrm.id = 0x30D;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrm.dlc=15;
+// //        StartBit=
+//         VehCfgPrm.byte(16)=0xC0;
+        
+//         break;
+        
+//       case 1://LotusSafetyCANFD2 3.5平台不用
+//         VehCfgPrm.id = 0x345;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrm.dlc=15;
+//         VehCfgPrm.byte(16)=0xC0;
+//         break;
+//       case 2://ZCUD_CANFD1
+//         VehCfgPrm.id = 0x1F5;
+//         VehCfgPrmExt.id = 0x1F5;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrmExt.BRS = 0;
+//         VehCfgPrmExt.FDF = 1;
+//         VehCfgPrm.dlc=15;
+//         VehCfgPrmExt.dlc=15;
+//         StartBit=31;
+//         StartBitExt=0;
+//         SimulateEx2Enabled=1;
+//         VehCfgPrmExt.byte(8)=0xA0;///////写入UB
+//         VehCfgPrm.byte(30) = 0x10;
+//         break;
+//       case 3://CONNECTCANFD
+// //        write("---------------------------------------------");
+//         VehCfgPrm.id = 0x2A0;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrm.dlc=15;
+//         StartBit=2;
+//         StartBitExt=10;
+//         SameFrFlag=1;                    //如果Cfg和CfgExt在同一帧，需要添加
+//         VehCfgPrm.byte(1)=0x30;///////UB位
+//         break;
+//       case 4://ChassisCANFD2
+//         VehCfgPrm.id = 0x183;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrm.dlc=15;
+//         StartBit=19;
+//         StartBitExt=27;
+//         SameFrFlag=1;                    //如果Cfg和CfgExt在同一帧，需要添加
+//         VehCfgPrm.byte(8)=0xff;///////UB位
+//         VehCfgPrmExt2.byte(18) = 0xff;
+//         break; 
+        
+//       case 5://ZCUD_CANFD3
+//         VehCfgPrm.id = 0x225;
+//         CANFDFlag = 1;
+//         VehCfgPrm.BRS = 0;
+//         VehCfgPrm.FDF = 1;
+//         VehCfgPrm.dlc=15;
+//         StartBit=0;
+//         StartBitExt=8;
+//         SameFrFlag=1;                    //如果Cfg和CfgExt在同一帧，需要添加
+//         VehCfgPrm.byte(44)=0xA0;///////UB位
+//         VehCfgPrmExt2.byte(44) = 0xA0;
+//         break;  
+
+   
+        
+//     }
+//   }
+  
+}
+

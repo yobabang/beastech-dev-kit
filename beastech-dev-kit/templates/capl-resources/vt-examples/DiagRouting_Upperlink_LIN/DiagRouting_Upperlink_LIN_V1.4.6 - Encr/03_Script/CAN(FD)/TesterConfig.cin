@@ -1,0 +1,97 @@
+/*@!Encoding:936*/
+variables
+{
+  struct DiagnosticSessionControl SID10_Request[6] = 
+  {
+  //GW_SPRMIB Length SID SubFunction
+    {0,        2,   0x10,   0x01},
+    {0,        2,   0x10,   0x02},
+    {0,        2,   0x10,   0x03},
+    {1,        2,   0x10,   0x81},
+    {1,        2,   0x10,   0x82},
+    {1,        2,   0x10,   0x83}
+  };
+  struct ECUReset SID11_Request[2] = 
+  {
+  //GW_SPRMIB Length SID SubFunction
+    {0,        2,   0x11,   0x01},
+    {1,        2,   0x11,   0x81}
+  };
+  struct ReadDataByIdentifier SID22_Request[6] = 
+  {
+  //GW_SPRMIB Length SID   Identifier 
+    {0,        3,   0x22, {0xF1, 0x86}},
+    {0,        3,   0x22, {0xED, 0xA0}},
+    {0,        3,   0x22, {0xF1, 0xAE}},
+    {0,        3,   0x22, {0xF1, 0xAA}},
+    {0,        3,   0x22, {0xD0, 0x1C}},
+    {0,        3,   0x22, {0xED, 0x20}}
+  };
+  struct DynamicallyDefinedDataIdentifier SID2C_Request[2] =
+  {
+  //GW_SPRMIB Length SID  SubFunction DyDefinedDID    SourceID  Position MemorySize
+    {0,        5, 0x2C,   0x01,     {0xF3,0x00}, {{{0x11,0x22},   0,      0x64},
+                                                    {{0x11,0x22},   1,      0x64}}},
+    {1,        10, 0x2C,   0x01,     {0xF3,0x00}, {{{0x11,0x22},   0,      0x64},
+                                                    {{0x11,0x22},   1,      0x64}}}
+  };
+  struct WriteDataByIdentifier SID2E_Request[2] = 
+  {
+  //GW_SPRMIB Length  SID    Identifier    data
+    {0,       100,  0x2E,  {0xED, 0xA0}, {0x00}},
+    {0,       100,  0x2E,  {0x11, 0x22}, {0x00}}
+  };
+  struct TransferData SID36_Request[2] = 
+  {
+  //GW_SPRMIB Length  SID     
+//    {0,       264,  0x36   },
+    {0,       20,  0x36   },
+    {0,       500, 0x36   }
+  };
+  struct RoutineControl SID31_Request;
+  struct RequestDownload SID34_Request;
+  struct  TransferData TransferDataCFG;
+  struct  TransferData TransferDataGW;
+  struct SecurityAccess SID27_Request;
+  struct RequestTransferExit SID37_Request;
+  
+  struct TesterPresent SID3E_Request[2] =
+  {
+    //GW_SPRMIB Length SID SubFunction
+    {0,        2,   0x3E,   0x00},
+    {1,        2,   0x3E,   0x80}
+  };
+}
+//-----------------------------------数据接收-------------------——————--------
+
+void TestCasePrecondition()
+{
+  dllBufferInit();
+  setTimer(Timer_DllDataUpdate, 1);
+  testWaitForTimeout(2000); 
+}
+void TestCasePostcondition()
+{
+  testWaitForTimeout(2000);  
+}
+
+testfunction TestEnvPreparation()
+{
+  testStep("step","Preparation !");
+//  CodeMeter();
+  TimeCheck();
+  GatewayReq.Packet.SourceID = EcuAddressTable[1].SourceID;
+  GatewayReq.Packet.TargetID = EcuAddressTable[1].TargetID;
+  GatewayResp.Packet.SourceID = EcuAddressTable[1].TargetID;
+  GatewayResp.Packet.TargetID = EcuAddressTable[1].SourceID;
+  @GW::CurrentSession=0x1;
+  CanTp_ConnHandleSave();
+  DataPathInit();
+  testWaitForTimeout(100);
+  //SWDL_INIT();
+}
+
+testfunction TestEnvCompletion()
+{
+  stop();
+}

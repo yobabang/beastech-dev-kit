@@ -1,0 +1,44 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: TestInformation.cin
+|  Comment:   Print Test Information
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| RXQ              Ranxuqing         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20191111     1.0  RXQ               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+variables
+{
+  char gPrjctVersion[100]="V1.2.1";
+  char gDesigner[500]="Polelink Information Technology Co., Ltd.";
+  char gOwner[500]="Geely Automobile Research Institute";
+}
+
+testfunction PrjInfoPrint()
+{
+  char absPath[500];
+  char logoPath[500];
+  
+  getAbsFilePath("",absPath,500);
+  snprintf(logoPath,500,"%s02_Library\\Logo.png",absPath);
+  testReportAddImage("",logoPath);
+  testReportAddSUTInfo("Designer",gDesigner);
+  testReportAddSUTInfo("Owner",gOwner);
+  testReportAddSUTInfo("Version",gPrjctVersion);
+}
+
+

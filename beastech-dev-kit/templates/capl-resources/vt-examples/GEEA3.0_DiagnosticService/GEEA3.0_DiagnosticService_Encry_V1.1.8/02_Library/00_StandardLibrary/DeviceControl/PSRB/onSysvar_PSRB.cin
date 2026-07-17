@@ -1,0 +1,109 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "PSRB_lower.cin"
+}
+
+on sysvar_update sysvar::DeviceControl::PSRB::PSRB_InitConfig
+{
+  if(@this)
+  {
+    PSRB_RESET();
+  }
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay1
+{
+  if(@this)
+    PSRB_Relay1_Enable();
+  else
+    PSRB_Relay1_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay2
+{
+  if(@this)
+    PSRB_Relay2_Enable();
+  else
+    PSRB_Relay2_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay3
+{
+  if(@this)
+    PSRB_Relay3_Enable();
+  else
+    PSRB_Relay3_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay4
+{
+  if(@this)
+    PSRB_Relay4_Enable();
+  else
+    PSRB_Relay4_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay5
+{
+  if(@this)
+    PSRB_Relay5_Enable();
+  else
+    PSRB_Relay5_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay6
+{
+  if(@this)
+    PSRB_Relay6_Enable();
+  else
+    PSRB_Relay6_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay7
+{
+  if(@this)
+    PSRB_Relay7_Enable();
+  else
+    PSRB_Relay7_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay8
+{
+  if(@this)
+    PSRB_Relay8_Enable();
+  else
+    PSRB_Relay8_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay9
+{
+  if(@this)
+    PSRB_Relay9_Enable();
+  else
+    PSRB_Relay9_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay10
+{
+  if(@this)
+    PSRB_Relay10_Enable();
+  else
+    PSRB_Relay10_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay11
+{
+  if(@this)
+    PSRB_Relay11_Enable();
+  else
+    PSRB_Relay11_Disable();
+}
+
+On sysvar_update sysvar::DeviceControl::PSRB::Relay12
+{
+  if(@this)
+    PSRB_Relay12_Enable();
+  else
+    PSRB_Relay12_Disable();
+}

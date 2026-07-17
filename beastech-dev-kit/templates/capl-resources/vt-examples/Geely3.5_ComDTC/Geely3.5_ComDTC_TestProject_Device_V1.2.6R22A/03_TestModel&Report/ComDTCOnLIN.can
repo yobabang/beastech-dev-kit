@@ -1,0 +1,410 @@
+/*@!Encoding:936*/
+includes
+{
+  
+  #include "ParameterOfLin.cin"
+}
+
+variables
+{
+  int glinTstChnl;
+  
+  byte glinMstId;
+  int glinMstIdIndex;
+  byte Assignment_data[64];
+  mstimer t_SetBus;
+  char gBusName[100]="";
+}
+on timer t_SetBus
+{
+  setBusContext(getBusNameContext(gBusName));
+}
+On linframe *
+{
+  int i;
+  int flag;
+  if(this.msgChannel==glinTstChnl)
+  {
+    flag=0;
+    for(i=0;i<10;i++)
+    {
+      if(frameID[i]==0&&frameID[i+1]==0)
+        break;
+      if(this.id==frameID[i])
+      {
+        @sysvar::`LINFrame::slaveFrCount++;
+          break;
+      }
+    }
+    if(this.id==glinMstId)
+    {
+      @sysvar::`LINFrame::masterFr=1;
+    }
+    
+    @sysvar::`LINFrame::headerCnt++;
+  }
+}
+
+on linCsError
+{
+  if(this.msgChannel==glinTstChnl)
+  {
+    @sysvar::`LINFrame::slaveCsErrCount++;
+  }
+}
+on linTransmError 
+{
+  int i;
+  if(this.msgChannel==glinTstChnl)
+  {
+    for(i=0;i<50;i++)
+    {
+      if(this.id==frameID[i])
+      {
+        @sysvar::`LINFrame::TrasmErrCount++;
+        break;
+      }
+    }
+    @sysvar::`LINFrame::headerCnt++;
+  }
+}
+
+on linReceiveError
+{
+  if(this.msgChannel==glinTstChnl)
+  {
+    @sysvar::`LINFrame::RcvErrCount++;
+  }
+}
+
+
+on sysvar_update sysvar::`LINFrame::misRspIndex
+{
+  int index,j,k,g;
+  index=@sysvar::`LINFrame::misRspIndex;
+  setBusContext(getBusNameContext(MissResponseTemp[index].cluster));
+  glinTstChnl=getBusNameContext(MissResponseTemp[index].cluster);
+  snprintf(gBusName,100,"%s",MissResponseTemp[index].cluster);
+//  write("index:%d",index);
+  for(j=0;j<50;j++)
+  {
+    frameID[j]=0;
+    length[j]=0;
+  }
+  
+  for(j=0;j<100;j++)
+  {
+    if(MissResponseTemp[index].id[j]==0&&MissResponseTemp[index].id[j+1]==0)
+      break;
+    for(k=0;k<schTable_num;k++)
+    {
+      if(strncmp(MissResponseTemp[index].cluster,schTableLin[k].cluster,100)==0)
+      {
+        for(g=0;g<50;g++)
+        {
+          if(MissResponseTemp[index].id[j]==schTableLin[k].frameID[g])
+          {
+            frameID[j]=schTableLin[k].frameID[g];
+//            write("id:0x%X",frameID[j]);
+            length[j]=schTableLin[k].length[g];
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  setTimerCyclic(t_SetBus,3);
+  
+}
+
+on sysvar_update sysvar::`LINFrame::fltRspIndex
+{
+  int i,j,k,g;
+  
+  i=@sysvar::`LINFrame::fltRspIndex;
+  setBusContext(getBusNameContext(FaultResponseTemp[i].cluster));
+  glinTstChnl=getBusNameContext(FaultResponseTemp[i].cluster);
+  snprintf(gBusName,100,"%s",FaultResponseTemp[i].cluster);
+  for(j=0;j<50;j++)
+  {
+    frameID[j]=0;
+    length[j]=0;
+  }
+  for(j=0;j<100;j++)
+  {
+    if(FaultResponseTemp[i].id[j]==0)
+      break;
+    for(k=0;k<schTable_num;k++)
+    {
+      if(strncmp(FaultResponseTemp[i].cluster,schTableLin[k].cluster,100)==0)
+      {
+        for(g=0;g<50;g++)
+        {
+          if(FaultResponseTemp[i].id[j]==schTableLin[k].frameID[g])
+          {
+            frameID[j]=schTableLin[k].frameID[g];
+            length[j]=schTableLin[k].length[g];
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  setTimerCyclic(t_SetBus,3);
+}
+
+on sysvar_update sysvar::`LINFrame::fltTxIndex
+{
+  int i,j,k,g;
+  i=@sysvar::`LINFrame::fltTxIndex;
+  setBusContext(getBusNameContext(FaultTransmitDataTemp[i].cluster));
+  glinTstChnl=getBusNameContext(FaultTransmitDataTemp[i].cluster);
+  snprintf(gBusName,100,"%s",FaultTransmitDataTemp[i].cluster);
+  for(j=0;j<50;j++)
+  {
+    frameID[j]=0;
+    length[j]=0;
+  }
+  j=0;
+  for(k=0;k<schTable_num;k++)
+  {
+    if(strncmp(FaultTransmitDataTemp[i].cluster,schTableLin[k].cluster,100)==0)
+    {
+
+      for(g=0;g<50;g++)
+      {
+        if(schTableLin[k].frameID[g]==0&&schTableLin[k].frameID[g+1]==0)
+          break;
+        frameID[j]=schTableLin[k].frameID[g];
+        length[j]=schTableLin[k].length[g];
+        j++;
+      }
+      
+      for(g=0;g<50;g++)
+      {
+        if(schTableLin[k].atribut[g]==0)
+        {
+          glinMstId=schTableLin[k].frameID[g];
+          glinMstIdIndex=g;
+          break;
+        }
+      }
+    }
+  }
+  setTimerCyclic(t_SetBus,3);
+}
+
+
+on sysvar_update sysvar::`LINFrame::slaveFltIndex
+{
+  int index,j,k,g;
+  index=@sysvar::`LINFrame::slaveFltIndex;
+  setBusContext(getBusNameContext(SlaveFaultTemp[index].cluster));
+  glinTstChnl=getBusNameContext(SlaveFaultTemp[index].cluster);
+  snprintf(gBusName,100,"%s",SlaveFaultTemp[index].cluster);
+  for(j=0;j<50;j++)
+  {
+    frameID[j]=0;
+    length[j]=0;
+  }
+  frameID[0]=SlaveFaultTemp[index].id;
+  for(j=0;j<10;j++)
+  {
+    for(k=0;k<schTable_num;k++)
+    {
+      if(strncmp(SlaveFaultTemp[index].cluster,schTableLin[k].cluster,100)==0)
+      {
+        for(g=0;g<50;g++)
+        {
+          if(SlaveFaultTemp[index].id==schTableLin[k].frameID[g])
+          {
+            frameID[0]=schTableLin[k].frameID[g];
+            length[0]=schTableLin[k].length[g];
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  setTimerCyclic(t_SetBus,3);
+}
+
+
+on sysvar_update sysvar::`LINFrame::simSlave
+{
+  int state;
+  state=@sysvar::`LINFrame::simSlave;
+  if(state)
+  {
+    SimSlaveFrOnLin();
+  }
+  else
+  {
+    StopSimSlavFrOnLin();
+  }
+}
+
+
+
+on sysvar_update sysvar::`LINFrame::disCsErr
+{
+  int state;
+  state=@sysvar::`LINFrame::disCsErr;
+  DistrbLinFrCsErr(state);
+}
+
+on sysvar_update sysvar::`LINFrame::fltTxVal
+{
+//  int count;
+//  count=@sysvar::`LINFrame::fltTxCnt;
+//  DistrbLinPID(count);
+  
+  int pid;
+  pid=@sysvar::`LINFrame::fltTxVal;
+  linInvertHeaderBit(1,6,pid,1);
+  
+}
+on sysvar_update sysvar::`LINFrame::slaveFlt
+{
+  int state,index,j;
+  byte linData[8];
+  state=@sysvar::`LINFrame::slaveFlt;
+  index=@sysvar::`LINFrame::slaveFltIndex;
+  if(state)
+  {
+    SlaveFaultTemp[index].signals.sigValue=SlaveFaultTemp[index].failValue;
+  }
+  else
+  {
+    SlaveFaultTemp[index].signals.sigValue=SlaveFaultTemp[index].passValue;
+  }
+  Signal_assignment_LIN(index);
+  for(j = 0; j < 8; j++)
+  {
+    linData[j] = Assignment_data[j];
+  }
+  if(state==-1)
+  {
+    linSetRespCounter(frameID[0],0);
+//    linUpdateResponse(frameID[0],length[0],linData);
+  }
+  else
+  {
+    linSetRespCounter(frameID[0],-1);
+    linUpdateResponse(frameID[0],length[0],linData);
+  }
+}
+
+
+void MainTest()
+{
+  while(1)
+  {
+    testWaitForTimeout(1000);
+  }
+}
+
+/// <UDSonLIN>
+void SimSlaveFrOnLin()
+{
+  int j;
+  byte lindata[8]={0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0};
+  
+  for(j=0;j<50;j++)
+  {
+    if(frameID[j]==0&&frameID[j+1]==0)
+    {
+      break;
+    }
+    write("sim id: 0x%X",frameID[j]);
+    linSetRespCounter(frameID[j],-1);
+    linUpdateResponse(frameID[j],length[j],lindata);
+  }
+}
+
+/// <UDSonLIN>
+void StopSimSlavFrOnLin()
+{
+  int i;
+  byte lindata[8]={0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0};
+  
+  for(i=0;i<50;i++)
+  {
+    if(frameID[i]==0&&frameID[i+1]==0)
+    {
+      break;
+    }
+//    write("stop id: 0x%X",frameID[i]);
+    linSetRespCounter(frameID[i],0);
+  }
+}
+/// <UDSonLIN>
+void DistrbLinFrCsErr(int state)
+{
+  int i;
+  for(i=0;i<50;i++)
+  {
+    if(frameID[i]==0&&frameID[i+1]==0)
+    {
+      break;
+    }
+    if(state)
+    {
+      linSetChecksumError(frameID[i],1);
+    }
+    else
+    {
+      linSetChecksumError(frameID[i],0);
+    }
+  }
+
+  
+}
+
+/// <TRC>
+void Signal_assignment_LIN(int FrameIndex)
+{
+  int d, n, enc, j;
+  int _signal[8*8];
+  int bit_num;
+  
+  int startbit;
+  int length;
+  qword value;
+ //初始化 
+
+  for(d=0; d<8*8; d++)
+  {
+    _signal[d] = 0;
+  }
+  
+  for(d=0; d<8; d++)
+  {
+    Assignment_data[d] = 0x0;
+  }  
+
+  for(j = 0; j < 1; j++)
+  {
+    //motorola ar
+    startbit = SlaveFaultTemp[FrameIndex].signals.startBit;
+    length = SlaveFaultTemp[FrameIndex].signals.sigLength;
+    value = SlaveFaultTemp[FrameIndex].signals.sigValue;
+    bit_num=startbit;
+    _signal[bit_num]=value & 0x1; 
+    for(n=1; n<(length); n++)
+    {
+      //第x位赋值
+      bit_num++;      
+      _signal[bit_num]=((value & (0x1 << n) ) >> n);
+    }
+  }
+  
+  for(enc=0; enc<8; enc++)
+  {
+    Assignment_data[enc] = _signal[enc * 8 + 7] * 128 + _signal[enc * 8 + 6] * 64 + _signal[enc * 8 + 5] * 32 + _signal[enc * 8 + 4] * 16 + _signal[enc * 8 + 3] * 8 + _signal[enc * 8 + 2] * 4 + _signal[enc * 8 + 1] * 2 + _signal[enc * 8 + 0] * 1;
+    write("Assignment_data[enc] :0x%x",Assignment_data[enc] );
+  }
+}

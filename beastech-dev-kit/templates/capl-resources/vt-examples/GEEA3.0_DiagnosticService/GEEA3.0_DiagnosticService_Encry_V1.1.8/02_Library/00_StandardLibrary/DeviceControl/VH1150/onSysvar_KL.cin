@@ -1,0 +1,34 @@
+/*@!Encoding:936*/
+variables
+{
+  enum T_mode {T_off,T_on};
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL30
+{
+  enum T_mode sw;
+  sw = (enum T_mode)@this;
+  KL30(sw);
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL15
+{
+  enum T_mode sw;
+  sw = (enum T_mode)@this;
+  KL15(sw);
+}
+
+on sysvar_update sysvar::DeviceControl::KL::KL31
+{
+  enum T_mode sw;
+  sw = (enum T_mode)@this;
+  KL31(sw);
+}
+
+on preStart
+{
+  @sysvar::DeviceControl::KL::KL30 = 0;
+  @sysvar::DeviceControl::KL::KL15 = 0;
+  @sysvar::DeviceControl::KL::KL31 = 0;
+}
+

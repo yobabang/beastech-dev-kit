@@ -1,0 +1,71 @@
+
+/*@!Encoding:936*/
+includes
+{
+
+}
+variables
+{
+
+  struct e2eSignal
+  {
+    char sigName[100];
+    int sigLength;
+    int startBit;
+    int sigValue;
+  };
+
+  struct e2eSigGroup
+  {
+    char sigGroupName[100];
+    int sigGroupType;//0:Normal;1:vehGlbSafe;2:VehBat;3:Vehspd;4:VehMnt;
+    int dataId;
+    int uBit;
+    int ubValue;
+    int sigNum;
+    int pduStrBit;
+    struct e2eSignal e2eSignalList[100];
+    int aliveCnt;
+    int chks;
+    int cntErrFlg;
+    int chksErrFlg;
+  };
+  struct e2eFrame
+  {
+  char busType[100];
+    char cluster[100];
+    char frName[100];
+
+    int fdFlg;
+    int msgId;
+    int baseCyc;
+    int reptCyc;
+    int msgCyc;
+    int msgDataLgth;
+    struct e2eSigGroup e2eSigGroupList[100];
+    
+    int simFrFlg;
+    int simFrImtFlg;
+  };
+  const int CLUSTER_NUM_CAN=1;
+  char gClusterName[CLUSTER_NUM_CAN][100]={"PropulsionCAN"};
+  int gNmMsgCyc=500;
+  const int E2E_FRAME_NUM=1;
+  struct e2eFrame e2eFrameList[E2E_FRAME_NUM]=
+  {
+    "CAN","VddmPropFr18",50,8,"igVehModMngtGlbSafe1",0,0,86"In","In",116,32,10,
+    {    
+     {"isVehModMngtGlbSafe1Chks",8,7,0x0},
+     {"isVehModMngtGlbSafe1Cntr",4,15,0x0},
+     {"isVehModMngtGlbSafe1CarModSts1",3,39,0x0},
+     {"isVehModMngtGlbSafe1CarModSubtypWdCarModSubtyp",3,36,0x0},
+     {"isVehModMngtGlbSafe1EgyLvlElecMai",4,27,0x0},
+     {"isVehModMngtGlbSafe1EgyLvlElecSubtyp",4,31,0x0},
+     {"isVehModMngtGlbSafe1FltEgyCnsWdSts",1,33,0x0},
+     {"isVehModMngtGlbSafe1PwrLvlElecMai",4,19,0x0},
+     {"isVehModMngtGlbSafe1PwrLvlElecSubtyp",4,23,0x0},
+     {"isVehModMngtGlbSafe1UsgModSts",4,11,0x0}                              
+    }   
+  };
+}
+

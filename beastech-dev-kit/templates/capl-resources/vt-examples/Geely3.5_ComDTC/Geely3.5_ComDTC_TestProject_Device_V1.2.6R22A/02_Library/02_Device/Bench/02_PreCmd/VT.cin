@@ -1,0 +1,126 @@
+/*@!Encoding:936*/
+
+void VTSystem_InitConfig()
+{
+  
+  VT7001_InitConfig();
+}
+
+void VT7001_InitConfig()
+{
+  if(gVTIntSupplyFlag)
+  {
+    sysvar::VTS::M1_VT7001.SetInterconnectionMode(eVTSInterconnectionModeSupInt);
+    sysvar::VTS::M1_SupInt.SetRefVoltageMode(eVTSRefVoltageModeConstant);
+  }
+  else
+  {
+    sysvar::VTS::M1_VT7001.SetInterconnectionMode(1);
+  }
+}
+
+void VT7001_OutNumActSet(int OutNum,int Sts)
+{
+  switch(OutNum)
+  {
+    case 1:
+      @sysvar::VTS::M1_Out1::Active = Sts;
+      break;
+    case 2:
+      @sysvar::VTS::M1_Out2::Active = Sts;
+      break;
+    default:
+      testStepWarning("VT","Invalid channel used only 1/2 are avliable.");
+      break;
+  }
+}
+void kl30(enum T_mode sw)//JL
+{
+  int chk1;
+  float t1,t2;
+  
+  if(sw==T_on)
+  {
+//    sysvar::VTS::M1_Out1::AvgVoltage.SetTransferCycle(0.001);
+//    testWaitForTimeout(100);
+    VT7001_OutNumActSet(1,1);
+    @sysvar::VT::KL30=1;
+//    t1=timenow()/100.0;
+//    chk1=testWaitForSignalInRange(sysvar::VTS::M1_Out1::AvgVoltage,6,20,200);
+//    testStep("Context","kl30 connect");
+//    if(chk1 == 1)
+//    {
+//      t2=timenow()/100.0;
+//      teststep("KL30","time=%f",t2-t1);
+//      sysvar::VTS::M1_Out1::AvgVoltage.SetTransferCycle(1);
+//    }
+//    else
+//    {
+//      testStep("step","time out");
+//    }
+  }
+  else
+  {
+    VT7001_OutNumActSet(1,0);
+    @sysvar::VT::KL30=0;
+//    testStep("Context","kl30 break");
+  } 
+}
+
+void kl15(enum T_mode sw)//JL
+{
+  int chk1;
+  float t1,t2;
+  
+  if(sw==T_on)
+  {
+    sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(0.001);
+    testWaitForTimeout(100);
+    VT7001_OutNumActSet(2,1);
+    t1=timenow()/100.0;
+    chk1=testWaitForSignalInRange(sysvar::VTS::M1_Out2::AvgVoltage,6,20,200);
+   
+//    @sysvar::VTS::M4_Ch16::RelayVBatt = 1;
+    writeToLog("Context","kl15 on");
+//    teststep("step","kl15 on");
+    if(chk1 == 1)
+    {
+      t2=timenow()/100.0;
+//      teststep("KL15","time=%f",t2-t1);
+      sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(1);
+      @sysvar::VT::KL15=1;
+    }
+    else
+    {
+      testStep("step","set KL15 time out");
+    }
+  }
+  else
+  {
+//    @sysvar::VTS::M4_Ch16::RelayVBatt = 0;
+    writeToLog("Context","kl15 off");
+//    teststep("step","kl15 off");
+    VT7001_OutNumActSet(2,0);
+    @sysvar::VT::KL15=0;
+//    testStep("Context","kl15 break");
+  }
+}
+
+void kl31(enum T_mode sw)
+{
+    if(sw==T_on)
+  {
+//    testStep("Context","kl31 connect");
+    Node_GND_Connect();//SendTcpData("#PSRB_Relay6_Disable\n");
+  }
+  else
+  {
+//    testStep("Context","kl31 break");
+    Node_GND_DisConnect();//SendTcpData("#PSRB_Relay6_Enable\n");
+  }
+}
+
+void VT7001_VoltageSet(float volt)
+{
+  @sysvar::VTS::M1_SupInt::RefVoltage = volt;
+}

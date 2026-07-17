@@ -1,0 +1,779 @@
+/*@!Encoding:936*/
+//办事处机柜的环境配置板卡底层
+includes
+{
+
+}
+
+variables
+{
+  byte ENV_SendData[13] = {0x08,0x00,0x00,0x00,0xAA,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} ;
+}
+
+void SendTcpData_BYTE()
+{
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::ETH_CAN0_Socket;//使用的socket
+  sysSetVariableData(sysvar::DeviceControl::IPClient::SendEvent::SendDataByte, ENV_SendData, elcount(ENV_SendData));//发送的数据
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend_Byte = elcount(ENV_SendData);//发送数据的长度，也是触发的事件
+}
+
+void ENV_Reset()
+{
+  ENV_SendData[5] = 0xff;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_Circuit1()
+{
+  ENV_SendData[5] = 0x0A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+  write("inf");
+}
+
+void ENV_Circuit2()
+{
+  ENV_SendData[5] = 0x0A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+  testWaitForTimeout(100);
+  ENV_SendData[5] = 0x0B;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_VB()
+{
+  ENV_SendData[5] = 0x01;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANL_VB()
+{
+  ENV_SendData[5] = 0x02;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_GND()
+{
+  ENV_SendData[5] = 0x03;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANL_GND()
+{
+  ENV_SendData[5] = 0x04;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL()
+{
+  ENV_SendData[5] = 0x05;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_SignalGen_CANH()
+{
+  ENV_SendData[5] = 0x06;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_ScopA_Tx()
+{
+  ENV_SendData[5] = 0x07;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_ScopB_Rx()
+{
+  ENV_SendData[5] = 0x08;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_SignalGen_Tx()
+{
+  ENV_SendData[5] = 0x09;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_Terminal_Resistance1()
+{
+  ENV_SendData[5] = 0x0A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_Terminal_Resistance2()
+{
+  ENV_SendData[5] = 0x0A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+  testWaitForTimeout(10);
+  ENV_SendData[5] = 0x0B;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R1()
+{
+  ENV_SendData[5] = 0x0C;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R2()
+{
+  ENV_SendData[5] = 0x0D;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R3()
+{
+  ENV_SendData[5] = 0x0E;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R4()
+{
+  ENV_SendData[5] = 0x0F;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R5()
+{
+  ENV_SendData[5] = 0x10;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R6()
+{
+  ENV_SendData[5] = 0x11;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R7()
+{
+  ENV_SendData[5] = 0x12;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R8()
+{
+  ENV_SendData[5] = 0x13;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R9()
+{
+  ENV_SendData[5] = 0x14;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_CANL_R10()
+{
+  ENV_SendData[5] = 0x15;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();;
+}
+
+void ENV_CANH_VB_R1()
+{
+  ENV_SendData[5] = 0x16;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_VB_R2()
+{
+  ENV_SendData[5] = 0x17;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_VB_R3()
+{
+  ENV_SendData[5] = 0x18;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_GND_R1()
+{
+  ENV_SendData[5] = 0x19;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANH_GND_R2()
+{
+  ENV_SendData[5] = 0x1A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANL_GND_R1()
+{
+  ENV_SendData[5] = 0x1B;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_CANL_GND_R2()
+{
+  ENV_SendData[5] = 0x1C;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_1()
+{
+  ENV_SendData[5] = 0x1D;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_2()
+{
+  ENV_SendData[5] = 0x1E;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_3()
+{
+  ENV_SendData[5] = 0x1F;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_4()
+{
+  ENV_SendData[5] = 0x20;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_5()
+{
+  ENV_SendData[5] = 0x21;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_6()
+{
+    ENV_SendData[5] = 0x22;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_7()
+{
+    ENV_SendData[5] = 0x23;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_8()
+{
+    ENV_SendData[5] = 0x24;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_9()
+{
+    ENV_SendData[5] = 0x25;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_10()
+{
+    ENV_SendData[5] = 0x26;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_11()
+{
+    ENV_SendData[5] = 0x27;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_12()
+{
+    ENV_SendData[5] = 0x28;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_13()
+{
+    ENV_SendData[5] = 0x29;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_14()
+{
+    ENV_SendData[5] = 0x2A;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_15()
+{
+    ENV_SendData[5] = 0x2B;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C3_16()
+{
+  ENV_SendData[5] = 0x2C;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C1_1()
+{
+  ENV_SendData[5] = 0x2D;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C1_2()
+{
+  ENV_SendData[5] = 0x2E;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C1_3()
+{
+  ENV_SendData[5] = 0x2F;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C1_4()
+{
+  ENV_SendData[5] = 0x30;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C2_1()
+{
+    ENV_SendData[5] = 0x31;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C2_2()
+{
+  ENV_SendData[5] = 0x32;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  
+  SendTcpData_BYTE();
+}
+
+void ENV_C2_3()
+{
+  ENV_SendData[5] = 0x33;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void ENV_C2_4()
+{
+  ENV_SendData[5] = 0x34;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void CANHIN_CANHOUT()
+{
+  ENV_SendData[5] = 0x37;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void CANLIN_CANLOUT()
+{
+  ENV_SendData[5] = 0x38;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+
+
+
+void CANOUT_OFF()
+{
+  write("234");
+  ENV_SendData[5] = 0x3e;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void CANOUT_ON()
+{
+  write("2343");
+  ENV_SendData[5] = 0x3F;
+  ENV_SendData[6] = 0x00;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x00;
+  ENV_SendData[9] = 0x00;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void Terminal_MinLoad_No_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x01;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x01;
+  ENV_SendData[9] = 0x01;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void Terminal_MinLoad_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x01;
+  ENV_SendData[7] = 0x0A;
+  ENV_SendData[8] = 0x01;
+  ENV_SendData[9] = 0x01;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void Terminal_MaxLoad_No_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x01;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x02;
+  ENV_SendData[9] = 0x02;
+  ENV_SendData[10] = 0x01;
+  SendTcpData_BYTE();
+}
+
+void Terminal_MaxLoad_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x01;
+  ENV_SendData[7] = 0x0A;
+  ENV_SendData[8] = 0x02;
+  ENV_SendData[9] = 0x02;
+  ENV_SendData[10] = 0x10;
+  SendTcpData_BYTE();
+}
+
+void Non_Terminal_MinLoad_No_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x02;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x01;
+  ENV_SendData[9] = 0x01;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void Non_Terminal_MinLoad_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x02;
+  ENV_SendData[7] = 0x0A;
+  ENV_SendData[8] = 0x01;
+  ENV_SendData[9] = 0x01;
+  ENV_SendData[10] = 0x00;
+  SendTcpData_BYTE();
+}
+
+void Non_Terminal_MaxLoad_No_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x02;
+  ENV_SendData[7] = 0x00;
+  ENV_SendData[8] = 0x02;
+  ENV_SendData[9] = 0x02;
+  ENV_SendData[10] = 0x10;
+  SendTcpData_BYTE();
+}
+
+void Non_Terminal_MaxLoad_Rx()
+{
+  ENV_SendData[5] = 0x00;
+  ENV_SendData[6] = 0x02;
+  ENV_SendData[7] = 0x0A;
+  ENV_SendData[8] = 0x02;
+  ENV_SendData[9] = 0x02;
+  ENV_SendData[10] = 0x10;
+  SendTcpData_BYTE();
+}
+

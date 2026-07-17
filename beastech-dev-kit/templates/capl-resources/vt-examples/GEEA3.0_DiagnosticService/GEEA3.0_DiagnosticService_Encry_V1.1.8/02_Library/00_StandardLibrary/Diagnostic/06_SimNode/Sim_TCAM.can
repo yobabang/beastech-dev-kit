@@ -1,0 +1,1623 @@
+/*@!Encoding:936*/
+includes
+{
+////  #pragma library("..\..\02_Library\04_Diagnostic\04_DLL\GenSAKey.dll") //用于生成安全访问的Seed and Key
+  #pragma library("GenSAKey.dll") //用于生成安全访问的Seed and Key
+}
+
+variables
+{
+  
+  /**************************base information****************************/
+  byte gVGM_MacAdd_byte[6] = {0x02,0x00,0x00,0x00,0x10,0x01};
+  byte gDHU_MacAdd_byte[6] = {0x02,0x00,0x00,0x00,0x12,0x01};
+  byte gTCAM_MacAdd_byte[6] = {0x02,0x00,0x00,0x00,0x10,0x11};
+  char gVGM_MacAdd_char[18] = "02:00:00:00:10:01";
+  char gDHU_MacAdd_char[18] = "02:00:00:00:12:01";
+  char gTCAM_MacAdd_char[18] = "02:00:00:00:10:11";
+  ip_Address 198.18.32.1 gIPAdd_VGM;
+  ip_Address 198.18.34.1 gIPAdd_DHU;
+  ip_Address 198.18.32.17 gIPAdd_TCAM;
+  dword gIPAdd_VGM_Word;
+  byte gBoardcast_MacAdd_byte[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+  
+  enum gEncodeType {gNormalDataType = 0x01,gEncodedDataType = 0x00};
+  
+  long IPCP_packethandle;//发送UDP报文的句柄
+  int  gSenderHandleIDCounter;
+  
+  ethernetPacket txPacket;//用来发送数据的以太网包
+  ethernetport gEthPort;
+  enum Channel {gPort1 = 1,gPort2 = 2,gPort3 = 3,gPort4 = 4,gPort5 = 5};
+  /**************************base information****************************/
+  
+  /**************************UDS Diagnostic Info****************************/
+  
+  
+  //Diagnostic Session Layer
+  dword gTpRxLength; //接收诊断数据的长度
+  byte  gTpRxData[65535]; //接收诊断数据的数组
+  long diagnosticsocket,diagnosticsocket2;//连接句柄
+  enum gECUState {APP = 0x01,BOOT = 0x02};//控制器状态
+  enum gECUState gCurrentECUState = APP;
+  
+  //TP层参数
+  dword   gECUAddress  = 0x1011;
+	const dword   gTesterAddress = 0x0E80;
+	dword   gECUFunctionalAddress    = 0x1FFF;
+  
+  char    gIpLastErrStr[1024]  = "";
+  byte    gTcpRxBuffer[65535];
+  //TP层参数
+  
+  //状态控制参数
+  msTimer T_Reset;
+  msTimer T_Disconnect;
+  int  gPowerResetTime = 500;//控制器复位时间
+  msTimer S3ServerTimer;
+  msTimer DelatTimer_Level0x01;
+  msTimer DelatTimer_Level0x05;
+  int  gS3ServerTimerTimeoutTime = 5000;
+  int  gP2ClientAPP = 50;
+  int  gP2ClientBOOT = 25;
+  int  gP2StarClient = 5000;
+  int  gDelayTimerTimeoutTime = 10000;
+  int  gNumverOfSeed = 3;//种子字节数
+  int  gFailCounterMax = 2;//允许的最大错误计数器值
+  int  gFailAttemptCounterLelve_0x01;
+  int  gFailAttemptCounterLelve_0x05;
+  int  gFlag_SeedRequest_Level0x01;
+  int  gFlag_SeedRequest_Level0x05;
+  byte gSeedArray[4];//存储种子值
+  byte gKeyArray[4];//存储密钥值
+  enum e_DiagMode {PHYSICAL = 0x01,FUNCTIONAL = 0X02};
+  enum e_DiagMode gCurrentReqMode;
+  enum e_DiagSession {DEFAULTSESSION=0x01,PROGRAMMINGSESSION=0x02,EXTENDEDSESSION=0x03,SAFETYSESSION=0x04};//会话模式
+  enum e_DiagSession gCurrentSession;//当前会话模式
+  enum e_DiagSecurityState {NoLevelUnlocked = 0x00,WriteLevelUnlocked = 0x05,BootLevelUnlocked = 0x01};
+  enum e_DiagSecurityState gCurrentState;//当前解锁状态
+  int  gAddressFormat = 4;//控制器使用的下载地址字节长度
+  int  gLengthFormat = 4;//控制器使用的下载长度字节长度
+  int  gDataFormatIdentifier;//控制器使用的数据类型
+  dword  gMaxNumberOfBlockLenth = 0x1FFF;//控制器支持的最大块长度
+  int  gFlag_StartDownload;
+  int  gFlag_FinishDownload;
+  int  gCounter;
+  dword gDwonloadLength;
+  byte gTempSaveData[65535];
+  dword gTempSaveLength; 
+  //状态控制参数
+  
+  //控制器存储信息
+  byte gECUFixBytes_L1[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
+  byte gECUFixBytes_L5[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
+  byte gECUHardwareNumber[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUBootNumber[8] = {0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  byte gECUSoftwareNumber[9] = {0x01,0x88,0x92,0x35,0x74,0x55,0x20,0x20,0x41};
+  /**************************UDS Diagnostic Info****************************/
+  
+  int gSynStatusCheckFlag = 0;//用以标识是否检查了同步状态
+  
+  int gOTASendLength;
+  byte gOTASendData[500];
+  dword gOTASendOperationID;
+  dword gOTASendType;
+  char gOTASendMAC[18];
+  ip_Address gOTADesIPAdd;
+  dword gOTASentPort;
+  enum Channel gOTASendChannel;
+  dword gOTASendVlanID;
+  
+  int SerialNumber = 0;
+  
+  int  delayTimeforsendIPCP = 500;
+  
+  /*杨靖：新增TCP连接状态标识*/
+  int  gFlag_TCPConnect;
+  msTimer T_TCPConnectRequest;
+  msTimer T_UDSHandle;
+  byte  gDoIP_ProtocolVersion;
+}
+
+on start
+{
+  char IpAddress[16];
+  dword result;
+  
+  dword gHandle;
+  long  cyclesocket;
+    
+  gHandle = registerCAPLDLL();
+	SKDLL_Init(gHandle);
+  
+  write("TCAM Simulation: Initial diagnostic!");
+  
+  //setBusContext(GetBusNameContext( "VGMDHU"));
+  
+  gCurrentSession = DEFAULTSESSION;
+  gCurrentECUState = APP;
+  
+  //建立TCP连接
+  diagnosticsocket = TcpOpen(0x112012C6, 13400);
+  if (diagnosticsocket != ~0)
+  {
+    result = TcpConnect( diagnosticsocket, 0x012012C6, 13400 );
+    if ( result == -1)
+    {
+      result = IpGetLastSocketError(diagnosticsocket);
+      if ( result != 10035)
+      {
+        writeLineEx( 1, 3, "TCAM Simulation:  [ TcpConnect for client failed with error %d ]", result );
+      }
+    }
+    else
+    {
+      writeLineEx(1, 3, "TCAM Simulation:  [ TcpConnect error %d ]", result);
+    };
+  }
+  else
+  {
+    writeLineEx(1, 3, "TCAM Simulation:  [ TcpOpen: FAILED. ]");
+    writeLineEx(1, 3, "IpGetLastError: %d", IpGetLastError());
+  }
+  //建立TCP连接 
+  
+  setTimerCyclic(T_TCPConnectRequest,100);
+  
+}
+
+on timer T_TCPConnectRequest
+{
+  dword result;
+  
+  ethSetLinkStatus(gEthPort,1);
+  
+  if(gFlag_TCPConnect == 0)
+  {
+    diagnosticsocket = TcpOpen(0x112012C6, 13400);
+    if (diagnosticsocket != ~0)
+    {
+      result = TcpConnect( diagnosticsocket, 0x012012C6, 13400 );
+      if ( result == -1)
+      {
+        result = IpGetLastSocketError(diagnosticsocket);
+        if ( result != 10035)
+        {
+          writeLineEx( 1, 3, "TCAM Simulation:  [ TcpConnect for client failed with error %d ]", result );
+        }
+      }
+      else
+      {
+        writeLineEx(1, 3, "TCAM Simulation:  [ TcpConnect error %d ]", result);
+      };
+    }
+    else
+    {
+      writeLineEx(1, 3, "TCAM Simulation:  [ TcpOpen: FAILED. ]");
+      writeLineEx(1, 3, "IpGetLastError: %d", IpGetLastError());
+    }
+  }
+  else { cancelTimer(T_TCPConnectRequest); }
+}
+
+on timer T_UDSHandle
+{
+  ServiceHandle(gTpRxData,gTpRxLength);
+}
+
+
+on timer S3ServerTimer
+{
+  ChangeSession(DEFAULTSESSION);
+}
+
+on timer T_Disconnect
+{
+  ethSetLinkStatus(gEthPort,0);
+    
+  setTimer(T_Reset,gPowerResetTime);
+}
+
+on timer T_Reset
+{
+  dword result;
+  
+  ethSetLinkStatus(gEthPort,1);
+  //建立TCP连接
+  diagnosticsocket = TcpOpen(0x112012C6, 13400);
+  if (diagnosticsocket != ~0)
+  {
+    result = TcpConnect( diagnosticsocket, 0x012012C6, 13400 );
+    if ( result == -1)
+    {
+      result = IpGetLastSocketError(diagnosticsocket);
+      if ( result != 10035)
+      {
+        writeLineEx( 1, 3, "TCAM Simulation:  [ TcpConnect for client failed with error %d ]", result );
+      }
+    }
+    else
+    {
+      writeLineEx(1, 3, "TCAM Simulation:  [ TcpConnect error %d ]", result);
+    };
+  }
+  else
+  {
+    writeLineEx(1, 3, "TCAM Simulation:  [ TcpOpen: FAILED. ]");
+    writeLineEx(1, 3, "IpGetLastError: %d", IpGetLastError());
+  }
+  //建立TCP连接  
+}
+
+on timer DelatTimer_Level0x01
+{
+  gFailAttemptCounterLelve_0x01 = gFailCounterMax -1;
+}
+
+on timer DelatTimer_Level0x05
+{
+  gFailAttemptCounterLelve_0x05 = gFailCounterMax -1;
+}
+
+void OnTcpSend(dword socket, long result, char buffer[], dword size)
+{
+  if (socket != ~0)
+  {
+    // sending data complete.
+    If (result != 0)
+    {
+      writeLineEx(1, 3, "TCAM Simulation: OnTcpSend error: %d", result);
+    }
+  }
+  else
+  {
+    writelineex(0, 2, "TCAM Simulation: OnTcpSend called for socket 0x%X", socket);
+  }
+}
+
+dword GetPortForUDP(dword OPID)
+{
+  dword port;
+  
+  switch(OPID)
+  {
+    case 0x0B22:
+      port = 50171;
+      break;
+    case 0x0B10:
+      port = 50171;
+      break;
+  }
+  
+  return port;
+}
+
+void OnTcpConnect( dword Socket, long Result)
+{
+  if ( diagnosticsocket != Socket)
+  {
+    Writelineex(0, 2, "TCAM Simulation: OnTcpConnect Called For Unknown Socket 0x%X", Socket);
+    return;
+  }
+  if (0 != Result)
+  {
+    IpGetLastSocketErrorAsString( Socket, gIpLastErrStr, elcount( gIpLastErrStr));
+    Writelineex(0, 2, "TCAM Simulation: OnTcpConnect Error (%d): %s", IpGetLastSocketError(Socket), gIpLastErrStr);
+    return;
+  }
+  else
+  {
+    Writelineex(0, 1, "TCAM Simulation: Successfully Connected To Server");
+    TcpDataRx(Socket);
+    
+    gFlag_TCPConnect = 1;
+  }
+}
+
+void OnTcpClose(dword socket, long result)
+{
+  TcpClose(socket);
+  
+  ethSetLinkStatus(gEthPort,0);
+  gFlag_TCPConnect = 0;
+  
+  setTimerCyclic(T_TCPConnectRequest,100);
+  
+////  setTimer(T_Reset,gPowerResetTime);
+}
+
+long TcpDataRx(dword Socket)
+{
+  int Result = 0;
+//   byte gTcpRxBuffer[65535];
+  Result = TcpReceive(Socket, gTcpRxBuffer, elcount(gTcpRxBuffer));
+  if (0 != Result)
+  {
+//    gIpLastErr = IpGetLastSocketError( Socket);
+//
+//    if (WSA_IO_PENDING != gIpLastErr)
+//    {
+//      IpGetLastSocketErrorAsString(Socket, gIpLastErrStr, elcount( gIpLastErrStr));
+//      writelineex( 0, 2, "TcpReceive Error (%d): %s", gIpLastErr, gIpLastErrStr);
+//    }
+  }
+  return Result;
+}
+
+/// <Callback>
+void OnTcpReceive( dword socket, long result, dword address, dword port, char buffer[], dword size)
+{
+  char  addressString[64] = "";
+  char  gIpLastErrStr[1024]  = "";
+  //if (( gConnectionSocket != socket)&&(IHUHandle1 != socket)&&(IHUHandle2 != socket))
+  if ( diagnosticsocket != socket)
+  {
+    writelineex(0, 2, "TCAM Simulation: OnTcpReceive called for unknown socket 0x%X", socket);
+
+    return;
+  }
+
+  if (0 != result)
+  {
+    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+    writelineex( 0, 2, "TCAM Simulation: OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+
+    return;
+  }
+////  writelineex(0, 2, "TCAM Simulation: OnTcpReceive called for socket 0x%X", socket);
+  TcpRecv( socket);
+//  write("777777777777777777777777");
+  
+}
+
+long TcpRecv( dword socket)
+{
+  int y;
+  int result = 0;
+//  byte gTcpRxBuffer[65535];
+  dword TpRxLength;
+  byte TpRxData[65535];
+
+
+  result = TcpReceive( socket, gTcpRxBuffer, elcount(gTcpRxBuffer));
+  
+////  write("TCAM Simulation: Tester receive TCP Data: 0x%x 0x%x 0x%x 0x%x    %f", gTcpRxBuffer[4],gTcpRxBuffer[5],gTcpRxBuffer[6],gTcpRxBuffer[7],timeNow()/100000.0);
+  gDoIP_ProtocolVersion = gTcpRxBuffer[0];
+  TpRxLength=(gTcpRxBuffer[4]<<24)|(gTcpRxBuffer[5]<<16)|(gTcpRxBuffer[6]<<8)|(gTcpRxBuffer[7]);
+  TpRxLength=TpRxLength-4;
+//  write("11111111111111111111111111111111111");
+//  write("tcpbuffer0=%x",gTcpRxBuffer[0]);
+//  write("tcpbuffer1=%x",gTcpRxBuffer[1]);
+//  write("tcpbuffer2=%x",gTcpRxBuffer[2]);
+//  write("tcpbuffer3=%x",gTcpRxBuffer[3]);
+  if((gTcpRxBuffer[0]==gDoIP_ProtocolVersion)&&(gTcpRxBuffer[1]==(0xFF-gDoIP_ProtocolVersion))&&(gTcpRxBuffer[2]==0x80)&&(gTcpRxBuffer[3]==0x01))
+  {
+
+    for(y=0;y<=TpRxLength;y++)
+    {
+      TpRxData[y]=gTcpRxBuffer[y+12];
+    }
+  	gTpRxLength=TpRxLength;
+  	memcpy( gTpRxData, TpRxData, gTpRxLength);
+    gCurrentReqMode = PHYSICAL;
+    if(gTpRxLength > 0)
+    {
+////      write("TCAM Simulation: Receive physical request %02x",gTpRxData[0]);
+      if(gCurrentSession != DEFAULTSESSION)
+      {
+        setTimer(S3ServerTimer,gS3ServerTimerTimeoutTime);
+      }
+      
+  ////    ServiceHandle(gTpRxData,gTpRxLength);
+//      setTimer(T_UDSHandle,1);
+      
+      ServiceHandle(gTpRxData,gTpRxLength);
+      
+    }
+  }
+
+  return result;  
+}
+	
+on ethernetPacket *
+{
+  dword ipHeaderLength;
+  byte ipProtocol;
+  char MACADD[18];
+
+  
+  ethGetMacAddressAsString(this.source,MACADD,18);
+  if((this.msgChannel == 1))
+  {
+    gEthPort=this.hwPort;
+  
+    switch(this.type)
+    {
+      case 0x0800: // IPv4
+      ipHeaderLength = (this.Byte(0) & 0x0F) * 4;
+      ipProtocol = this.Byte(9);
+
+      switch(ipProtocol)
+      {
+        case 17:
+        HandleUDP( this, ipHeaderLength+8, swapWord(this.Word(ipHeaderLength)), swapWord(this.Word(ipHeaderLength+2)) );
+        break;
+      }
+      break;
+    }
+
+//  if(this.IsAvailable("tcp", "data"))
+//  {
+//    byte buffer[1500];
+//    word payloadLength;
+//    payloadLength = this.GetData("tcp", "data", buffer);
+//   //write("tcp payload length: %d", payloadLength);
+//  }
+  
+  }
+}
+
+
+void HandleUDP( ethernetPacket * pkt, word udpDataOffset, word srcPort, word dstPort )
+{
+  byte buffer[2000];
+  word length;
+  
+  long rx_length;
+  byte rx_data[2000];
+  long Source_Port,Dest_Port;
+  byte ptype;//IP报头中的协议版本
+  ip_Address Scr_IP_result,Dst_IP_result;//源IP地址，目标IP地址
+  word serviceId;//服务ID
+  word operationId;//operation ID
+  byte operationType;//操作类型
+  dword senderhandleID;
+  byte senderhandleIDbyte[4];
+  dword pversion;//协议版本号
+  dword ipcpheaderlength;
+  byte  payloaddata[2000];
+  byte procflag;
+  byte counter;
+  enum gEncodeType dtype;
+  
+  qword sourceMac;
+  
+  int  i;
+  
+  length = pkt.GetData( udpDataOffset, buffer, elcount(buffer)-1 );
+  buffer[length] = 0; // terminating zero for strings
+
+  Source_Port=srcPort;//获取源端口号
+  Dest_Port=dstPort;//获取目标端口号
+  
+  sourceMac = pkt.source;
+
+  pkt.GetSourceIPAddress(Scr_IP_result);//获取源IP地址
+  pkt.GetSourceIPAddress(Dst_IP_result);//获取目标IP地址
+  serviceId=(buffer[0]<<8)+buffer[1];//获取serviceID
+  operationId=(buffer[2]<<8)+buffer[3];//获取operationID
+  operationType=buffer[13];//获取operationType
+  senderhandleIDbyte[0]=buffer[8];
+  senderhandleIDbyte[1]=buffer[9];
+  senderhandleIDbyte[2]=buffer[10];
+  senderhandleIDbyte[3]=buffer[11];
+  counter = senderhandleIDbyte[3];
+  pversion=buffer[12];//获取协议版本号
+  
+  procflag=(buffer[15]>>7);//获取process flag字节
+  ipcpheaderlength=(buffer[4]<<24)+(buffer[5]<<16)+(buffer[6]<<8)+buffer[7];//获取ipcp报头长度字段的值
+  
+  ipcpheaderlength = ipcpheaderlength - 8;//将header的长度减去，获取payload的长度
+  
+  for(i=0;i<ipcpheaderlength;i++)
+  {
+    payloaddata[i] = buffer[i+16];
+  }
+  
+  switch(buffer[14])
+  {
+    case 0x01:
+      dtype=gNormalDataType;
+      break;
+    case 0x00:
+      dtype=gEncodedDataType;
+      break;
+    default:
+      break;
+  }
+}
+
+dword GetVLANID(dword operationID)
+{
+  dword vlanid;
+  switch(operationID)
+  {
+    case 0x0B22:
+      vlanid = 0x0002;
+      break;
+    case 0x0B10:
+      vlanid = 0x0002;
+      break;
+  }
+  return vlanid;
+}
+
+void SendUDPMessagee(long payloadlen,byte senddata[], char srcMacAdd[], char dstMacAdd[], ip_Address scrIPAdd, ip_Address desIPAdd,dword scrPort,dword dstPort ,enum Channel channel,dword vlanID)
+{
+  char error[100];
+  long i;
+  byte data[2000];
+
+  txPacket.ipv4.Init();
+  txPacket.udp.Init();
+  
+  switch(channel)
+  {
+
+    case gPort1:
+      txPacket.msgChannel=1;
+      break;
+    case gPort2:
+      txPacket.msgChannel=2;
+      break;
+    case gPort3:
+      txPacket.msgChannel=3;
+      break;
+    case gPort4:
+      txPacket.msgChannel=4;
+      break;
+    case gPort5:
+      txPacket.msgChannel=5;
+      break;
+
+  }
+  txPacket.source = EthGetMacAddressAsNumber(srcMacAdd);
+  txPacket.destination = EthGetMacAddressAsNumber(dstMacAdd);
+  txPacket.type = 0x0800;
+  txPacket.Length=payloadlen+28;
+
+  txPacket.SetSourceIPAddress(scrIPAdd);
+  txPacket.SetDestinationIPAddress(desIPAdd);
+  txPacket.ipv4.protocol=0x11;//UDP
+  txPacket.SetVlan(0x8100,vlanID);
+
+  
+  txPacket.udp.source=scrPort;
+  txPacket.udp.destination=dstPort;
+  txPacket.udp.SetData( 0, senddata, payloadlen );
+
+  txPacket.CompletePacket();
+  output(txPacket);
+  
+
+}
+
+/// <UDS_Diagnostic>
+void ChangeState(enum gECUState TargetState)
+{
+//  tcpClose(diagnosticsocket);
+  
+  //write("close connection ");
+  //setTimer(T_Disconnect,gPowerResetTime);
+  
+  gCurrentECUState = TargetState;
+  
+  
+}
+
+/// <UDS_Diagnostic>
+void ChangeSession(enum e_DiagSession TargetSession)
+{
+  if((gCurrentSession != PROGRAMMINGSESSION)&&(TargetSession == PROGRAMMINGSESSION))
+  {
+    ChangeState(BOOT);
+  }
+  else if((gCurrentSession == PROGRAMMINGSESSION)&&(TargetSession != PROGRAMMINGSESSION))
+  {
+    ChangeState(APP);
+  }
+  gCurrentSession = TargetSession;
+  if(gCurrentSession != DEFAULTSESSION)
+  {
+    setTimer(S3ServerTimer,gS3ServerTimerTimeoutTime);
+  }
+  gCurrentState = NoLevelUnlocked;
+  
+  //在切换会话后，即对种子请求状态做清除
+  gFlag_SeedRequest_Level0x01 = 0;
+  gFlag_SeedRequest_Level0x05 = 0;
+  
+  //在切换会话后，即对所有下载参数做复位
+  gFlag_StartDownload = 0;
+  gFlag_FinishDownload = 0;
+  gCounter = 0;
+  gDwonloadLength = 0;
+  gTempSaveLength = 0;
+}
+
+/// <UDS_Diagnostic>
+/**************服务处理****************/
+ServiceHandle(byte ReceiveData[],dword ReceiveLength)
+{
+  switch(ReceiveData[0])
+  {
+    case 0x10:
+    {
+      HandleService_0x10(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x11:
+    {
+      HandleService_0x11(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x22:
+    {
+      HandleService_0x22(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x27:
+    {
+      HandleService_0x27(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x3E:
+    {
+      HandleService_0x3E(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x34:
+    {
+      HandleService_0x34(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x36:
+    {
+      HandleService_0x36(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x37:
+    {
+      HandleService_0x37(ReceiveData,ReceiveLength);
+      break;
+    }
+    case 0x31:
+    {
+      HandleService_0x31(ReceiveData,ReceiveLength);
+      break;
+    }
+    default :
+    {
+      if(gCurrentReqMode != FUNCTIONAL)
+      {
+        SendNegativeResponse(0x11);
+      }
+      break;
+    }
+  }
+}
+
+/// <UDS_Diagnostic>
+void SendNegativeResponse(int code)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  
+  NRC[1] = gTpRxData[0];
+  NRC[2] = code;
+  if(gCurrentReqMode != FUNCTIONAL)
+  {
+    SendTcpData(diagnosticsocket,NRC,3);
+  }
+  else
+  {
+    if((code == 0x11)||(code == 0x12)||(code == 0x31)||(code == 0x7E)||(code == 0x7F))
+    {
+      
+    }
+    else
+    {
+      SendTcpData(diagnosticsocket,NRC,3);
+    }
+  }
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x10(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[6] = {0x50,0x00,0x00,0x00,0x01,0xF4};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if((ReceiveLength <= 1)||(ReceiveLength > 2))
+  {
+    SendNegativeResponse(0x13);
+    return;   
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      PosRes[1] = 0x01;
+      PosRes[2] = (gP2ClientAPP>>8);
+      PosRes[3] = gP2ClientAPP&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,6);
+      }
+      ChangeSession(DEFAULTSESSION);
+      break;
+    }
+    case 0x02:
+    {
+      PosRes[1] = 0x02;
+      PosRes[2] = (gP2ClientBOOT>>8);
+      PosRes[3] = gP2ClientBOOT&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,6);
+      }
+      ChangeSession(PROGRAMMINGSESSION);
+      break;
+    }
+    case 0x03:
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+         SendNegativeResponse(0x7E);
+         break;
+      }
+      PosRes[1] = 0x03;
+      PosRes[2] = (gP2ClientAPP>>8);
+      PosRes[3] = gP2ClientAPP&0xFF;
+      PosRes[4] = ((gP2StarClient/10)>>8);
+      PosRes[5] = ((gP2StarClient/10)&0xFF);
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,6);
+      }
+      ChangeSession(EXTENDEDSESSION);
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x11(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[6] = {0x51,0x00,0x00,0x00,0x01,0xF4};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if((ReceiveLength <= 1)||(ReceiveLength > 2))
+  {
+    SendNegativeResponse(0x13);
+    return;   
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      PosRes[1] = 0x01;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,2);
+      }
+      ChangeSession(DEFAULTSESSION);
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x22(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[300];
+  int  PosResLength;
+  
+  dword DataIdentifer;
+  int  i;
+  
+  PosRes[0] = 0x62;
+  //判断最小长度
+  if(ReceiveLength <= 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  else if(ReceiveLength > 3)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断最小长度
+  
+  DataIdentifer = ((ReceiveData[1]<<8)+ReceiveData[2]);
+  //判断DID
+  switch(DataIdentifer)
+  {
+    case 0xF186:
+    {
+      PosResLength = 4;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0x86;
+      PosRes[3] = gCurrentSession;
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1AA://控制器硬件版本信息
+    {
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xAA;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUHardwareNumber[i];
+      }
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1AE://控制器软件版本信息
+    {
+      if(gCurrentSession == PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xAE;
+      for(i=0;i<9;i++)
+      {
+        PosRes[i+3] = gECUSoftwareNumber[i];
+      }
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    case 0xF1A5://控制器BootLoader版本信息
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      PosResLength = 11;
+      PosRes[1] = 0xF1;
+      PosRes[2] = 0xA5;
+      for(i=0;i<8;i++)
+      {
+        PosRes[i+3] = gECUBootNumber[i];
+      }
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x31);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x31(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[100];
+  int  PosResLength;
+  
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  dword DataIdentifer;
+  int  i;
+  
+  PosRes[0] = 0x71;
+  //判断最小长度
+  if(ReceiveLength <= 3)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断最小长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  DataIdentifer = ((ReceiveData[2]<<8)+ReceiveData[3]);
+  //判断DID
+  switch(DataIdentifer)
+  {
+    case 0x0212://验证签名
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      if(gCurrentState != BootLevelUnlocked)
+      {
+        SendNegativeResponse(0x33);
+        return;
+      }
+      //判断最大长度
+      if(ReceiveLength != 260)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 6;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      PosRes[5] = 0x00;
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    case 0x0301://激活SBL
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      if(gCurrentState != BootLevelUnlocked)
+      {
+        SendNegativeResponse(0x33);
+        return;
+      }
+      //判断最大长度
+      if(ReceiveLength != 8)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 5;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    case 0x0205://完整性一致性校验
+    {
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x31);
+        break;
+      }
+      if(gCurrentState != BootLevelUnlocked)
+      {
+        SendNegativeResponse(0x33);
+        return;
+      }
+      //判断最大长度
+      if(ReceiveLength != 4)
+      {
+        SendNegativeResponse(0x13);
+        return;  
+      }
+      //判断最大长度
+      PosResLength = 9;
+      PosRes[1] = Subfunction;
+      PosRes[2] = ReceiveData[2];
+      PosRes[3] = ReceiveData[3];
+      PosRes[4] = 0x10;
+      PosRes[5] = 0x00;
+      PosRes[6] = 0x00;
+      PosRes[7] = 0x00;
+      PosRes[8] = 0x00;
+      SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x31);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x27(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[6] = {0x67,0x00,0x00,0x00,0x01,0xF4};
+  int  PosResLength;
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  int  CompareFlag;
+  int  i;
+  
+  
+  //判断长度
+  if(ReceiveLength <= 1)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x01:
+    {
+      if(ReceiveLength != 2)
+      {
+        SendNegativeResponse(0x13);
+        break;
+      }
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        break;
+      }
+      if(gFailAttemptCounterLelve_0x01 == gFailCounterMax)
+      {
+        SendNegativeResponse(0x37);
+        break;
+      }
+      PosResLength = gNumverOfSeed + 2;
+      PosRes[1] = 0x01;
+      if(gCurrentState == BootLevelUnlocked)
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = 0;
+        }
+      }
+      else
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = random(256);
+          gSeedArray[i] = PosRes[i+2];
+        }
+        gFlag_SeedRequest_Level0x01 = 1;
+      }
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      }
+      break;
+    }
+    case 0x02:
+    {
+      if(ReceiveLength != (gNumverOfSeed + 2))
+      {
+        SendNegativeResponse(0x13);
+        
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gCurrentSession != PROGRAMMINGSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gFlag_SeedRequest_Level0x01 != 1)
+      {
+        SendNegativeResponse(0x24);
+        break;
+      }
+      //在进入2702判断后，即对种子请求状态做清除
+      gFlag_SeedRequest_Level0x01 = 0;
+      gFlag_SeedRequest_Level0x05 = 0;
+      GenerateKey(gSeedArray,gKeyArray,gNumverOfSeed,0x01,gECUFixBytes_L1);
+      CompareFlag = 0;
+      for(i=0;i<gNumverOfSeed;i++)
+      {
+        if(gKeyArray[i] != ReceiveData[i+2])
+        {
+          CompareFlag = 1;
+        }
+      }
+      if(CompareFlag == 1)
+      {
+        gFailAttemptCounterLelve_0x01++;
+        if(gFailAttemptCounterLelve_0x01<gFailCounterMax)
+        {
+          SendNegativeResponse(0x35);
+          break;
+        }
+        else
+        {
+          SendNegativeResponse(0x36);
+          setTimer(DelatTimer_Level0x01,gDelayTimerTimeoutTime);
+          break;
+        }
+      }
+      else
+      {
+      PosResLength = 2;
+      PosRes[1] = 0x02;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      }
+      gFailAttemptCounterLelve_0x01 = 0;
+      gCurrentState = BootLevelUnlocked;
+      }
+      break;
+    }
+    case 0x05:
+    {
+      if(ReceiveLength != 2)
+      {
+        SendNegativeResponse(0x13);
+        break;
+      }
+      if(gCurrentSession != EXTENDEDSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        break;
+      }
+      if(gFailAttemptCounterLelve_0x05 == gFailCounterMax)
+      {
+        SendNegativeResponse(0x37);
+        break;
+      }
+      PosResLength = gNumverOfSeed + 2;
+      PosRes[1] = 0x01;
+      if(gCurrentState == WriteLevelUnlocked)
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = 0;
+        }
+      }
+      else
+      {
+        for(i = 0;i<gNumverOfSeed;i++)
+        {
+          PosRes[i+2] = random(256);
+          gSeedArray[i] = PosRes[i+2];
+        }
+        gFlag_SeedRequest_Level0x05 = 1;
+      }
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      }
+      break;
+    }
+    case 0x06:
+    {
+      if(ReceiveLength != (gNumverOfSeed + 2))
+      {
+        SendNegativeResponse(0x13);
+        
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gCurrentSession != EXTENDEDSESSION)
+      {
+        SendNegativeResponse(0x7E);
+        //在进入2702判断后，即对种子请求状态做清除
+        gFlag_SeedRequest_Level0x01 = 0;
+        gFlag_SeedRequest_Level0x05 = 0;
+        break;
+      }
+      if(gFlag_SeedRequest_Level0x05 != 1)
+      {
+        SendNegativeResponse(0x24);
+        break;
+      }
+      //在进入2702判断后，即对种子请求状态做清除
+      gFlag_SeedRequest_Level0x01 = 0;
+      gFlag_SeedRequest_Level0x05 = 0;
+      GenerateKey(gSeedArray,gKeyArray,gNumverOfSeed,0x05,gECUFixBytes_L5);
+      CompareFlag = 0;
+      for(i=0;i<gNumverOfSeed;i++)
+      {
+        if(gKeyArray[i] != ReceiveData[i+2])
+        {
+          CompareFlag = 1;
+        }
+      }
+      if(CompareFlag == 1)
+      {
+        gFailAttemptCounterLelve_0x05++;
+        if(gFailAttemptCounterLelve_0x05<gFailCounterMax)
+        {
+          SendNegativeResponse(0x35);
+          break;
+        }
+        else
+        {
+          SendNegativeResponse(0x36);
+          setTimer(DelatTimer_Level0x05,gDelayTimerTimeoutTime);
+          break;
+        }
+      }
+      else
+      {
+      PosResLength = 2;
+      PosRes[1] = 0x02;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,PosResLength);
+      }
+      gFailAttemptCounterLelve_0x05 = 0;
+      gCurrentState = WriteLevelUnlocked;
+      }
+      break;
+    }
+    default :
+    {
+        SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x3E(byte ReceiveData[],dword ReceiveLength)
+{
+  byte NRC[3] = {0x7F,0x00,0x00};
+  byte PosRes[2] = {0x7E,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  
+  
+  //判断长度
+  if(ReceiveLength != 2)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //判断子功能
+  switch(Subfunction)
+  {
+    case 0x00:
+    {
+      PosRes[1] = 0x00;
+      if(SuppressPosRspMsgIndicationBit == 0)
+      {
+        SendTcpData(diagnosticsocket,PosRes,2);
+      }
+      break;
+    }
+    default :
+    {
+      SendNegativeResponse(0x12);
+      break;
+    }
+  }
+  //判断子功能
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x34(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[4] = {0x74,0x20,0x0F,0xFF};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  int  i;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  //判断长度
+  if(ReceiveLength != (gAddressFormat + gLengthFormat + 3))
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  SuppressPosRspMsgIndicationBit = ReceiveData[1]>>7;
+  Subfunction = (ReceiveData[1]&0x7F);
+  
+  //检查地址及长度
+  
+  //检查地址及长度
+  
+  //检查是否擦除
+  
+  //检查是否擦除
+  
+  //获取下载长度
+  gDwonloadLength = 0;
+  for(i=0;i<gLengthFormat;i++)
+  {
+    gDwonloadLength = gDwonloadLength + (ReceiveData[3+gAddressFormat+i]<<((gLengthFormat-1-i)*8));
+  } 
+  //获取下载长度
+  
+  PosRes[2] = gMaxNumberOfBlockLenth>>8;
+  PosRes[3] = gMaxNumberOfBlockLenth&0xFF;
+  
+  gFlag_StartDownload = 1;
+  gFlag_FinishDownload = 0;
+  gCounter = 1;
+  SendTcpData(diagnosticsocket,PosRes,4);
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x36(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[2] = {0x76,0x00};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  dword i;
+  int  flag;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  
+  //判断长度
+  if(ReceiveLength <=2)
+  {
+    SendNegativeResponse(0x13);
+    return;
+  }
+  //判断长度
+  
+  //判断下载顺序
+  if(gFlag_StartDownload != 1)
+  {
+    SendNegativeResponse(0x24);
+    return;
+  }
+  //判断下载顺序
+  
+  //判断计数器
+  if(ReceiveData[1] !=gCounter)
+  {
+    if(ReceiveData[1] != (gCounter - 1))
+    {
+      SendNegativeResponse(0x73);
+      return;
+    }
+    else//重复传输相同数据，则直接回复肯定响应
+    {
+      if(ReceiveLength != (gTempSaveLength + 2))
+      {
+        SendNegativeResponse(0x73);
+        return;
+      }
+      else
+      {
+        flag = 0;
+        for(i=0;i<gTempSaveLength;i++)
+        {
+          if(ReceiveData[i+2] != gTempSaveData[i])
+          {
+            flag = 1;
+            break;
+          }
+        }
+        if(flag == 1)
+        {
+          SendNegativeResponse(0x73);
+          return;
+        }
+        else
+        {
+          PosRes[1] = ReceiveData[1];
+          SendTcpData(diagnosticsocket,PosRes,2);
+          return;
+        }
+      }
+    }
+  }
+  else
+  {
+    gCounter++;
+    if(gCounter>0xFF)
+    {
+      gCounter = 0;
+    }
+  }
+  //判断计数器
+  
+  gTempSaveLength = ReceiveLength - 2;
+  for(i = 0;i<gTempSaveLength;i++)
+  {
+    gTempSaveData[i] = ReceiveData[i+2];
+  }
+  gDwonloadLength = gDwonloadLength-gTempSaveLength;
+  if(gDwonloadLength<0)//下载了超过34服务传输的数据，响应NRC70
+  {
+    SendNegativeResponse(0x70);
+    return;
+  }
+  else if(gDwonloadLength == 0)
+  {
+    gFlag_FinishDownload = 1;
+  }
+  
+  PosRes[1] = ReceiveData[1];
+  SendTcpData(diagnosticsocket,PosRes,2);
+  
+}
+
+/// <UDS_Diagnostic>
+void HandleService_0x37(byte ReceiveData[],dword ReceiveLength)
+{
+  byte PosRes[1] = {0x77};
+  int  SuppressPosRspMsgIndicationBit;
+  int  Subfunction;
+  int  i;
+  
+  //判断当前会话
+  if(gCurrentSession != PROGRAMMINGSESSION)
+  {
+    SendNegativeResponse(0x7E);
+    return;
+  }
+  //判断当前会话
+  //判断解锁状态
+  if(gCurrentState != BootLevelUnlocked)
+  {
+    SendNegativeResponse(0x33);
+    return;
+  }
+  //判断解锁状态
+  //判断长度
+  if(ReceiveLength != 1)
+  {
+    SendNegativeResponse(0x13);
+    return;  
+  }
+  //判断长度
+  
+  //判断下载顺序
+  if(gFlag_FinishDownload != 1)
+  {
+    SendNegativeResponse(0x24);
+    return;
+  }
+  //判断下载顺序
+  
+  gFlag_StartDownload = 0;
+  gFlag_FinishDownload = 0;
+  SendTcpData(diagnosticsocket,PosRes,1);
+  
+}
+/**************服务处理****************/
+
+void SendTcpData(long sendhandle,byte buffer[], long size)
+{
+  byte TCPData[70000];
+  dword TpTxLength;
+  dword x;
+  
+  TCPData[0]= gDoIP_ProtocolVersion;
+  TCPData[1]= 0xFF - gDoIP_ProtocolVersion;
+  TCPData[2]= 0x80;
+  TCPData[3]= 0x01;
+  TCPData[4]= size+4>>24;
+  TCPData[5]= size+4>>16;
+  TCPData[6]= size+4>>8;
+  TCPData[7]= size+4&0xFF;
+  TCPData[8]= gECUAddress>>8;
+  TCPData[9]= gECUAddress&0xFF;
+  TCPData[10]= gTesterAddress>>8;
+  TCPData[11]= gTesterAddress&0xFF;
+  TpTxLength=size+12;
+
+////  write("TpTxLength=%d ",TpTxLength);
+  for(x=0;x<size;x++)
+  {
+    TCPData[x+12]=buffer[x];
+  }
+////  write("TCPSendData:0x%lx,0x%lx,0x%lx,0x%lx,  elcount(TCPData)=%d ",TCPData[12],TCPData[13],TCPData[14],TCPData[15],elcount(TCPData));
+  if (0 != TCPSend(sendhandle, TCPData, TpTxLength))
+  {
+    
+  }
+  else
+  {
+////    writelineex( 0, 1, "Tcp data sent successfully!");
+  }
+ 
+}
+
+void GenerateKey(byte SeedArray[],byte KeyArray[],int ByteNumOfSeed,int level,byte FixedBytes[])
+{
+  long ActualSize[1];
+	byte Challenge8Byte[8];
+  char cfgPath[400];
+  char gDLLName[400];
+  
+  getAbsFilePath("", cfgPath, 400);
+  snprintf(gDLLName, 400, "%s\\02_Library\\03_dll\\GenerateKeyExImpl.dll", cfgPath);
+  write("dll path is %s",gDLLName);
+  
+  memcpy(Challenge8Byte,SeedArray,3);
+  memcpy_off(Challenge8Byte,3,FixedBytes,0,5);
+  
+	SKDLL_GenKeyEx(Challenge8Byte,elcount(Challenge8Byte),level,"",KeyArray,3,ActualSize,gDLLName);
+
+}

@@ -1,0 +1,1623 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: UDS_Functions.cin
+|  Comment:   Function list for testing UDS services
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| YJ               YangJing          Polelink Information Technology Co., Ltd.
+| LRX              LiRunxiang        Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+  #pragma library("..\04_DLL\GenSAKey2.dll") //用于生成安全访问的Seed and Key
+}
+
+variables
+{
+  enum SeedState {AllZero=0,NotAllZero=1,CheckRandom=2};
+  enum Sim_Switch {Sim_on = 0x01,Sim_off = 0x00,Sim_cut = 0x02};
+  float gTimeTCPDisCnct,gTimeTCPCnct;
+  int gTCPCnctFlag; 
+  int gECUInitTimeCheckFlag = 0;
+  dword gTolerateTimeForTCPConnect = 60000;////偏离后建立TCP的时间
+  dword gTolerateTimeForDiagInit = 1000;////TCP建立后诊断使能时间
+  dword gTolerateTimeForSYNMessage = 60000;////等待SYN报文时间
+  dword gConnectionSocket;
+  //22服务参数
+  int  PreLenth;
+  byte PreData[5120];//用来写入读取到的数据
+  byte TestData[5120];
+  
+  //19服务的参数
+  byte AvailiableMask=0xFF;//DTC有效掩码
+  byte   supdtc[3000];
+  int Ndtc=0;
+  int NdtcSD=0;
+  
+  int gnum_of_snapshot_record_num;
+
+  struct DTC
+  {
+  byte DTCNumber[3];
+  byte DTCStatus;
+  };
+
+  struct DTC DTCNEW[2000];
+  struct DTC recdtc[2000];
+  struct DTC TestDtc[2];
+  
+  struct DTCSnapshotData
+  {
+    byte DTCNumber[3];
+    byte DTCSnapshotRecordNum;
+  };
+  struct DTCSnapshotData DTCSnapshotDataREC[1000];
+
+  
+  dword  testdtc[2];
+
+  //28服务
+  enum e_CommunicationControl {DEAPP,DENM,DEALL,DENONE};
+  int gReceiveID=0,gFlagApp=0,gFlagNM=0,gNMID=0,gAppID=0;
+  int gfalg_app_message_received,gflag_nm_message_received;
+  int subnetComConTestingFlag=0;
+  int subnetComConTestingChannel=0;
+  
+  //23 3D
+  int Flag_Ser_0x23_For0x24=0;
+	int Flag_Ser_0x3D_For0x24=0;
+  
+  int  Rss1;//中间参量 
+  
+  //29服务
+  enum e_AuthenticateState {Deauthenticated,Authenticated};
+  enum e_SecDiagFunConfig {Disable,UnidirectionalAuthen,BidirectionalAuthen};
+  //29服务
+  
+  //TP Message
+  message 0x0 TP_FirstFrame={dlc=8,byte(0)=0x10,byte(1)=0x08,byte(2)=0x13};
+  message 0x0 TP_FC_CTS={dlc=8,byte(0)=0x30,byte(1)=0x00,byte(2)=0x7F};
+  message 0x0 TP_CF1={dlc=8,byte(0)=0x21};
+  msTimer SendF186;
+  message 0x0 msgF186={dlc=8,byte(0)=0x03,byte(1)=0x22,byte(2)=0xf1,byte(3)=0x86};
+  
+  /* 20240827 */
+  int   gflag_check_ecu_init_time;
+}
+on timer SendF186
+{
+  output(msgF186);
+}
+
+on message *
+{
+  int ReceiveID;
+  
+  if(this.dir==rx&&this.SIMULATED==0)  
+  {
+    if(subnetComConTestingFlag==0)
+    {
+      if((this.id<0x500)&&(this.id>0)||(this.id<0x600)&&(this.id>0x53F))
+      {
+        gFlagApp=1;
+        gfalg_app_message_received = 1;
+        testSupplyTextEvent("CANAPPmessageReceived");
+  //      write("APPID:%x CAN:%x",this.id,this.can);
+      }
+      else if((this.id<=0x53F)&&(this.id>=0x500))//更正NM报文的ID范围
+      {
+        gFlagNM=1;
+        gflag_nm_message_received = 1;
+        testSupplyTextEvent("CANNMmessageReceived");
+  //      write("NMID:%x CAN:%x",this.id,this.can);
+      }
+    }
+    else
+    {
+      if(this.can==subnetComConTestingChannel)
+      {
+        if((this.id<0x500)&&(this.id>0)||(this.id<0x600)&&(this.id>0x53F))
+        {
+          gFlagApp=1;
+          gfalg_app_message_received = 1;
+          testSupplyTextEvent("CANAPPmessageReceived");
+    //      write("APPID:%x CAN:%x",this.id,this.can);
+        }
+        else if((this.id<=0x53F)&&(this.id>=0x500))//更正NM报文的ID范围
+        {
+          gFlagNM=1;
+          gflag_nm_message_received = 1;
+          testSupplyTextEvent("CANNMmessageReceived");
+    //      write("NMID:%x CAN:%x",this.id,this.can);
+        }
+      }
+    }
+  }
+}
+
+//Geely
+void PID27_Parameters_Seeds_Chk()
+{
+	int i;
+	if(gTpRxData[0]!=0x67)
+	{
+		testStepFail("Chk","Not expect response");
+		return;
+	}
+	CmpPID(seedTemp,gSeedArray,Fail);
+	for( i = 0; i < elCount(gSeedArray); i++ )
+	{
+		seedTemp[i] = gSeedArray[i];
+	}
+}
+
+void PID27_Parameters_Seeds_Chk_Sameseed()
+{
+	int i;
+	if(gTpRxData[0]!=0x67)
+	{
+		testStepFail("Chk","Not expect response");
+		return;
+	}
+	CmpPID(seedTemp,gSeedArray,Pass);
+	for( i = 0; i < elCount(gSeedArray); i++ )
+	{
+		seedTemp[i] = gSeedArray[i];
+	}
+}
+
+void PID27_Parameters_Seeds_Chk(enum SeedState State,byte SeedArray[])
+{
+	int i;
+  int SeedFlag=0;
+  
+  SeedFlag=0;
+  if(gRss!=POS)
+    return;
+	if(gTpRxData[0]!=0x67)
+	{
+		testStepFail("UDS_Fun","Not expect response");
+		return;
+	}
+  if(State==AllZero)
+  {
+    SeedFlag=0;
+    write("Flag is %d",SeedFlag);
+    for(i=0; i<elCount(SeedArray); i++)
+    {
+      write("seedarray %d is %02x",i,SeedArray[i]);
+      if(SeedArray[i]!=0)
+        SeedFlag=1;
+    }
+    write("Flag is %d",SeedFlag);
+    if(SeedFlag==1)
+    {
+      testStepFail("UDS_Fun","The seed is not all zero");
+    }
+    else
+    {
+      testStepPass("UDS_Fun","The seed is all zero");
+    }
+  }
+  else if(State==NotAllZero)
+  {
+    for(i=0; i<elCount(SeedArray); i++)
+    {
+      if(SeedArray[i]!=0)
+        SeedFlag=1;
+    }
+    if(SeedFlag==1)
+    {
+      testStepPass("UDS_Fun","The seed is not all zero");
+    }
+    else
+    {
+      testStepFail("UDS_Fun","The seed is all zero");
+    }
+  }
+  else if(State==CheckRandom)
+  {
+  	CmpPID(seedTemp,SeedArray,Fail);
+  	for( i = 0; i < elCount(SeedArray); i++ )
+  	{
+  		seedTemp[i] = SeedArray[i];
+  	}
+  }
+}
+//
+//void VehSpd_Sim(enum Sim_Switch Sim_States)
+//{
+//  int result;
+//  if(Sim_States==Sim_on)
+//  {
+////    @sysvar::SimulationSignal::VehSpd_Sim = 1;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::VehSpd_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","车速>3km/h");
+//  }
+//  else if(Sim_States==Sim_off)
+//  {
+////    @sysvar::SimulationSignal::VehSpd_Sim = 0;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::VehSpd_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","取消仿真车速");
+//  }
+//  else if(Sim_States==Sim_cut)
+//  {
+////    @sysvar::SimulationSignal::VehSpd_Sim = 2;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::VehSpd_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","车速<3km/h");
+//  }
+//}
+//
+//void UsageMode_Sim(enum Sim_Switch Sim_States)
+//{
+//  int result;
+//  if(Sim_States==Sim_on)
+//  {
+////    @sysvar::SimulationSignal::UsageMode_Sim = 1;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::UsageMode_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","usage mode 为 Driving");
+//  }
+//  else if(Sim_States==Sim_off)
+//  {
+////    @sysvar::SimulationSignal::UsageMode_Sim = 0;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::UsageMode_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","停止仿真usage mode 信号");
+//  }
+//  else if(Sim_States==Sim_cut)
+//  {
+////    @sysvar::SimulationSignal::UsageMode_Sim = 2;
+////    result = 0;
+////    do
+////    {
+////      testWaitForTimeout(20);
+////      result = sysGetVariableInt(sysvar::SimulationSignal::UsageMode_Sim);
+////    }
+////    while(result != 2);
+//    testStep("Context","usage mode 为 convenicnce");
+//  }
+//
+//}
+//int CheckOBDNode()
+//{
+//  int i;
+//  for(i=0;i<NumberOfOBDNode;i++)
+//  {
+//    if(ECUAddress_Temp == AddressLibrary[i])
+//      return 1;
+//  }
+//  return 0;
+//}
+
+void CmpPID(byte DestData[],byte SourceData[],enum testResult tR)
+{
+	int i;
+	int Flag;
+	Flag=0;
+	if(elCount(DestData)!=elCount(SourceData))
+		testStepFail("CmpPID","Length of sourceData is not equal to destData");
+	else
+	{
+		for(i=0; i<elCount(SourceData); i++)
+		{
+			if(DestData[i]!=SourceData[i])
+			{
+				Flag=1;
+			}
+		}
+	}
+	if(tR==Pass && Flag==1)
+		testStepFail("CmpPID","The value of Seed is random");
+	else if(tR==Pass && Flag==0)
+		testStepPass("CmpPID","The value of Seed is not random");
+	else if(tR==Fail && Flag==1)
+		testStepPass("CmpPID","The value of Seed is random");
+	else if(tR==Fail && Flag==0)
+		testStepFail("CmpPID","The value of Seed is not random");
+}
+
+
+
+void TCPConnectCheck_InternalNode(byte checktype)
+{
+  //checktype==0期望TCP断开再重连
+  //checktype==1等待TCP连接
+  float TCPConnectRecordT1=0,TCPConnectRecordT2=0;
+  TCPConnectRecordT1=0;
+  TCPConnectRecordT2=0;
+  
+  if(@Diagnostic::ETH_TCPConnectionStatus==0)
+  {
+    TCPConnectRecordT1=@Diagnostic::ETH_TimeTCPDisconnect;
+    TestStep("","TCP has been disconnected");
+    if(testWaitForTextEvent("TCPConnected",gTimeForTCPConnect)>0)
+    {
+      TCPConnectRecordT2=@Diagnostic::ETH_TimeTCPReconnect;
+      if(TCPConnectRecordT2-TCPConnectRecordT1>gTCPConnectTimeoutValue)
+      {
+        if(gflag_check_ecu_init_time == 1) { testStepFail("Fail","The time to connected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+        else { testStepWarning("Warning","The time to connected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+      }
+      else
+      {
+        testStep("","TCP Connected");
+      }
+    }
+    else 
+    {
+      testStepFail("Fail","TCP not connected within %d ms",gTimeForTCPConnect);
+    }
+  }
+  else if(@Diagnostic::ETH_TCPConnectionStatus==1)
+  {
+    if(checktype==0 && @Diagnostic::ETH_TCPReconnection == 0)
+    {
+      if(testWaitForTextEvent("TCPDisconnected",gTimeForTCPDisconnect)>0)
+      {
+        TP_TesterPresentSet(TP_OFF);
+        TCPConnectRecordT1=@Diagnostic::ETH_TimeTCPDisconnect;
+        TestStep("","TCP has been disconnected");
+        if(testWaitForTextEvent("TCPConnected",gTimeForTCPConnect)>0)
+        {
+          TCPConnectRecordT2=@Diagnostic::ETH_TimeTCPReconnect;
+          if((TCPConnectRecordT2-TCPConnectRecordT1)>gTCPConnectTimeoutValue)
+          {
+            if(gflag_check_ecu_init_time == 1) { testStepFail("Fail","The time to reconnected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+            else { testStepWarning("Warning","The time to reconnected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+          }
+          else
+          {
+            testStep("","TCP Connected");
+          }
+        }
+        else 
+        {
+          testStepFail("Fail","TCP not reconnected within %d ms",gTimeForTCPConnect);
+        }
+      }
+      else 
+      {
+        testStepWarning("warning","TCP did not disconnect for %d ms,test continue",gTimeForTCPDisconnect);
+      }
+    }
+    else
+    {
+      TestStepPass("Pass","TCP is already connected");
+    }
+  }
+  TP_TesterPresentSet(TP_ON);
+  testWaitForTimeout(gTimeForDiagInit);
+}
+
+void TCPConnectCheck_EdgeNode()
+{
+  float TCPConnectRecordT1=0,TCPConnectRecordT2=0;
+  TCPConnectRecordT1=0;
+  TCPConnectRecordT2=0;
+  if(@Diagnostic::ETH_TCPConnectionStatus==1)
+  {
+    testWaitForTimeout(ECUIniTime);
+  }
+  if(@Diagnostic::ETH_TCPConnectionStatus==0)
+  {
+    ETH_TP_Init();
+    TCPConnectRecordT1 = @Diagnostic::ETH_TimeTCPDisconnect;
+    TCPConnectRecordT2 = @Diagnostic::ETH_TimeTCPReconnect;
+    if(TCPConnectRecordT2-TCPConnectRecordT1>gTCPConnectTimeoutValue)
+    {
+      if(gflag_check_ecu_init_time == 1) { testStepFail("Fail","The time to reconnected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+      else { testStepWarning("Warning","The time to reconnected TCP is %f > %d",TCPConnectRecordT2-TCPConnectRecordT1,gTCPConnectTimeoutValue); }
+    }
+    else
+    {
+      testStep("","TCP Connected");
+    }
+  }
+  TP_TesterPresentSet(TP_ON);
+  testWaitForTimeout(gTimeForDiagInit);
+}
+
+
+int StorageDTC()
+{
+
+	int StoI=0;
+	if(gTpRxData[0]!=0x59)
+	{
+		testStepFail("StorageDTC","Error during process DTCs");
+		return 0;
+	}
+	if(gTpRxLength<4)
+	{
+		testStep("StorageDTC","No avaliable DTC(TpRxLength<4)");
+		Ndtc = 0;
+		return 0;
+	}
+	for(StoI=0; StoI<(gTpRxLength-3)/4; StoI++)
+	{
+		recdtc[StoI].DTCNumber[0]=gTpRxData[StoI*4+3];
+		recdtc[StoI].DTCNumber[1]=gTpRxData[StoI*4+4];
+		recdtc[StoI].DTCNumber[2]=gTpRxData[StoI*4+5];
+		recdtc[StoI].DTCStatus =gTpRxData[StoI*4+6];
+		if(StoI<2)
+		{
+			testdtc[StoI]=recdtc[StoI].DTCNumber[0]*0x10000+recdtc[StoI].DTCNumber[1]*0x100+recdtc[StoI].DTCNumber[2];
+			TestDtc[StoI].DTCNumber[0]=gTpRxData[StoI*4+3];
+			TestDtc[StoI].DTCNumber[1]=gTpRxData[StoI*4+4];
+			TestDtc[StoI].DTCNumber[2]=gTpRxData[StoI*4+5];
+			TestDtc[StoI].DTCStatus =gTpRxData[StoI*4+6];
+		}
+	}
+	Ndtc= StoI;
+  write("Ndtc in function is %d and TpRxLength is %d",StoI,gTpRxLength);
+	return Ndtc;
+}
+int StorageDTCSnapshotData()
+{
+
+	int StoI=0;
+	if(gTpRxData[0]!=0x59 || gTpRxData[1]!=0x03)//20250214这里增加判断第二个字节
+	{
+		testStepFail("StorageDTC","Error during process DTCs");
+		return 0;
+	}
+	if(gTpRxLength<3)
+	{
+		testStep("StorageDTC","No avaliable StorageDTCSnapshotData(TpRxLength<3)");
+		Ndtc = 0;
+		return 0;
+	}
+	for(StoI=0; StoI<(gTpRxLength-2)/4; StoI++)
+	{
+		DTCSnapshotDataREC[StoI].DTCNumber[0]=gTpRxData[StoI*4+2];
+		DTCSnapshotDataREC[StoI].DTCNumber[1]=gTpRxData[StoI*4+3];
+		DTCSnapshotDataREC[StoI].DTCNumber[2]=gTpRxData[StoI*4+4];
+		DTCSnapshotDataREC[StoI].DTCSnapshotRecordNum=gTpRxData[StoI*4+5];
+    if((DTCSnapshotDataREC[StoI].DTCSnapshotRecordNum!=0x20)&&(DTCSnapshotDataREC[StoI].DTCSnapshotRecordNum!=0x21))
+    {
+      int i;
+      for(i=0;i<gnum_of_snapshot_record_num;i++) { if(DTCSnapshotDataREC[StoI].DTCSnapshotRecordNum == gdtc_snapshot_record_num[i]) { break; } }
+      if(i == gnum_of_snapshot_record_num)
+      {
+        testStepFail("Fail","DTC:0x%02X%02X%02X_DTCSnapshotRecordNum=0x%02x Error",DTCSnapshotDataREC[StoI].DTCNumber[0],DTCSnapshotDataREC[StoI].DTCNumber[1],DTCSnapshotDataREC[StoI].DTCNumber[2],DTCSnapshotDataREC[StoI].DTCSnapshotRecordNum);
+      }
+    }
+	}
+  NdtcSD=StoI;
+	return NdtcSD;
+}
+void CheckDTCState(byte expectState)//19 02读取DTC后检测DTC状态位
+{
+	int i;
+	dword Temdtc;
+	for(i=0; i<Ndtc; i++)
+	{
+		Temdtc=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+		if((recdtc[i].DTCStatus&expectState)<=0)
+			//testStepPass("Chk","DTC<%06x> with State 0x%02x",Temdtc,recdtc[i].DTCStatus);
+			testStepFail("Chk","DTC<%06x> with State 0x%02x",Temdtc,recdtc[i].DTCStatus);
+		if((recdtc[i].DTCStatus&(~AvailiableMask))!=0)
+			//testStepPass("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is coincident ",Temdtc,recdtc[i].DTCStatus);
+			testStepFail("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is conflict",Temdtc,recdtc[i].DTCStatus);
+	}
+}
+void CheckAvalibleDTCState(byte expectState)//19 0A读取DTC后检测DTC状态位
+{
+	int i;
+	dword Temdtc;
+	for(i=0; i<Ndtc; i++)
+	{
+		Temdtc=recdtc[i].DTCNumber[0]*0x10000+recdtc[i].DTCNumber[1]*0x100+recdtc[i].DTCNumber[2];
+//		if(recdtc[i].DTCStatus&expectState>0)
+//			testStepPass("Chk","DTC<%06x> with State %02x",Temdtc,recdtc[i].DTCStatus);
+//			testStepFail("Chk","DTC<%06x> with State %02x",Temdtc,recdtc[i].DTCStatus);
+		if((recdtc[i].DTCStatus&(~AvailiableMask))!=0)
+//			testStepPass("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is coincident ",Temdtc,recdtc[i].DTCStatus);   
+			testStepFail("Chk","DTC<%06x> with State 0x%02x and AvailiableMask is conflict",Temdtc,recdtc[i].DTCStatus);
+	}
+}
+int Cmpwithsupdtc(int NumofExpctSupDTC)
+{
+  char ExportQue[10400];
+	char Question[10400];
+	char tempDTC[20];
+  int  Flag0=0;
+  int  Flag1=0;
+  char Clear[10400];
+  
+	int i , j,flagi=-1,flagj=-1,unsupdtccount=0,supdtccount=0,omitdtccount=0;
+  
+  snprintf(ExportQue,elcount(ExportQue),Clear);
+  
+	if( Ndtc == NumofExpctSupDTC )
+	{
+		testStepPass("Chk","Ndtc of ECU equals to Number of Supported DTC of standard=%d",NumofExpctSupDTC);
+	}
+	else
+	{
+		testStepFail("Chk","Ndtc of ECU is %d rather than Number of Supported DTC of standard %d ",Ndtc,NumofExpctSupDTC);
+	}
+  write("NumofExpctSupDTC is %d",NumofExpctSupDTC);
+	for(j = 0; j < Ndtc; j++)
+	{
+		//circulation in ECU reported DTC to match a Standard supported DTC
+		flagi=-1;
+		for( i = 0; i < NumofExpctSupDTC; i++)
+		{
+			//circulation in Standard supported DTCs
+			if(recdtc[j].DTCNumber[0]==DTCNEW[i].DTCNumber[0]  &&
+			       recdtc[j].DTCNumber[1]==DTCNEW[i].DTCNumber[1]&&
+			        recdtc[j].DTCNumber[2]==DTCNEW[i].DTCNumber[2]
+        
+			  )
+			{
+				flagi=1;
+				supdtccount++;
+				continue;
+			}
+      //write("Now i is %d and j is %d",i,j);
+		}
+		if(flagi!=1)
+		{
+      if(Flag0==0)
+			{
+				strncat(ExportQue,"\r\nECU contains DTC which is not defined in ODX ：",10400);
+			}
+			//testStepFail("Chk","ECU contains unsupported DTC 0x%2x 0x%2x 0x%2x",recdtc[j].DTCNumber[0],recdtc[j].DTCNumber[1],recdtc[j].DTCNumber[2]);
+			unsupdtccount++;
+      snprintf(tempDTC,elcount(tempDTC),"0x%02x%02x%02x，",recdtc[j].DTCNumber[0],recdtc[j].DTCNumber[1],recdtc[j].DTCNumber[2]);
+			strncat(ExportQue,tempDTC,10400);
+			Flag0=1;
+		}
+	}
+	for( i = 0; i < NumofExpctSupDTC; i++)
+	{
+		//circulation in Standard supported DTCs
+		flagj = -1;
+		for( j = 0; j < Ndtc; j++)
+		{
+			//circulation in ECU reported DTC to match a Standard supported DTC
+			if(recdtc[j].DTCNumber[0]==DTCNEW[i].DTCNumber[0]  &&
+			       recdtc[j].DTCNumber[1]==DTCNEW[i].DTCNumber[1]&&
+			        recdtc[j].DTCNumber[2]==DTCNEW[i].DTCNumber[2]
+			  )
+			{
+				flagj=1;
+				continue;
+			}
+		}
+		if(flagj!=1)
+		{
+      if(Flag1==0)
+			{
+				strncat(ExportQue,"\r\nECU lost DTC defined in ODX：",10400);
+			}
+			//testStepFail("Chk","ECU losts a supported DTC 0x%2x 0x%2x 0x%2x",supdtc[i*3],supdtc[i*3+1],supdtc[i*3+2]);
+			omitdtccount++;
+      snprintf(tempDTC,elcount(tempDTC),"0x%02x%02x%02x，",DTCNEW[i].DTCNumber[0],DTCNEW[i].DTCNumber[1],DTCNEW[i].DTCNumber[2]);
+			strncat(ExportQue,tempDTC,10400);
+			Flag1=1;
+		}
+	}
+	testStep("Chk","The Number of Unsupported, Supported and Losted DTC of ECU is %d, %d and %d",unsupdtccount,supdtccount,omitdtccount);
+	unsupdtccount=0;
+	supdtccount=0;
+	omitdtccount=0;
+  if(Flag0==1||Flag1==1)
+	{
+		testStepFail("Chk","%s",ExportQue);
+	}
+	return 1;
+}
+void ChangeDTC(int NumDTC)
+{
+  int s;
+  byte MIDDTC[3];
+  
+  for(s=0;s<NumDTC;s++)
+  {
+    DTCNEW[s].DTCNumber[0]=StorageDTC[s].DTCNumber>>16;
+    DTCNEW[s].DTCNumber[1]=(StorageDTC[s].DTCNumber>>8)&0xFF;
+    DTCNEW[s].DTCNumber[2]=StorageDTC[s].DTCNumber&0xFF;
+  }
+  write("The DTC to be changed is %06x",StorageDTC[0].DTCNumber);
+  write("The DTC changed is %02x,%02x,%02x",DTCNEW[0].DTCNumber[0],DTCNEW[0].DTCNumber[1],DTCNEW[0].DTCNumber[2]);
+}
+void CheckParametersCoding(struct DataIdentifer Input)
+{
+	int m,n,Result;
+  int Flag;
+  byte CheckData[16384];
+  
+  Flag=0;
+	for(m=0;m<Input.NumOfGroup;m++)
+  {
+    for(n=0;n<Input.Group[m].lenth;n++)
+    {
+      CheckData[n]=gTpRxData[Input.Group[m].StartPosition+3+n];
+    }
+    write("The data is %02x %02x",CheckData[0],CheckData[1]); 
+    write("The data lenth is %d",Input.Group[m].lenth); 
+    Result=CheckDataType(Input.Group[m].CodingType,CheckData,Input.Group[m].lenth);
+    if(Result==0)
+    {
+      Flag=1;
+    }
+	}
+  if(Flag==1)
+  {
+    testStepFail("Chk","The data type doesn't match which discribed in Diagnostic Specification");
+  }
+  else
+  {
+    testStepPass("Chk","The data type match which discribed in Diagnostic Specification");
+  }
+}
+
+
+void RecordData()
+{
+  int j;
+  PreLenth=gTpRxLength;
+	PreData[0]=0x2E;
+	for(j=0; j<gTpRxLength-1; j++)
+	{
+		PreData[j+1]=gTpRxData[j+1];
+	}
+}
+
+void ComTestData()
+{
+  int j;
+  int flag=0;
+  flag=0;
+  for(j=1; j<gTpRxLength-1; j++)
+	{
+    if(TestData[j+1]!=gTpRxData[j+1])
+    {
+      flag=1;
+    }
+	}
+  if(flag==1)
+    testStepFail("Read out data is not the same as write one");
+}
+
+void WritePreviousData(enum AddressMode mode)
+{
+  PrintPID("UDS_Ser","Write data: ",PreData,PreLenth);
+	TP_Send(PreData,PreLenth,mode);
+}
+
+void WriteTestData(struct DataIdentifer InputStruct,enum AddressMode mode)
+{
+	int m,n,s,i;
+	int DataLenth;
+	byte Data[4095];
+  byte UseDefinedDataFlag=0;
+  
+  UseDefinedDataFlag=0;
+  
+	DataLenth=InputStruct.Lenth+3;
+	Data[0]=0x2E;
+  Data[1]=InputStruct.DID>>8;
+  Data[2]=InputStruct.DID&0xFF;
+  s=0;
+  for(i=0;i<100;i++)
+  {
+    if(InputStruct.requestData[i]!=0)
+    {
+      UseDefinedDataFlag=1;
+      break;
+    }
+  }
+  if(UseDefinedDataFlag==0)
+  {
+    for(m=0;m<InputStruct.NumOfGroup;m++)
+    {
+      write("The data type is %d",InputStruct.Group[m].CodingType);
+      write("The data lenth is %d",InputStruct.Group[m].lenth);
+    	if((InputStruct.Group[m].CodingType==1)||(InputStruct.Group[m].CodingType==2))
+      {
+    		for(n=0; n<InputStruct.Group[m].lenth; n++)
+    		{
+    			Data[s+3]=0x21;
+          s=s+1;
+    		}
+      }
+    	else if(InputStruct.Group[m].CodingType==3)
+    	{
+    		Data[s+3] =0x20;
+    		Data[s+4] =0x20;
+    		Data[s+5] =0x01;
+    		Data[s+6] =0x01;
+        s=s+4;
+
+    	}
+    	else if(InputStruct.Group[m].CodingType==4)
+      {
+    		for(n=0; n<InputStruct.Group[m].lenth; n++)
+    		{
+    			Data[s+3]=0x10;
+          s=s+1;
+    		}
+      }
+
+    	else
+      {
+    		for(n=0; n<InputStruct.Group[m].lenth; n++)
+    		{
+    			Data[s+3]=0x22;
+          s=s+1;
+    		}
+      }
+    }
+    
+    for(m=0;m<DataLenth;m++)
+    {
+      TestData[m] = Data[m];
+    }
+  }
+  else
+  { 
+    for(n=0;n<DataLenth-3;n++)
+    {
+      Data[n+3] =InputStruct.requestData[n];
+    }
+    for(m=0;m<DataLenth;m++)
+    {
+      TestData[m] = Data[m];
+    }
+  }
+
+  if(DataLenth<=7)
+	  TP_Send(Data,DataLenth,mode);
+  else
+    TP_Send(Data,DataLenth,PHYSICAL);
+  PrintPID("UDS_Ser","Write data: ",Data,DataLenth);
+}
+void AuthenticationFullSeq(char testerCertName[])
+{
+  ocspCheckSequence();
+  
+  SID29_Authentication_verifyCertificateUnidirectional(0,testerCertByteLength,testerCertByte,0,PHYSICAL);
+  CheckPosResponse_SID29_verifyCertificateUnidirectional(0x11,0x20,challenge,0,0,0);
+  
+  if(CreateOwnership(testerCertName, hashFunction, challenge, elcount(challenge), ownerShip, ownerShipLength, errorMsg)!=1)
+  {
+    testStepFail("Fail","%s",errorMsg);
+    return;
+  }
+  
+  SID29_Authentication_proofOfOwnership(ownerShipLength,ownerShip,0,PHYSICAL);
+  CheckPosResponse_SID29_proofOfOwnership(0x12,0,0);
+  
+  checkAuthenticateState(Authenticated);
+}
+void Deauthenticate()
+{
+    SID29_Authentication_deAuthenticate(PHYSICAL);
+    CheckPosResponse_SID29_deAuthenticate(0x10,0,0);
+    
+    checkAuthenticateState(Deauthenticated);
+}
+
+int CheckDataType(int DataTypeCode,byte InputData[],int lenth)
+{
+  int Flag;
+  int m;
+  int DataLenth;
+  byte PID[2];
+  
+  Flag=1;
+  DataLenth=lenth;
+  switch(DataTypeCode)
+  {
+    case 1://dec
+    {
+//      for(m=0;m<DataLenth;m++)
+//      {
+//        if((InputData[m]>>4)>9)
+//        {
+//          Flag=0;
+//        }
+//        if((InputData[m]&4)>9)
+//        {
+//          Flag=0;
+//        }
+//      }
+      break;
+    }
+    case 2://hex
+    {
+      break;
+    }
+    case 3://bin
+    {
+//      for(m=0;m<DataLenth;m++)
+//      {
+//        if(InputData[m]>1)
+//        {
+//          Flag = 0;
+//        }
+//      }
+      break;
+    }
+    case 4://oct
+    {
+//      for(m=0;m<DataLenth;m++)
+//      {
+//        if((InputData[m]>>4)>7)
+//        {
+//          Flag=0;
+//        }
+//        if((InputData[m]&4)>7)
+//        {
+//          Flag=0;
+//        }
+//      }
+      break;
+    }
+    case 5://bcd
+    {
+      for(m=0;m<DataLenth;m++)
+      {
+        if((InputData[m]>>4)>9)
+        {
+          Flag=0;
+        }
+        if((InputData[m]&4)>9)
+        {
+          Flag=0;
+        }
+      }
+      break;
+    }
+    case 6://ASCII
+    {
+      for(m=0;m<DataLenth;m++)
+      {
+        if(InputData[m]>0x7F)
+        {
+          Flag = 0;
+        }
+      }
+      break;
+    }
+    case 7://4 bcd 3 ascii
+    {
+      if(DataLenth != 7)
+      {
+        break;
+      }
+      for(m=0;m<4;m++)
+      {
+        if((InputData[m]>>4)>9)
+        {
+          Flag=0;
+        }
+        if((InputData[m]&4)>9)
+        {
+          Flag=0;
+        }
+      }
+      for(m=4;m<7;m++)
+      {
+        if(InputData[m]>0x7F)
+        {
+          Flag = 0;
+        }
+      }
+      break;
+    }
+    case 8://5 bcd 3 ascii
+    {
+      if(DataLenth != 8)
+      {
+        break;
+      }
+      for(m=0;m<5;m++)
+      {
+        if((InputData[m]>>4)>9)
+        {
+          Flag=0;
+        }
+        if((InputData[m]&4)>9)
+        {
+          Flag=0;
+        }
+      }
+      for(m=5;m<8;m++)
+      {
+        if(InputData[m]>0x7F)
+        {
+          Flag = 0;
+        }
+      }
+      break;
+    }
+    default:
+    {
+      break;
+    }
+  } 
+  //testStep("","The datatype is %d and The Flag is %d",DataTypeCode,Flag);
+  if(Flag == 0)
+  {
+    testStepFail("The data type is not right");
+  }
+  return Flag;
+}
+
+void CheckCommunication(enum e_CommunicationControl type,int i)  //i=0:ECU不支持NM，i=1:ECU支持NM
+{
+  int checkApp=0,checkNM=0;
+  
+  gfalg_app_message_received = 0; gflag_nm_message_received = 0;
+  Teststep("INF","out put NM repeat request message");
+  output(NMMessage_Repeat);
+  testWaitForTimeout(10000);
+  if(i==1)
+  {
+    switch(type)
+    {
+      case DEAPP:
+        
+        if(gfalg_app_message_received == 1) { testStepFail("Fail","ECU send APP Message！"); }
+        else                                { testStepPass("Pass","ECU not send APP Message"); }
+        if(gflag_nm_message_received == 1)  { testStepPass("Pass","	ECU send NM Message"); }
+        else                                { testStepFail("Fail","ECU not send NM Message！"); }
+        break;
+      case DENM:
+        if(gfalg_app_message_received == 1) { testStepPass("Pass","ECU send APP Message"); }
+        else                                { testStepFail("Fail","ECU not send APP Message！"); }
+        if(gflag_nm_message_received == 1)  { testStepFail("Fail","ECU send NM Message！"); }
+        else                                { testStepPass("Pass","	ECU not send NM Message"); }
+        break;
+      case DEALL:
+        if(gfalg_app_message_received == 1) { testStepFail("Fail","ECU send APP Message！"); }
+        else                                { testStepPass("Pass","ECU not send APP Message"); }
+        if(gflag_nm_message_received == 1)  { testStepFail("Fail","ECU send NM Message！"); }
+        else                                { testStepPass("Pass","	ECU not send NM Message"); }
+        break;
+      case DENONE:
+        if(gfalg_app_message_received == 1) { testStepPass("Pass","ECU send APP Message"); }
+        else                                { testStepFail("Fail","ECU not send APP Message！"); }
+        if(gflag_nm_message_received == 1)  { testStepPass("Pass","	ECU send NM Message"); }
+        else                                { testStepFail("Fail","ECU not send NM Message！"); }
+        break;
+    }
+  }
+  else if(i==0)
+  {
+    switch(type)
+    {
+      case DEAPP:
+        if(gfalg_app_message_received == 1) { testStepFail("Fail","ECU send APP Message！"); }
+        else                                { testStepPass("Pass","ECU not send APP Message"); }
+        break;
+      case DENM:
+        if(gfalg_app_message_received == 1) { testStepPass("Pass","ECU send APP Message"); }
+        else                                { testStepFail("Fail","ECU not send APP Message！"); }
+        break;
+      case DEALL:
+        if(gfalg_app_message_received == 1) { testStepFail("Fail","ECU send APP Message！"); }
+        else                                { testStepPass("Pass","ECU not send APP Message"); }
+        break;
+      case DENONE:
+        if(gfalg_app_message_received == 1) { testStepPass("Pass","ECU send APP Message"); }
+        else                                { testStepFail("Fail","ECU not send APP Message！"); }
+        break;
+    }
+  }
+}
+
+void DTCSettingCheck(int SettingTypeNow)
+{
+	Rss1=CheckRxLength(3);
+  if(SettingTypeNow==2)//DTC setting off
+  {
+  	if(Rss1==2)
+  	{
+  		testStepPass("Pass","No DTC detected");
+  	}
+    else if(Rss1==1)
+    {
+      testStepFail("Fail","DTC has been detected");
+    }
+    else
+    {
+      testStepFail("Fail","The length of DUT's response is wrong");
+    }
+  }
+  else if(SettingTypeNow==1)//DTC setting on
+  {
+  	if(Rss1==2)
+  	{
+  		testStepFail("Fail","No DTC detected");
+  	}
+    else if(Rss1==1)
+    {
+      testStepPass("Pass","DTC has been detected");
+    }
+    else
+    {
+      testStepFail("Fail","The length of DUT's response is wrong");
+    }
+  }
+
+  
+}
+/// <石太佳>
+void ECUinitHandle(byte checktype,byte flag)
+{
+  /*
+     这个函数用于TC 1022463 ，不调用testWaitForTimeout(ECUIniTime); 防止S3测试延时不准确
+  
+  
+  
+  */
+  //checktype==0期望TCP断开再重连
+  //checktype==1等待TCP连接
+  switch (gBusFlag)
+  {
+    case 1://CAN
+      TP_TesterPresentSet(TP_OFF);
+      //testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;
+    case 2://CANFD
+      TP_TesterPresentSet(TP_OFF);
+      //testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;
+    case 3://LIN
+      TP_TesterPresentSet(TP_OFF);
+      //testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;  
+    case 5:
+      {
+        if(EthNodeTypeNow==EdgeNode)
+          TCPConnectCheck_EdgeNode();
+        else if(EthNodeTypeNow==InternalNode)
+          TCPConnectCheck_InternalNode(0);
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+void ECUinitHandle(byte checktype)
+{
+  //checktype==0期望TCP断开再重连
+  //checktype==1等待TCP连接
+  switch (gBusFlag)
+  {
+    case 1:
+      TP_TesterPresentSet(TP_OFF);
+      testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;
+    case 2:
+      TP_TesterPresentSet(TP_OFF);
+      testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;
+    case 3:
+      TP_TesterPresentSet(TP_OFF);
+      testWaitForTimeout(ECUIniTime);
+      TP_TesterPresentSet(TP_ON);
+      break;  
+    case 5:
+      {
+        if(EthNodeTypeNow==EdgeNode)
+          TCPConnectCheck_EdgeNode();
+        else if(EthNodeTypeNow==InternalNode)
+          TCPConnectCheck_InternalNode(0);
+      }
+      break;
+    default:
+      break;
+  }
+}
+void WaitForECUOnline()
+{
+  switch (gBusFlag)
+  {
+    case 1:
+      testWaitForTimeout(ECUIniTime);
+      break;
+    case 2:
+      testWaitForTimeout(ECUIniTime);
+      break;
+    case 3:
+      testWaitForTimeout(ECUIniTime);
+      break;  
+    case 5:
+      {
+        if(EthNodeTypeNow==EdgeNode)
+          TCPConnectCheck_EdgeNode();
+        else if(EthNodeTypeNow==InternalNode)
+          TCPConnectCheck_InternalNode(1);
+      }
+      break;
+    default:
+      break;
+  }
+}
+void TPMsgInit(byte AddressMode)
+{
+  if(AddressMode==0)//Physical
+  {
+    TP_RequestMultiFrame.id=gCAN_RequestID;
+    TP_FirstFrame.id=gCAN_RequestID;
+    TP_CF1.id=gCAN_RequestID;
+    TP_FC_CTS.id=gCAN_RequestID;
+    msgF186.id=gCAN_RequestID;
+  }
+  else if(AddressMode==1)//Functional
+  {
+    TP_RequestMultiFrame.id=gCAN_FuncRequestID;
+    TP_FirstFrame.id=gCAN_RequestID;
+    TP_CF1.id=gCAN_RequestID;
+    TP_FC_CTS.id=gCAN_RequestID;
+    
+  }
+
+  if(gBusFlag==2)
+  {
+    TP_RequestMultiFrame.fdf=1;
+    TP_RequestMultiFrame.brs=0;
+    TP_FirstFrame.fdf=1;
+    TP_FirstFrame.brs=0;
+    TP_FirstFrame.dlc=15;
+    TP_FirstFrame.byte(1)=0x40;
+    TP_FC_CTS.fdf=1;
+    TP_FC_CTS.brs=0;
+    TP_CF1.fdf=1;
+    TP_CF1.brs=0;
+    msgF186.fdf=1;
+    msgF186.brs=0;
+  }
+}
+
+byte checkAuthenticateState(enum e_AuthenticateState state)
+{
+  byte DID[2]={0xC0,0x3D};
+  
+  SID22_ReadDataByIdentifier(DID,PHYSICAL);
+  if(state==Authenticated)
+  { 
+    if(CheckPosResponse_SID22(DID,1,0,0)==2)
+    {
+      if(gTpRxData[3]==0x01)
+      {
+        teststepPass("Pass","DUT in expected Authenticated state");
+        return 2;
+      }
+      else
+      {
+        teststepFail("Fail","DUT not in expected Authenticated state");
+        return 0;
+      }
+    } 
+  }
+  else if(state==Deauthenticated)
+  {
+    if(CheckPosResponse_SID22(DID,1,0,0)==2)
+    {
+      if(gTpRxData[3]==0x00)
+      {
+        teststepPass("Pass","DUT in expected Deauthenticated state");
+        return 2;
+      }
+      else
+      {
+        teststepFail("Fail","DUT not in expected Deauthenticated state");
+        return 0;
+      }
+    }
+  }
+  return 2;
+}
+void writeSecureDiagFunConfig(enum e_SecDiagFunConfig Config)
+{
+  byte DID[2]={0xC0,0x3C};
+  byte Data[1];
+  if(Config==Disable)
+  {
+    Data[0]=0;
+    SID2E_WriteDataByIdentifier(DID,Data,PHYSICAL);
+    CheckPosResponse_SID2E(DID,0,0);
+  }
+  else if(Config==UnidirectionalAuthen)
+  {
+    Data[0]=1;
+    SID2E_WriteDataByIdentifier(DID,Data,PHYSICAL);
+    CheckPosResponse_SID2E(DID,0,0);
+  }
+  else if(Config==BidirectionalAuthen)
+  {
+    Data[0]=2;
+    SID2E_WriteDataByIdentifier(DID,Data,PHYSICAL);
+    CheckPosResponse_SID2E(DID,0,0);
+  }
+}
+byte checkSecureDiagFunConfig(enum e_SecDiagFunConfig Config)
+{
+  byte DID[2]={0xC0,0x3C};
+  byte Data[1];
+  
+  SID22_ReadDataByIdentifier(DID,PHYSICAL);
+  if(CheckPosResponse_SID22(DID,1,0,0)==2)
+  {
+    if(Config==Disable)
+    {
+      if(gTpRxData[3]==0x00)
+      {
+        teststepPass("Pass","DUT in expected Disable SecDiagFunConfig state");
+        return 2;
+      }
+      else
+      {
+        teststepFail("Fail","DUT not in expected Disable SecDiagFunConfig state");
+        return 0;
+      }
+    }
+    else if(Config==UnidirectionalAuthen)
+    {
+      if(gTpRxData[3]==0x01)
+      {
+        teststepPass("Pass","DUT in expected UnidirectionalAuthen SecDiagFunConfig state");
+        return 2;
+      }
+      else
+      {
+        teststepFail("Fail","DUT not in expected UnidirectionalAuthen SecDiagFunConfig state");
+        return 0;
+      }
+    }
+    else if(Config==BidirectionalAuthen)
+    {
+      if(gTpRxData[3]==0x02)
+      {
+        teststepPass("Pass","DUT in expected BidirectionalAuthen SecDiagFunConfig state");
+        return 2;
+      }
+      else
+      {
+        teststepFail("Fail","DUT not in expected BidirectionalAuthen SecDiagFunConfig state");
+        return 0;
+      }
+    }
+  }
+  return 2;
+}
+void compareData(byte data[][], dword compareTime)
+{
+  int count[10000] = {0}; // 用于记录每组数据出现的次数
+  int compared[10000] = {0}; // 用于记录已比较过的数据索引
+  dword i, j, k;
+  int duplicateCount = 0; // 相同数据的个数
+  int matchCount = 0; // 记录匹配的数据个数
+
+  // 比对数据
+  for (i = 0; i < compareTime; i++)
+  {
+    if (compared[i] == 0) // 如果当前数据已经被比较过，则跳过
+    {
+      count[i]++; // 记录当前数据出现的次数
+      compared[i] = 1; // 标记当前数据为已比较
+
+      // 遍历后续数据进行比对
+      for (j = i + 1; j < compareTime; j++)
+      {
+        // 比对两组数据的每个元素
+        matchCount = 0; // 重置匹配的数据个数
+
+        for (k = 0; k < 32; k++)
+        {
+          if (data[i][k] == data[j][k])
+          {
+            matchCount++;
+          }
+          else
+          {
+            break; // 如果有不相同的数据，跳出比对循环
+          }
+        }
+
+        if (matchCount == 32)
+        {
+          count[i]++; // 若两组数据完全相同，增加计数
+          count[j]++; // 记录相同数据出现的次数
+          compared[j] = 1; // 标记相同数据为已比较
+        }
+      }
+    }
+  }
+
+  // 输出重复的数据和出现次数
+  for (i = 0; i < compareTime; i++)
+  {
+    if (count[i] >= 2)
+    {
+      duplicateCount++;
+      TeststepFail("", "以下数据出现%d次", count[i]);
+      PrintPID("Byte", "ChallengeByte：", data[i], 32);
+    }
+  }
+
+  // 输出最终判断结果
+  Teststep("", "最终判断结果：");
+  if (duplicateCount == 0)
+  {
+    TeststepPass("", "所有数据均不相同");
+  }
+  else
+  {
+    TeststepFail("", "存在相同数据");
+  }
+}
+void string2array(char inputString[],byte outputArray[],word &len)
+{
+  char tempstr[5];
+  dword i=0;
+  tempstr[0]='0';
+  tempstr[1]='x';
+  
+	for(i=0; 2*i<strlen(inputString); i++)
+	{
+		tempstr[2] = inputString[2*i];
+		tempstr[3] = inputString[2*i+1];
+		tempstr[4] = 0;
+		outputArray[i] = atol(tempstr);
+	}
+  len = i;
+}
+
+void ReadECUVersion()
+{
+  byte DID[2];
+  
+  DID[0]=0xF1;
+  DID[1]=0xAE;
+  
+  SID22_ReadDataByIdentifier(DID,PHYSICAL);
+  CheckPosResponse_SID22(DID,0,0); 
+  
+  DID[0]=0xF1;
+  DID[1]=0xAA;
+  
+  SID22_ReadDataByIdentifier(DID,PHYSICAL);
+  CheckPosResponse_SID22(DID,0,0); 
+}
+
+void ocspCheckSequence()
+{
+  byte tempdata[5000];
+  dword i=0;
+  byte OCSP_RID[2]={0x70,0x27};
+  
+  if(GetCertificateAsBinaryByName(testerCertName, testerCertByte, testerCertByteLength, errorMsg)!=1)
+  {
+    testStepFail("Fail","%s",errorMsg);
+    return;
+  }
+  
+  string2array(ocspResponseString,ocspBytearray,ocspLen);
+  memcpy(tempdata,ocspBytearray,ocspLen);
+  tempdata[0]=ocspLen>>8;
+  tempdata[1]=ocspLen;
+  for(i=0;i<ocspLen;i++)
+  {
+    tempdata[2+i]=ocspBytearray[i];
+  }
+  
+  tempdata[2050]=testerCertByteLength>>8;
+  tempdata[2051]=testerCertByteLength;
+  
+  for(i=0;i<testerCertByteLength;i++)
+  {
+    tempdata[2052+i]=testerCertByte[i];
+  }
+
+  SID31_RoutineControl(StartRoutine,OCSP_RID,tempdata,3076,PHYSICAL,SPRMIB_FALSE);
+  CheckPosResponse_SID31(StartRoutine,OCSP_RID,0,0);
+  if(gTpRxData[4]==0x10&&gTpRxData[5]==0x01)
+  {
+    
+  }
+  else
+  {
+    testStepFail("Fail","get wrong routine parameter0x%x%x instead of 0x10 01",gTpRxData[4],gTpRxData[5]);
+  }
+}
+
+int CheckDIDSupported(word DID,struct DataIdentifer DataIdentifer[])
+{
+  int i;
+  for(i=0;i<elcount(DataIdentifer);i++) { if(DID == DataIdentifer[i].DID) { return i;} }
+  return -1;
+}
+
+void CheckUnlockReadDID_ResponseNRC(enum AddressMode Mode)
+{
+  byte DID[2];
+  
+  DID[0]=0xC0;
+  DID[1]=0x0A;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x0B;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x0C;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x0D;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x0E;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x0F;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  
+  DID[0]=0xC0;
+  DID[1]=0x12;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+  DID[0]=0xC0;
+  DID[1]=0x13;
+
+  TestStep("Read data",TestStepIntervalTime);
+  SID22_ReadDataByIdentifier(DID,Mode);
+  if(CheckPosResponse_SID22(DID)==2)
+  {
+    TestStepFail("","ECU should not give positive response in locked status,It is a B50 issue!"  );
+  }
+  else
+  {
+    TestStepPass("","Expect ECU to give a negative response."  );
+  }
+  
+  testWaitForTimeout(500);
+
+}

@@ -1,0 +1,293 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  char gVCPNetworkInfo[30];
+  char gDiagNetworkInfo[30];
+  char gECUName[10];
+  char gSupplier[20];
+  char gProject[10];
+  char gPhase[10];
+  long gLogicAddress;
+  long gCCPTested;//////////////用于回归验证
+  long gCCPvalue;///////////////用于回归验证
+  long gOBDFlag;
+  long gSleepFlag;////////////是否需要休眠
+  
+  byte FixedBytes[5]; // Pin Code
+  
+  char ABSpath[400];//测试工程的绝对路径
+  char ReportPath[1000];//测试报告的路径
+  char DiagLogPath[1000];//////Testcase的log路径
+  char FullLogPath[400];
+  char exportPath[400] = "02_Library\\05_ObjectFileHandle\\";
+  
+  char timeNowStr[400];//当前时间
+  
+  long gRequestID_Phy;
+  long gResponseID;
+  long gRequestID_Func = 0x7FF;
+  
+  long gWaitTime;////////WaitTime For CC DTC
+  long gDeepSleepTime;///WaitTime For ECU Deep Sleep 
+  
+  long gTestWaitForDeepSleepFlag = 0;///WaitTime For ECU Deep Sleep Flag
+  
+  long gBOB_ID;
+}
+
+
+void PanelInit()
+{
+   /*
+  1. gProject车型----EX11,KX11....
+  2. gECUName ECU名称
+  3. gPhase  测试阶段----E1,E2,E3U....
+  4. gVCPNetworkInfo 待测样件CAN网段信息----BodyCAN,PropulsionCAN.......
+  5. gLogicAdderss 待测样件逻辑地址
+  6. gSupplier 待测样件供应商
+  7. gCCPTested 待测CCP------用于回归验证
+  8. gCCPvalue 待测CCP的值---用于回归验证
+  */
+  
+  char gCCP[10];
+  long Temp;
+  int i;
+  
+  ////////////获取ProjectInformation/////////////////
+  sysGetVariableDescriptionForValue(sysvar::ProjectInformation::Project,@sysvar::ProjectInformation::Project,gProject,elcount(gProject));
+  write("gProject = %s",gProject);
+  sysGetVariableString(sysvar::ProjectInformation::Phase,gPhase,elcount(gPhase));
+  write("gPhase = %s",gPhase);
+  if(@ProjectInformation::VCPCANFlag == 1)
+    sysGetVariableDescriptionForValue(sysvar::ProjectInformation::VCPNetworkInfoCAN,@sysvar::ProjectInformation::VCPNetworkInfoCAN,gVCPNetworkInfo,elcount(gVCPNetworkInfo));
+  else
+    sysGetVariableDescriptionForValue(sysvar::ProjectInformation::VCPNetworkInfoCANFD,@sysvar::ProjectInformation::VCPNetworkInfoCANFD,gVCPNetworkInfo,elcount(gVCPNetworkInfo));
+  write("gVCPNetworkInfo = %s",gVCPNetworkInfo);
+
+  sysGetVariableDescriptionForValue(sysvar::ProjectInformation::DiagNetworkInfo,@sysvar::ProjectInformation::DiagNetworkInfo,gDiagNetworkInfo,elcount(gDiagNetworkInfo));
+  write("gDiagNetworkInfo = %s",gDiagNetworkInfo);
+  sysGetVariableInt(sysvar::ProjectInformation::DiagNetworkInfo,Temp);
+  switch(Temp)
+  {
+    case 0:
+      DiagNetSeg = CN;
+      break;
+    case 1:
+      DiagNetSeg = CNFD;
+      CANFDFlag = 1;
+      break;
+    case 2:
+      DiagNetSeg = FR;
+      break;
+    case 3:
+      DiagNetSeg = ETH_Edge;
+      break;
+    case 4:
+      DiagNetSeg = ETH_IP;
+      break;
+  }
+  write("诊断通信网段DiagNetSeg = %d  0-CN  1-CNFD  2-FR  3-ETH_Edge  4-ETH_IP",DiagNetSeg);
+  
+  ////////////获取ECUInformation/////////////////
+  sysGetVariableString(sysvar::ECUInformation::ECU,gECUName,elcount(gECUName));
+  write("gECUName = %s",gECUName);
+  sysGetVariableInt(sysvar::ECUInformation::LogicAddress,gLogicAddress);
+  write("gLogicAddress = 0x%4X",gLogicAddress);
+  sysGetVariableString(sysvar::ECUInformation::Supplier,gSupplier,elcount(gSupplier));
+  write("gSupplier = %s",gSupplier);
+  sysGetVariableInt(sysvar::ECUInformation::OBDNode,gOBDFlag);
+  write("gOBDFlag = %d",gOBDFlag);
+  
+  ////////////获取TestTimer/////////////////
+  sysGetVariableInt(sysvar::TestTimer::SleepFlag,gSleepFlag);
+  write("gSleepFlag = %d",gSleepFlag);
+  sysGetVariableInt(sysvar::TestTimer::Time,gWaitTime);
+  write("gWaitTime = %d",gWaitTime);
+  sysGetVariableInt(sysvar::TestTimer::DeepSleepTime,gDeepSleepTime);
+  write("gDeepSleepTime = %d",gDeepSleepTime);
+  if(gDeepSleepTime==0)
+  {
+    gTestWaitForDeepSleepFlag = 0;
+  }
+  else
+  {
+    gTestWaitForDeepSleepFlag = 1;
+  }
+  
+  ////////////获取RegressionTesting/////////////////
+  sysGetVariableString(sysvar::RegressionTest::CCPNumber,gCCP,elcount(gCCP));
+  gCCPTested = atol(gCCP);
+  write("gCCPTested = %d",gCCPTested);
+  
+  sysGetVariableInt(sysvar::RegressionTest::CCPValue,gCCPvalue);
+  write("gCCPvalue = 0x%4X",gCCPvalue);
+  
+  //////////////获取BOB ID///////////////////////
+  sysGetVariableInt(sysvar::TestTimer::BOB_ID,gBOB_ID);
+  write("gBOB_ID = 0x%X",gBOB_ID);
+  if(gBOB_ID != 0)
+    msg.id = gBOB_ID;
+}
+
+void prjConfig()
+{
+  /*
+  1. ABSpath 测试工程绝对路径
+  2. exportPath(DataBlockFilePath)
+  3. dbFilePath
+  4. hmiFilePath
+  */
+  char title[400];
+  long result;
+  char FullLogPath[400];
+  
+	getAbsFilePath("",ABSpath,400);
+  str_replace(ABSpath,"03_TestProject\\","");
+	write("ABSpath is %s",ABSpath);
+  
+  GetCurTimeStr(timeNowStr);
+  testWaitForTimeout(10);
+  
+  strncpy(ReportPath,ABSpath,400);
+  
+  snprintf(ReportPath,elcount(ReportPath),"%s07_TestReport&LOG\\%s\\%s\\%s\\%s_%s\\%s\\CC_Slave Test of %s",ReportPath,gPhase,gProject,gVCPNetworkInfo,gECUName,gSupplier,timeNowStr,gECUName);
+  write("Report path is %s",ReportPath);
+  
+  snprintf(DiagLogPath,elcount(DiagLogPath),"%s07_TestReport&LOG\\%s\\%s\\%s\\%s_%s\\%s\\",ABSpath,gPhase,gProject,gVCPNetworkInfo,gECUName,gSupplier,timeNowStr);
+  
+  testReportFileName(ReportPath);
+  
+  snprintf(title,elcount(title),"CC_Slave Test of %s",gECUName);
+  testModuleTitle(title);
+  write("Test report name is %s",title);
+}
+
+void GetCurTimeStr(char timeStr[])//获取当前时间
+{
+  long time[9]; 
+  char tempStr[40] = "";
+  
+  getLocalTime(time); //
+  time[5] = time[5]+1900;
+  ltoa(time[5],tempStr,10);
+  strncpy(timeStr,tempStr,elcount(tempStr));
+  strncat(timeStr,"-",elcount(timeStr)+1);
+  
+  time[4] = time[4]+1;
+  ltoa(time[4],tempStr,10);
+  strncat(timeStr,tempStr,elcount(timeStr)+elcount(tempStr));
+  strncat(timeStr,"-",elcount(timeStr)+1);
+  
+  ltoa(time[3],tempStr,10);
+  strncat(timeStr,tempStr,elcount(timeStr)+elcount(tempStr));
+  strncat(timeStr,"_",elcount(timeStr)+1);
+  
+  ltoa(time[2],tempStr,10);
+  strncat(timeStr,tempStr,elcount(timeStr)+elcount(tempStr));
+  strncat(timeStr,"-",elcount(timeStr)+1);
+  
+  ltoa(time[1],tempStr,10);
+  strncat(timeStr,tempStr,elcount(timeStr)+elcount(tempStr));
+  strncat(timeStr,"-",elcount(timeStr)+1);
+  
+  ltoa(time[0],tempStr,10);
+  strncat(timeStr,tempStr,elcount(timeStr)+elcount(tempStr)); 
+}
+
+
+void TestCasePrecondition1()
+{
+  gTest_loop++;
+  if(@ProjectInformation::DiagNetworkInfo!=3)
+  {
+    NM_Sim(Sim_on);
+    testWaitForTimeout(1000);
+  }
+  else
+  {
+    if(gLinkDownFlag == 1)
+    {
+      testWaitForTimeout(10000);
+    }
+    TP_init();
+    testWaitForTimeout(1000);
+  }
+  
+  if(@ProjectInformation::Usgmode ==5)
+  {
+    VehMtnSt_Sim(Send_on);
+  }
+
+}
+
+void TestCasePostcondition()
+{
+  
+  
+  
+  UsagemodeChange(Inactive,1000,Inactive);
+  TP_Release();
+  testWaitForTimeout(1000);
+  if(WeakStateCheck(sleep)==0)
+  {
+    testStepFail("Fail","DUT can't sleep------Test Interrupted");
+    testWaitForTimeout(2000);
+    return;
+  }
+  
+  stopLogging("DiagLogging");
+}
+
+testfunction TestMoudlePrecondition()
+{
+  int count=0;
+  
+  gTest_loop = 0;
+  
+  testwaitfortimeout(10000);
+  
+  TimeCheck();
+  
+  testWaitForTimeout(2000);
+  
+  TestContext_Init();
+  
+  PanelInit();
+  
+  if(@ProjectInformation::DiagNetworkInfo==2)
+  {
+    //setBusContext(getBusNameContext("FlexRay"));
+//    FRconfig();
+    //setBusContext(getBusNameContext("CAN"));
+  }
+  else
+  {
+    setBusContext(getBusNameContext("CAN"));
+  }
+  
+  prjConfig();
+
+  GenerateInvalidCCPInfo(ValidCCPInfo);
+  
+  startLogging("FullLogging");
+ 
+//  VH1150_KL15(T_on);
+//  VH1150_KL31(T_on);
+//  VH1150_KL30(T_on);
+}
+
+testfunction TestMoudlePostcondition()
+{
+  NM_Sim(Sim_off);
+  UsageMode_Sim(Sim_off);
+  stopLogging("DiagLogging");
+  stopLogging("FullLogging");
+  //VH1150_Close();
+  gTest_loop=0;
+  stop();
+}

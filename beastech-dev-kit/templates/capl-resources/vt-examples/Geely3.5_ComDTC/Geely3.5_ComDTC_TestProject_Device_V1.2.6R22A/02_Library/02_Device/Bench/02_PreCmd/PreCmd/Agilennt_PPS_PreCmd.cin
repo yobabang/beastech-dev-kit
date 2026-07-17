@@ -1,0 +1,96 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  
+}
+///Precmd/////
+//void Agilent_Offset_PPS_Off()
+//{
+//  SendTcpData("OUTP OFF, (@1)\n",PPS_Socket);
+//}
+
+void Agilent_Offset_PPS_Off()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_Offset_PPS_OnOff=0;
+}
+
+//void Agilent_Offset_PPS_On()
+//{
+//  SendTcpData("OUTP ON, (@1)\n",PPS_Socket);
+//}
+
+void Agilent_Offset_PPS_On()
+{
+   @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_Offset_PPS_OnOff=1;
+}
+
+//void Agilent_PPS_Off()
+//{
+//  SendTcpData("OUTP OFF, (@2)\n",PPS_Socket);
+//}
+
+void Agilent_PPS_Off()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_OnOff=0;
+}
+
+//void Agilent_PPS_On()
+//{
+//  SendTcpData("OUTP ON, (@2)\n",PPS_Socket);
+//}
+
+void Agilent_PPS_On()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_OnOff=1;
+}
+
+//void Agilent_GND_Offset_Positive()
+//{
+//  SendTcpData("VOLT 1, (@1)\n",PPS_Socket);
+//  SendTcpData("CURR:LIM 3, (@1)\n",PPS_Socket);
+//}
+
+void Agilent_GND_Offset_Positive()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_GND_Offset_Positive=1;
+}
+
+//void Agilent_GND_Offset_Negative()
+//{
+//  SendTcpData("VOLT -1, (@1)\n",PPS_Socket);
+//  SendTcpData("CURR:LIM 3, (@1)\n",PPS_Socket);
+//}
+
+void Agilent_GND_Offset_Negative()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_GND_Offset_Negative=1;
+}
+
+//void Agilent_PPS_CURRENT_MEAS()
+//{
+//  SendTcpData("MEAS:CURR? (@2)\n",PPS_Socket);
+//}
+
+void Agilent_PPS_CURRENT_MEAS()
+{
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_CURRENT_MEAS=1;
+}
+
+//void Agilent_PPS_VOLTAGE_MEAS()
+//{
+//  SendTcpData("MEAS:VOLT? (@2)\n",PPS_Socket);
+//}
+
+void Agilent_PPS_VOLTAGE_MEAS()
+{
+  write("t1=%f",timenow()/100.0);
+  @sysvar::PreCmd::Agilennt_PPS_PreCmd::Agilent_PPS_VOLTAGE_MEAS=1;
+  testWaitForTimeout(100);
+  
+  write("t2=%f",timenow()/100.0);
+}

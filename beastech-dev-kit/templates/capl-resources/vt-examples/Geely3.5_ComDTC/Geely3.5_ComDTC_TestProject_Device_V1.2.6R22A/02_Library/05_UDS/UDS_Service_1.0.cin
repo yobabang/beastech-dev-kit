@@ -1,0 +1,3005 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: UDS_Service.cin
+|  Comment:   Main functions for UDS services in ISO14229-1:2013
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+| 20231026          ZJ
+|1.Update Service 0x27 to GEEA3.0
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+  #pragma library("GenSAKey2.dll")
+}
+
+variables
+{
+  
+  //TimingParameters
+  int UDS_P2Client = 150;
+  int UDS_P2ClientDelay = 5000;
+  int UDS_P6Client = 5000;
+  int UDS_P6ClientDelay = 5000;
+  
+  int UDS_S3Client = 2000;
+  int UDS_S3Server = 5000;
+
+	int Rss;
+	//enum AddressMode {physical,functional};
+	enum SPRMIB {SPRMIB_True=0x01,SPRMIB_False=0x00};
+	//Service0x10
+	enum DiagSession {DefaultSession=0x01,ProgrammingSession=0x02,ExtendedSession=0x03,SafetySession=0x04};
+  //Service0x11
+  enum ResetType {HardReset=0x01,SoftReset=0x03};
+  //Service0x22
+  struct group
+	{
+  	int StartPosition;
+  	int lenth;
+  	int CodingType;
+ 	};
+	//Service0x27
+  byte SeedArray[16]={0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0};
+	int MaxKeyArraySize;
+	//int SecurityLevel;
+	int unlockflag;
+	//Service0x28
+	enum CommunicationType {NormalCommunicationMessage=0x01,NetworkManagementMessage=0x02,NCMAndNMM=0x03};
+	//Service0x2A
+	enum TransmissionMode {SendAtSlowRate=0x01,SendAtMediumRate=0x02,SendAtFastRate=0x03,StopSending=0x04};
+	//Service0x19
+  char supdtcString[15000];//3000 for 200 DTC
+  byte AvailiableMask=0xFF;//DTC有效掩码
+  byte   supdtc[3000];
+  struct DTC
+  {
+  byte DTCNumber[3];
+  byte DTCStatus;
+  };
+  
+  struct RecordStruct
+  {
+  	dword DTCNumber;
+	  byte DTCStatus;
+  };
+  
+  struct DTC DTCNEW[1000];
+  struct RecordStruct StorageDTC[1000];
+  struct DTC recdtc[1000];
+  struct DTC TestDtc[2];
+  
+  dword  testdtc[2];
+	//byte AvailiableMask;
+	//Service0x2F
+	enum InputOutputControlParameter {ReturnControlToECU=0x00,ResetToDefault=0x01,FreezeCurrentState=0x02};
+	//Service0x31
+  enum RoutineStatusRecord {CorrectResult=0x00,IncerectResult=0x01};
+	enum RoutineControlType {StartRoutine=0x01,StopRoutine=0x02,RequestRoutineStop=0x03};
+	//Service0x3E
+	
+	//Service0x34
+	int MaxNumberOfBlockLenth;
+	//Service0x36
+	int Counter;
+	//Service0x37
+	int transferResponseParameterRecord;
+  
+//  byte FixedBytes[5] = {0x43,0x45,0x4D,0x30,0x33};
+  byte FixedBytes[16] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+  dword gHandle;
+  //27服务的参数
+  int SecurityLevel ;
+  byte KeyArray[16]={0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01};//key初始化
+//  byte SeedArray[3];
+  
+  char dllName[400];  //for security constant calculate
+  msTimer TesterPresentKeep;
+  enum on_offState {P_on,P_off};
+}
+
+on timer TesterPresentKeep
+{
+//  SID3E_TesterPresent(0x80,Physical);
+  SID3E_TesterPresent(0x80,Functional);
+}
+
+
+void UDS_ParametersSet(int P2C,int P2CD,int P6C,int P6CD,int S3C,int S3S)
+{
+  UDS_P2Client = P2C;
+  UDS_P2ClientDelay = P2CD;
+  UDS_P6Client = P6C;
+  UDS_P6ClientDelay = P6CD;
+  UDS_S3Client = S3C;
+  UDS_S3Server = S3S;
+  testStep("UDS_Ser","Parameters configuration:\n  P2Client is %d\n  P2ClientDelay is %d\n  P6Client is %d\n  P6ClientDelay is %d\n  S3Client is %d\n  S3Server is %d");
+}
+
+
+void SID10_DiagnosticSessionControl(int subfunction,enum AddressMode Mode,enum SPRMIB Response)
+{
+	byte SID10[2];
+	SID10[0]=0x10;
+	if(Response==0)
+		SID10[1]=subfunction;
+	else
+		SID10[1]=subfunction+0x80;
+	PrintPID("UDS_Ser","Request",SID10,elCount(SID10));
+	TP_Send(SID10,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID10(byte Subfunction)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived when request service0x10");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x50)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	if(TpRxData[1]==Subfunction)
+	{
+		//testStepPass("Chk","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	if(TpRxLength==0x06)
+	{
+		//testStepPass("Chk","Response data length is correct");
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Response data length is not correct");
+	}
+
+}
+
+void CheckPosResponse_SID10(byte Subfunction,int P2Server,int P2ServerDelay)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x50)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	if(TpRxData[1]==Subfunction)
+	{
+		//testStepPass("Chk","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	if(TpRxLength==0x06)
+	{
+		//testStepPass("Chk","Response data length is correct");
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Response data length is not correct");
+	}
+	if((((TpRxData[2]<<8)|TpRxData[3])==P2Server)&&(((TpRxData[4]<<8)|TpRxData[5])==P2ServerDelay))
+	{
+		//testSteppass("Chk","Parameter P2 is 0x%02x 0x%02x",TpRxData[2],TpRxData[3]);
+		//testSteppass("Chk","Parameter P2* is 0x%02x 0x%02x",TpRxData[4],TpRxData[5]);
+	}
+	else
+	{
+		testStepfail("UDS_Ser","Parameter P2 is 0x%02x 0x%02x,Expect P2 is 0x%02x",TpRxData[2],TpRxData[3],P2Server);
+		testStepfail("UDS_Ser","Parameter P2* is 0x%02x 0x%02x,Expect P2* is 0x%02x",TpRxData[4],TpRxData[5],P2ServerDelay);
+	}
+
+}
+
+void SID11_ECUReset(enum ResetType Subfunction,enum SPRMIB Supress,enum AddressMode Mode)
+{
+	byte SID11[2];
+  int usgmod;
+  if((gCndtnOfClrDtc==1)||(gCndtnOfClrDtc==3))
+  {
+    usgmod=gUagMode;
+    gUagMode=gUsgCndtnOfClrDtc;
+    testStep("Info","Switch UsageMode to 0x%X, in order to reset DUT",gUsgCndtnOfClrDtc);
+    testWaitForTimeout(1000);
+  }
+  
+  
+	SID11[0]=0x11;
+	if(Supress==0)
+		SID11[1]=Subfunction;
+	else
+		SID11[1]=Subfunction+0x80;
+	PrintPID("UDS_Ser","hardReset ",SID11,elCount(SID11));
+	TP_Send(SID11,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+  
+  if((gCndtnOfClrDtc==1)||(gCndtnOfClrDtc==3))
+  {
+    gUagMode=usgmod;
+    testStep("Info","Resume UsageMode to 0x%X",usgmod);
+    testWaitForTimeout(1000);
+  }
+}
+
+void CheckPosResponse_SID11(enum ResetType Subfunction)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x51)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=Subfunction)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(0x02!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse_SID11(byte Subfunction,int powerDownTime)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x51)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(0x04!=Subfunction)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(0x03!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+	if(powerDownTime!=TpRxData[2])
+		testStepFail("UDS_Ser","Power down time is not correct");
+}
+
+//
+//void SID27_SecurityAccess_RequestSeed(int level,byte SeedArray[],int ByteNumOfSeed,enum AddressMode Mode)
+//{
+//	byte SID27[2];
+//	int  i;
+//  int  SecurityLevel;
+//
+//	SID27[0]=0x27;
+//	SID27[1]=level;
+//	SecurityLevel=level;
+//	PrintPID("UDS_Ser","Request ",SID27, elCount(SID27));
+//	TP_Send(SID27,Mode);
+//  if((gBusFlag == 1)||(gBusFlag == 2))
+//	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+//  else
+//    Rss=ECU_Response(UDS_P6Client);
+//	if(Rss==Pos)
+//    for(i=0;i<elcount(SeedArray);i++)
+//      SeedArray[i]=TpRxData[i+2];
+//	//SeedParameter(SeedArray,ByteNumOfSeed,level);
+//}
+//
+//void SID27_SecurityAccess_SendKey(int level,byte KeyArray[],int ByteNumOfKey,char DLLName[],enum AddressMode Mode)
+//{
+//	byte SID27[10];
+//	int  i;
+//  long ActualSize[1];
+//  byte Challenge8Byte[8];
+//  int  SecurityLevel;
+//
+//	SID27[0]=0x27;
+//	SID27[1]=level+0x1;
+//	SecurityLevel=level;
+//  memcpy(Challenge8Byte,SeedArray,3);
+//	//GenerateKeyExOpt(KeyArray,MaxKeyArraySize,DLLName);
+//  //SKDLL_GenKeyEx(Challenge8Byte,elcount(Challenge8Byte),level,"",KeyArray,MaxKeyArraySize,ActualSize,DLLName);
+//	//GenerateKeyExOpt(KeyArray,ByteNumOfKey,DLLName);
+//	for(i=0; i<elCount(KeyArray); i++)
+//		SID27[i+2]=KeyArray[i];
+//	//PrintPID("Info","Key ",KeyArray, elCount(KeyArray));
+//	PrintPID("UDS_Ser","Request ",SID27, ByteNumOfKey+2);
+//	TP_Send(SID27,elCount(KeyArray)+2,Mode);
+//  if((gBusFlag == 1)||(gBusFlag == 2))
+//	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+//  else
+//    Rss=ECU_Response(UDS_P6Client);
+//}
+//int SID27_SecurityAccess_SendKey(int level,enum AddressMode Mode)//2.0算法
+//{
+//  byte SID27[5];
+//  long ActualSize[1];
+//  byte Challenge8Byte[8];
+//  int k;
+//  
+//  SID27[0]=0x27;
+//  SID27[1]=level+0x1;
+//  SecurityLevel=level;
+//
+//  memcpy(Challenge8Byte,SeedArray,3);
+//  memcpy_off(Challenge8Byte,3,FixedBytes,0,5);
+//  //GenerateKeyExOpt(KeyArray,MaxKeyArraySize,dllName);
+//  for(k=0;k<elcount(Challenge8Byte);k++)
+//  {
+//    write("Challenge8Byte[%d]:0x%02x",k,Challenge8Byte[k]);
+//  }
+//  snprintf(dllName,400,"%s02_Library\\03_SecurityHandle\\GenerateKeyExImpl.dll",gAbsPath);
+//  write("dllName:%s",dllName);
+//
+//  SKDLL_GenKeyEx(Challenge8Byte,elcount(Challenge8Byte),SecurityLevel,"",KeyArray,MaxKeyArraySize,ActualSize,dllName);
+//  
+//  SID27[2]=KeyArray[0];
+//  SID27[3]=KeyArray[1];
+//  SID27[4]=KeyArray[2];
+//  PrintPID("Info","Key ",KeyArray, elCount(KeyArray));
+//  PrintPID("Request","Request ",SID27, elCount(SID27));
+//  TP_Send(SID27, Mode);
+//  Rss=-1;
+//  switch(ECU_Response(UDS_P2Client))
+//  {
+//    case Pos:
+//      unlockflag=1;
+//      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+//      Rss=Pos;
+//      return 0;
+//    case Timeout:
+//      //testStepFail("Response","P2/P2* timeout during test");
+//      Rss=Timeout;
+//      return -1;
+//    default:
+//      NRC_Info(TpRxData[2]);
+//      Rss=Neg;
+//      return TpRxData[2];
+//  }
+//}
+int SID27_SecurityAccess_SendKey(int level,enum AddressMode Mode)
+{
+  byte SID27[34];
+  long ActualSize[1];
+  byte Challenge8Byte[32];
+  int k;
+  
+  SID27[0]=0x27;
+  SID27[1]=level+0x1;
+  SecurityLevel=level;
+
+  memcpy(Challenge8Byte,SeedArray,16);
+  memcpy_off(Challenge8Byte,16,FixedBytes,0,16);
+  //GenerateKeyExOpt(KeyArray,MaxKeyArraySize,dllName);
+  for(k=0;k<elcount(Challenge8Byte);k++)
+  {
+    write("Challenge8Byte[%d]:0x%02x",k,Challenge8Byte[k]);
+  }
+  snprintf(dllName,400,"%s02_Library\\03_SecurityHandle\\GenerateKeyExOpt.dll",gAbsPath);
+  write("dllName:%s",dllName);
+
+//  SKDLL_GenKeyEx(Challenge8Byte,elcount(Challenge8Byte),SecurityLevel,"",KeyArray,MaxKeyArraySize,ActualSize,dllName);
+  SeedParameter(Challenge8Byte,32,1);
+  GenerateKeyExOpt(KeyArray, 16, dllName);
+  testWaitForTimeout(5);
+  
+  SID27[2]=KeyArray[0];
+  SID27[3]=KeyArray[1];
+	SID27[4]=KeyArray[2];
+  SID27[5]=KeyArray[3];
+	SID27[6]=KeyArray[4];
+	SID27[7]=KeyArray[5];
+  SID27[8]=KeyArray[6];
+	SID27[9]=KeyArray[7];
+	SID27[10]=KeyArray[8];
+  SID27[11]=KeyArray[9];
+	SID27[12]=KeyArray[10];
+	SID27[13]=KeyArray[11];
+  SID27[14]=KeyArray[12];
+	SID27[15]=KeyArray[13];
+	SID27[16]=KeyArray[14];
+  SID27[17]=KeyArray[15];  
+  
+  PrintPID("Info","Key ",KeyArray, elCount(KeyArray));
+  PrintPID("Request","Request ",SID27, 18/*elCount(SID27)*/);
+//  TP_Send(SID27, Mode);
+  TP_Send(SID27, elCount(KeyArray)+2, Mode);
+  Rss=-1;
+  switch(ECU_Response(UDS_P2Client))
+  {
+    case Pos:
+      unlockflag=1;
+      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+      Rss=Pos;
+      return 0;
+    case Timeout:
+      //testStepFail("Response","P2/P2* timeout during test");
+      Rss=Timeout;
+      return -1;
+    default:
+      NRC_Info(TpRxData[2]);
+      Rss=Neg;
+      return TpRxData[2];
+  }
+}
+//int SID27_SecurityAccess_RequestSeed(int level,enum AddressMode Mode)//2.0算法
+//{
+//  byte SID27[2];
+//  SID27[0]=0x27;
+//  SID27[1]=level;
+//  SecurityLevel=level;
+//  PrintPID("Request","Request ",SID27, elCount(SID27));
+//  TP_Send(SID27,Mode);
+//  Rss=-1;
+//  switch(ECU_Response(UDS_P2Client))
+//  {
+//    case Pos:
+//      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+//      SeedArray[0]=TpRxData[2];
+//      SeedArray[1]=TpRxData[3];
+//      SeedArray[2]=TpRxData[4];
+//      //SeedParameter(SeedArray,3,level);
+//      PrintPID("Info","Seed ",SeedArray,3);
+//      Rss=Pos;
+//      return 0;
+//    case Timeout:
+//      //testStepFail("Response","P2/P2* timeout during test");
+//      Rss=Timeout;
+//      return -1;
+//    default:
+//      NRC_Info(TpRxData[2]);
+//      Rss=Neg;
+//      return TpRxData[2];
+//  }
+//}
+
+int SID27_SecurityAccess_RequestSeed(int level,enum AddressMode Mode)
+{
+  int i;
+  byte SID27[2];
+  SID27[0]=0x27;
+  SID27[1]=level;
+  SecurityLevel=level;
+  PrintPID("Request","Request ",SID27, elCount(SID27));
+  TP_Send(SID27,Mode);
+  Rss=-1;
+  switch(ECU_Response(UDS_P2Client))
+  {
+    case Pos:
+      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+      for(i=0;i<elcount(SeedArray);i++)
+      {
+        SeedArray[i] = TpRxData[i+2];
+      }
+//      SeedParameter(SeedArray,3,level);
+      PrintPID("Info","Seed ",SeedArray,16);
+      Rss=Pos;
+      return 0;
+    case Timeout:
+      //testStepFail("Response","P2/P2* timeout during test");
+      Rss=Timeout;
+      return -1;
+    default:
+      NRC_Info(TpRxData[2]);
+      Rss=Neg;
+      return TpRxData[2];
+  }
+}
+
+void CheckPosResponse_SID27_ReqSeed(int level,int ByteNumOfSeed)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	//PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x67)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=level)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxLength!=ByteNumOfSeed+2)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse_SID27_ReqSeed(int level,int ByteNumOfSeed,byte expectseed[])
+{
+	int i;
+
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x67)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==level)
+	{
+		//testStepPass("Chk","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxLength!=ByteNumOfSeed+2)
+		testStepFail("UDS_Ser","Response data length is not correct");
+	for(i=2; i<elCount(expectseed)-1; i++)
+	{
+		if(TpRxData[i]!=expectseed[i-2])
+			testStepFail("UDS_Ser","The seed is not rigth");
+	}
+}
+
+void CheckPosResponse_SID27_SenKey(int level)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x67)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==level+1)
+	{
+		//testStepPass("Chk","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+}
+
+void CheckPosResponse_SID27_SenKey(int level,int ByteNumOfSeed)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x67)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==level+1)
+	{
+		//testStepPass("Chk","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(ByteNumOfSeed+2!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+
+void SID28_CommunicationControl(byte Subfunction,enum CommunicationType CommType,enum SPRMIB Supress,enum AddressMode Mode)
+{
+	byte SID28[3];
+	SID28[0]=0x28;
+	if(Supress==0)
+		SID28[1]=Subfunction;
+	else
+		SID28[1]=Subfunction+0x80;
+	SID28[2]=CommType;
+	PrintPID("UDS_Ser","CommunicationControl ",SID28,elCount(SID28));
+	TP_Send(SID28,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID28(byte Subfunction)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	//PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x68)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+}
+
+Void SID3E_TesterPresent(enum AddressMode Mode,enum SPRMIB Supress)
+{
+	int i;
+	byte SID3E[2];
+	SID3E[0]=0x3E;
+	if(Supress==0)
+		SID3E[1]=0x00;
+	else
+		SID3E[1]=0x80;
+	TP_Send(SID3E,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID3E()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x7E)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxLength!=2)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID85_ControlDTCSetting(byte Subfunction,char DTC[],enum SPRMIB Supress,enum AddressMode Mode)
+{
+	byte SID85[10];
+	int  i;
+
+	SID85[0]=0x85;
+	if(Supress==0)
+		SID85[1]=Subfunction;
+	else
+		SID85[1]=Subfunction+0x80;
+	for(i=0; i<elCount(DTC); i++)
+		SID85[i+2]=DTC[i];
+	PrintPID("UDS_Ser","CommunicationControl ",SID85,elCount(SID85));
+	TP_Send(SID85,elCount(DTC),Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID85_ControlDTCSetting(byte Subfunction,enum SPRMIB Supress,enum AddressMode Mode)
+{
+	byte SID85[2];
+	SID85[0]=0x85;
+	if(Supress==0)
+		SID85[1]=Subfunction;
+	else
+		SID85[1]=Subfunction+0x80;
+	PrintPID("UDS_Ser","CommunicationControl ",SID85,elCount(SID85));
+	TP_Send(SID85,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID85(byte Subfunction)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	//PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0xC5)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=Subfunction)
+		testStepFail("UDS_Ser","Unexpect Subfunction %x",TpRxData[0]);
+	if(TpRxLength!=2)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID22_ReadDataByIdentifier(byte PID[],enum AddressMode Mode)
+{
+	byte SID22[3];
+	SID22[0]=0x22;
+	SID22[1]=PID[0];
+	SID22[2]=PID[1];
+	PrintPID("UDS_Ser","Request",SID22,elCount(SID22));
+	TP_Send(SID22, Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID22_ReadDataByIdentifier(byte PIDList[],int NumOfDID,enum AddressMode Mode)
+{
+	byte SID22[20];
+	int  i;
+	SID22[0]=0x22;
+	for(i=0; i<elCount(PIDList); i++)
+		SID22[i+1]=PIDList[i];
+	PrintPID("UDS_Ser","Request",SID22,elCount(SID22));
+	TP_Send(SID22,elCount(PIDList), Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+int CheckPosResponse_SID22(byte PID[],int ExpectLength)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return Timeout;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return Rss;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x62)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+  if(TpRxData[1]!=PID[0] && TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(ExpectLength!=TpRxLength-3)
+		testStepFail("UDS_Ser","Response data length is not correct");
+  return Rss;
+}
+
+int CheckPosResponse_SID22(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return Rss;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return Rss;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x62)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=PID[0] && TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+  return Rss;
+}
+
+
+Void SID23_ReadMemoryByAdress(byte addressAndLengthFormatIdentifier,byte MemoryAddress[],byte MemorySize[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID23[15];
+	int  LenthOfADD;
+	int  LenthOfSize;
+	SID23[0]=0x23;
+	SID23[1]=addressAndLengthFormatIdentifier;
+	LenthOfADD=addressAndLengthFormatIdentifier>>4;
+	LenthOfSize=addressAndLengthFormatIdentifier&0x0F;
+	for(i=0; i<LenthOfADD; i++)
+		SID23[i+2]=MemoryAddress[i];
+	for(i=0; i<LenthOfSize; i++)
+		SID23[i+2+LenthOfADD]=MemorySize[i];
+	TP_Send(SID23,LenthOfADD+LenthOfSize+2,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID23(int ExpectLength)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x63)
+	{
+		//testStepPass("Chk","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(ExpectLength!=TpRxLength-1)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse_SID23()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x63)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+}
+
+void SID2A_ReadDataByPeriodicIdentifier(enum TransmissionMode TMode,byte PID[],enum AddressMode Mode)
+{
+	byte SID2A[20];
+	int  i;
+	SID2A[0]=0x2A;
+	SID2A[1]=TMode;
+	for(i=0; i<elCount(PID); i++)
+		SID2A[i+2]=PID[i];
+	PrintPID("UDS_Ser","Request",SID2A,elCount(PID)+2);
+	TP_Send(SID2A,elCount(PID)+2,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID2A_ReadDataByPeriodicIdentifier_Stop(enum AddressMode Mode)
+{
+	byte SID2A[2];
+	SID2A[0]=0x2A;
+	SID2A[1]=0x04;
+	PrintPID("UDS_Ser","Request",SID2A,elCount(SID2A));
+	TP_Send(SID2A,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID2A()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6A)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(1!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID2E_WriteDataByIdentifier(byte PID[],byte RawData[],enum AddressMode Mode)
+{
+	byte SID2E[4096];
+	int  i;
+	SID2E[0]=0x2E;
+	SID2E[1]=PID[0];
+	SID2E[2]=PID[1];
+	for(i=0; i<elCount(RawData); i++)
+		SID2E[i+3]=RawData[i];
+	PrintPID("UDS_Ser","Request",RawData,elCount(RawData));
+	TP_Send(SID2E,elCount(RawData)+3,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID2E(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6E)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=PID[0] && TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(3!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID14_ClearDTC(byte DTC[],enum AddressMode Mode)
+{
+	byte SID14[4];
+  
+  int usgmod;
+  
+  if((gCndtnOfClrDtc==1)||(gCndtnOfClrDtc==3))
+  {
+    usgmod=gUagMode;
+    gUagMode=gUsgCndtnOfClrDtc;
+    testStep("Info","Switch UsageMode to 0x%X, in order to clear DTC",gUsgCndtnOfClrDtc);
+    testWaitForTimeout(1000);
+  }
+
+  
+	SID14[0]=0x14;
+	SID14[1]=DTC[0];
+	SID14[2]=DTC[1];
+	SID14[3]=DTC[2];
+	PrintPID("UDS_Ser","ClearDTC ",SID14,elCount(SID14));
+	TP_Send(SID14,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+    Rss=ECU_Response(UDS_P6Client);
+//	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+  
+  if((gCndtnOfClrDtc==1)||(gCndtnOfClrDtc==3))
+  {
+    gUagMode=usgmod;
+    testStep("Info","Resume UsageMode to 0x%X",usgmod);
+    testWaitForTimeout(1000);
+  }
+}
+
+void CheckPosResponse_SID14()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x54)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(1!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+  testWaitForTimeout(5000);
+}
+
+void SID19_Sub01_ReportNumOfDTCByStatusMask(Byte Mask,enum AddressMode Mode)
+{
+	byte SID19[3];
+	SID19[0]=0x19;
+	SID19[1]=0x01;
+	SID19[2]=Mask;
+	PrintPID("UDS_Ser","ReportDTCByStatusMask ",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID19_01(byte AvaliableMask,byte DTCFormatIdentifer)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x01)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=AvailiableMask)
+		testStepfail("UDS_Ser","DTC Availiable Mask is 0x%02x,Expect the Availiable Mask is 0x%02x ",TpRxData[2],AvailiableMask);
+	if(TpRxData[3]!=DTCFormatIdentifer)
+		testStepFail("UDS_Ser","DTC format identifer is0x%02x,expect identifer is 0x%02x",TpRxData[3],DTCFormatIdentifer);
+}
+
+void SID19_Sub02_ReportDTCByStatusMask(Byte Mask,enum AddressMode Mode)
+{
+	byte SID19[3];
+	SID19[0]=0x19;
+	SID19[1]=0x02;
+	SID19[2]=Mask;
+	PrintPID("UDS_Ser","ReportDTCByStatusMask ",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+    Rss=ECU_Response(UDS_P6Client);
+//	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID19_02(byte avaliableMask)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x02)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(3!=(TpRxLength%4))
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+//
+Void SID19_Sub03_ReportDTCSnapshotIdentification(enum AddressMode Mode)
+{
+	byte SID19[2];
+	SID19[0]=0x19;
+	SID19[1]=0x03;
+	PrintPID("UDS_Ser","ReportDTCSnapshotIdentification",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+//
+void CheckPosResponse_SID19_03()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x03)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(2!=(TpRxLength%4))
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+//
+void SID19_Sub04_ReportDTCSnapshotRecordByDTCNumber(Byte DTC[],Byte DTCSnapshotRecordNumber,enum AddressMode Mode)
+{
+	byte SID19[6];
+	SID19[0]=0x19;
+	SID19[1]=0x04;
+	SID19[2]=DTC[0];
+	SID19[3]=DTC[1];
+	SID19[4]=DTC[2];
+	SID19[5]=DTCSnapshotRecordNumber;
+	PrintPID("UDS_Ser","ReportDTCSnapshotRecordByDTCNumber ",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+//
+void CheckPosResponse_SID19_04(byte DTC[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+//	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x04)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if((DTC[0]==TpRxData[2])&&(DTC[1]==TpRxData[3])&&(DTC[2]==TpRxData[4]))
+	{
+		testStepPass("UDS_Ser","DTC is 0x%02x 0x%02x 0x%02x",DTC[0],DTC[1],DTC[2]);
+		PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+//		testStepWarning("UDS_Ser","Please check the positive Response");
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Expect DTC is 0x%02x 0x%02x 0x%02x",DTC[0],DTC[1],DTC[2]);
+	}
+}
+//
+void SID19_Sub06_ReportDTCExtendedDataRecordByDTCNumber(Byte DTC[],Byte DTCExtendedDataRecordNumber,enum AddressMode Mode)
+{
+	byte SID19[6];
+	SID19[0]=0x19;
+	SID19[1]=0x06;
+	SID19[2]=DTC[0];
+	SID19[3]=DTC[1];
+	SID19[4]=DTC[2];
+	SID19[5]=DTCExtendedDataRecordNumber;
+	PrintPID("UDS_Ser","reportDTCExtendedDataRecordByDTCNumber ",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+//
+void CheckPosResponse_SID19_06(byte DTC[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+//	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x06)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if((DTC[0]==TpRxData[2])&&(DTC[1]==TpRxData[3])&&(DTC[2]==TpRxData[4]))
+	{
+		testStepPass("UDS_Ser","DTC is 0x%02x 0x%02x 0x%02x",DTC[0],DTC[1],DTC[2]);
+		PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+//		testStepWarning("UDS_Ser","Please check the positive Response");
+	}
+	else
+	{
+		testStepFail("UDS_Ser","Expect DTC is 0x%02x 0x%02x 0x%02x",DTC[0],DTC[1],DTC[2]);
+	}
+}
+//
+//
+void SID19_Sub0A_ReportSupportDTC(enum AddressMode Mode)
+{
+	byte SID19[2];
+	SID19[0]=0x19;
+	SID19[1]=0x0A;
+	PrintPID("UDS_Ser","reportSupportDTC",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+
+void CheckPosResponse_SID19_0A(byte AvailiableMask)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x0A)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=AvailiableMask)
+		testStepfail("UDS_Ser","DTC Availiable Mask is 0x%02x,Expect the Availiable Mask is 0x%02x ",TpRxData[2],AvailiableMask);
+	if(3!=(TpRxLength%4))
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+//
+Void SID19_Sub15_ReportDTCWithPermanentStatus(enum AddressMode Mode)
+{
+	byte SID19[2];
+	SID19[0]=0x19;
+	SID19[1]=0x15;
+	PrintPID("UDS_Ser","reportDTCWithPermanentStatus ",SID19,elCount(SID19));
+	TP_Send(SID19,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+//
+void CheckPosResponse_SID19_15(byte AvailiableMask)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x59)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x15)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=AvailiableMask)
+		testStepfail("UDS_Ser","DTC Availiable Mask is 0x%02x,Expect the Availiable Mask is 0x%02x ",TpRxData[2],AvailiableMask);
+	if(3!=(TpRxLength%4))
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+//
+void SID2F_IOControl(byte PID[],byte ControlOptionRecord[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID2F[10];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=0x03;
+	for(i=0; i<elcount(ControlOptionRecord); i++)
+	{
+		SID2F[i+4]=ControlOptionRecord[i];
+	}
+	length=4+elCount(ControlOptionRecord);
+
+	TP_Send(SID2F,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID2F_IOControl(byte PID[],enum InputOutputControlParameter IOParameter,enum AddressMode Mode)
+{
+	int i;
+	byte SID2F[4];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=IOParameter;
+	TP_Send(SID2F, Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID2F(byte inputOutputControlParameter,byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6F)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=PID[0] &&TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+//	if(TpRxData[3]!=inputOutputControlParameter)
+//		testStepFail("UDS_Ser","Response inputOutputControlParameter is not correct");
+}
+
+void SID31_RoutineControl(enum RoutineControlType RoutineType,byte RoutineIdentifier[],byte RoutineControlOptionRecord[],int RecordLenth,enum AddressMode Mode)
+{
+	int i,length;
+	byte SID31[50];
+	SID31[0]=0x31;
+	SID31[1]=RoutineType;
+	SID31[2]=RoutineIdentifier[0];
+	SID31[3]=RoutineIdentifier[1];
+	for(i=0; i<RecordLenth; i++)
+	{
+		SID31[i+4]=RoutineControlOptionRecord[i];
+	}
+	length=4+RecordLenth;
+	PrintPID("UDS_Ser","RoutineControl_StartRoutine",SID31,elCount(SID31));
+	TP_Send(SID31,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID31(enum RoutineControlType RoutineType,byte RoutineIdentifier[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x71)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==RoutineType)
+	{
+		testStepPass("UDS_Ser","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=RoutineIdentifier[0] && TpRxData[3]!=RoutineIdentifier[1])
+		testStepFail("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	else
+		testSteppass("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+}
+
+void SID3D_WriteMemoryByAdress_14(byte MemoryAddress[],byte MemorySize[],byte dataRecord[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID3D[100];
+	SID3D[0]=0x3D;
+	SID3D[1]=0x14;
+	SID3D[2]=MemoryAddress[0];
+	SID3D[3]=MemoryAddress[1];
+	SID3D[4]=MemoryAddress[2];
+	SID3D[5]=MemoryAddress[3];
+	SID3D[6]=MemorySize[0];
+	for(i=0; i<elcount(dataRecord); i++)
+	{
+		SID3D[i+7]=dataRecord[i];
+	}
+	length=7+elCount(dataRecord);
+
+	TP_Send(SID3D,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+//  switch(ECU_Response(P2Client))
+//  {
+//    case Pos:
+//      Rss=Pos;
+//      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+//      return 0;
+//    case Timeout:
+//      Rss=Timeout;
+//     // testStepFail("Response","P2/P2* timeout during test");
+//      return -1;
+//    default:
+//      Rss=Neg;
+//      NRC_Info(TpRxData[2]);
+//      return TpRxData[2];
+//  }
+}
+
+void CheckPosResponse_SID3D_14(byte MemoryAddress[],byte MemorySize[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x7D)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==0x14)
+	{
+		testStepPass("UDS_Ser","addressAndLengthFormatIdentifier %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect addressAndLengthFormatIdentifier %x",TpRxData[1]);
+	if(TpRxData[2]==MemoryAddress[0]&&TpRxData[3]==MemoryAddress[1]&&TpRxData[4]==MemoryAddress[2]&&TpRxData[5]==MemoryAddress[3])
+	{
+		testSteppass("UDS_Ser","MemoryAddress is 0x%02x,0x%02x,0x%02x,0x%02x",TpRxData[2],TpRxData[3],TpRxData[4],TpRxData[5]);
+	}
+	else
+	{
+		testStepfail("UDS_Ser","MemoryAddress is 0x%02x,0x%02x,0x%02x,0x%02x",TpRxData[2],TpRxData[3],TpRxData[4],TpRxData[5]);
+	}
+	if(TpRxData[6]==MemorySize[0])
+	{
+		testSteppass("UDS_Ser","MemorySize is 0x%02x",TpRxData[6]);
+	}
+	else
+	{
+		testStepfail("UDS_Ser","MemorySize is 0x%02x",TpRxData[6]);
+	}
+	if(7==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+
+void SID3D_WriteMemoryByAdress_24(byte MemoryAddress[],byte MemorySize[],byte dataRecord[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID3D[100];
+	SID3D[0]=0x3D;
+	SID3D[1]=0x24;
+	SID3D[2]=MemoryAddress[0];
+	SID3D[3]=MemoryAddress[1];
+	SID3D[4]=MemoryAddress[2];
+	SID3D[5]=MemoryAddress[3];
+	SID3D[6]=MemorySize[0];
+	SID3D[7]=MemorySize[1];
+	for(i=0; i<elcount(dataRecord); i++)
+	{
+		SID3D[i+8]=dataRecord[i];
+	}
+	length=8+elCount(dataRecord);
+
+	TP_Send(SID3D,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+//  switch(ECU_Response(P2Client))
+//  {
+//    case Pos:
+//      Rss=Pos;
+//      PrintPID("Response","Pos.Response",TpRxData,TpRxLength);
+//      return 0;
+//    case Timeout:
+//      Rss=Timeout;
+//     // testStepFail("Response","P2/P2* timeout during test");
+//      return -1;
+//    default:
+//      Rss=Neg;
+//      NRC_Info(TpRxData[2]);
+//      return TpRxData[2];
+//  }
+}
+
+void CheckPosResponse_SID3D_12(byte MemoryAddress[],byte MemorySize[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x7D)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==0x24)
+	{
+		testStepPass("UDS_Ser","addressAndLengthFormatIdentifier %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect addressAndLengthFormatIdentifier %x",TpRxData[1]);
+	if(TpRxData[2]==MemoryAddress[0]&&TpRxData[3]==MemoryAddress[1]&&TpRxData[4]==MemoryAddress[2]&&TpRxData[5]==MemoryAddress[3])
+	{
+		testSteppass("UDS_Ser","MemoryAddress is 0x%02x,0x%02x,0x%02x,0x%02x",TpRxData[2],TpRxData[3],TpRxData[4],TpRxData[5]);
+	}
+	else
+	{
+		testStepfail("UDS_Ser","MemoryAddress is 0x%02x,0x%02x,0x%02x,0x%02x",TpRxData[2],TpRxData[3],TpRxData[4],TpRxData[5]);
+	}
+	if(TpRxData[6]==MemorySize[0]&&TpRxData[7]==MemorySize[1])
+	{
+		testSteppass("UDS_Ser","MemorySize is 0x%02x,0x%02x",TpRxData[6],TpRxData[7]);
+	}
+	else
+	{
+		testStepfail("UDS_Ser","MemorySize is 0x%02x0x%02x",TpRxData[6],TpRxData[7]);
+	}
+	if(8==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID3E_TesterPresent(int Subfunction,enum AddressMode Mode)
+{
+  int i;
+  byte SID3E[2];
+  SID3E[0]=0x3E;
+  SID3E[1]=Subfunction;
+  TP_Send(SID3E,Mode);
+//  testStep("","SID3E_TesterPresent");
+  write("SID3E_TesterPresent time is %.3f",timeNow()/100.0);
+//  Rss=ECU_Response(P2Client);
+}
+
+
+int SID2C_DynamicallyDefinedDataIdentifier_Identifier(byte DynamicallyDefinedDataIdentifier[],byte sourceDataIdentifier[],int positionInSourceDataRecord,int memorySize,enum AddressMode Mode)
+{
+	byte SID2C[8];
+	SID2C[0]=0x2C;
+	SID2C[1]=0x01;
+	SID2C[2]=DynamicallyDefinedDataIdentifier[0];
+	SID2C[3]=DynamicallyDefinedDataIdentifier[1];
+	SID2C[4]=sourceDataIdentifier[0];
+	SID2C[5]=sourceDataIdentifier[1];
+	SID2C[6]=positionInSourceDataRecord;
+	SID2C[7]=memorySize;
+	PrintPID("UDS_Ser","Request",SID2C,elCount(SID2C));
+	TP_Send(SID2C,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+//  switch(ECU_Response(P2Client))
+//  {
+//    case Pos:
+//      PrintPID("Response","Pos.Response ",TpRxData,TpRxLength);
+//      Rss=Pos;
+//      return 0;
+//    case Timeout:
+//      //testStepFail("Response","P2/P2* timeout during test");
+//      Rss=Timeout;
+//      return -1;
+//    default:
+//      NRC_Info(TpRxData[2]);
+//      Rss=Neg;
+//      return TpRxData[2];
+//  }
+  return Rss;
+}
+
+void CheckPosResponse_SID2C_Identifier(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6C)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x01)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=PID[0] && TpRxData[3]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+
+
+
+Void SID2C_DynamicallyDefinedDataIdentifier_Address_14(byte DynamicallyDefinedDataIdentifier[],byte MemoryAdddress[],int memorySize,enum AddressMode Mode)
+{
+	byte SID2C[10];
+	SID2C[0]=0x2C;
+	SID2C[1]=0x02;
+	SID2C[2]=DynamicallyDefinedDataIdentifier[0];
+	SID2C[3]=DynamicallyDefinedDataIdentifier[1];
+	SID2C[4]=0x14;
+	SID2C[5]=MemoryAdddress[0];
+	SID2C[6]=MemoryAdddress[1];
+	SID2C[7]=MemoryAdddress[2];
+	SID2C[8]=MemoryAdddress[3];
+	SID2C[9]=memorySize;
+
+	PrintPID("UDS_Ser","Request",SID2C,elCount(SID2C));
+	TP_Send(SID2C,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+//  switch(ECU_Response(P2Client))
+//  {
+//    case Pos:
+//      PrintPID("Response","Pos.Response ",TpRxData,TpRxLength);
+//      Rss=Pos;
+//      return 0;
+//    case Timeout:
+//      //testStepFail("Response","P2/P2* timeout during test");
+//      Rss=Timeout;
+//      return -1;
+//    default:
+//      NRC_Info(TpRxData[2]);
+//      Rss=Neg;
+//      return TpRxData[2];
+//  }
+}
+
+void CheckPosResponse_SID2C_Address_14(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6C)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x02)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[1]!=PID[0] && TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID2C_DynamicallyDefinedDataIdentifier_Address_24(byte DynamicallyDefinedDataIdentifier[],byte MemoryAdddress[],byte memorySize[],enum AddressMode Mode)
+{
+	byte SID2C[11];
+	SID2C[0]=0x2C;
+	SID2C[1]=0x02;
+	SID2C[2]=DynamicallyDefinedDataIdentifier[0];
+	SID2C[3]=DynamicallyDefinedDataIdentifier[1];
+	SID2C[4]=0x14;
+	SID2C[5]=MemoryAdddress[0];
+	SID2C[6]=MemoryAdddress[1];
+	SID2C[7]=MemoryAdddress[2];
+	SID2C[8]=MemoryAdddress[3];
+	SID2C[9]=memorySize[0];
+	SID2C[10]=memorySize[1];
+
+	PrintPID("UDS_Ser","Request",SID2C,elCount(SID2C));
+	TP_Send(SID2C,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+//  switch(ECU_Response(P2Client))
+//  {
+//    case Pos:
+//      PrintPID("Response","Pos.Response ",TpRxData,TpRxLength);
+//      Rss=Pos;
+//      return 0;
+//    case Timeout:
+//      //testStepFail("Response","P2/P2* timeout during test");
+//      Rss=Timeout;
+//      return -1;
+//    default:
+//      NRC_Info(TpRxData[2]);
+//      Rss=Neg;
+//      return TpRxData[2];
+//  }
+}
+
+void CheckPosResponse_SID2C_Address_24(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6C)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x02)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[1]!=PID[0] && TpRxData[2]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+
+Void SID2C_ClearDynamicallyDefinedDataIdentifier(enum AddressMode Mode)
+{
+	byte SID2C[2];
+	SID2C[0]=0x2C;
+	SID2C[1]=0x03;
+
+	PrintPID("UDS_Ser","Request",SID2C,elCount(SID2C));
+	TP_Send(SID2C,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID2C_Clear()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6C)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x03)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(2!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID2C_ClearDynamicallyDefinedDataIdentifier_withDID(byte DynamicallyDefinedDataIdentifier[],enum AddressMode Mode)
+{
+	byte SID2C[4];
+	SID2C[0]=0x2C;
+	SID2C[1]=0x03;
+	SID2C[2]=DynamicallyDefinedDataIdentifier[0];
+	SID2C[3]=DynamicallyDefinedDataIdentifier[1];
+
+	PrintPID("UDS_Ser","Request",SID2C,elCount(SID2C));
+	TP_Send(SID2C,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID2C_ClearwithDID(byte PID[])
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x6C)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x03)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=PID[0] && TpRxData[3]!=PID[1])
+		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID2F_IOControl_shortTermAdjustment(byte PID[],byte ControlOptionRecord[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID2F[10];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=0x03;
+	for(i=0; i<elcount(ControlOptionRecord); i++)
+	{
+		SID2F[i+4]=ControlOptionRecord[i];
+	}
+	length=4+elCount(ControlOptionRecord);
+
+  PrintPID("UDS_Ser","Request",SID2F,elCount(SID2F));
+	TP_Send(SID2F,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+Void SID2F_IOControl_freezeCurrentState(byte PID[],enum AddressMode Mode)
+{
+	int i;
+	byte SID2F[4];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=0x02;
+  
+  PrintPID("UDS_Ser","Request",SID2F,elCount(SID2F));
+	TP_Send(SID2F, Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+Void SID2F_IOControl_resetToDefault(byte PID[],enum AddressMode Mode)
+{
+	int i;
+	byte SID2F[4];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=0x01;
+  
+  PrintPID("UDS_Ser","Request",SID2F,elCount(SID2F));
+	TP_Send(SID2F, Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+Void SID2F_IOControl_returnControlToECU(byte PID[],enum AddressMode Mode)
+{
+	int i;
+	byte SID2F[4];
+	SID2F[0]=0x2F;
+	SID2F[1]=PID[0];
+	SID2F[2]=PID[1];
+	SID2F[3]=0x00;
+  
+  PrintPID("UDS_Ser","Request",SID2F,elCount(SID2F));
+	TP_Send(SID2F, Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+//void CheckPosResponse_SID2F(byte inputOutputControlParameter,byte PID[])
+//{
+//	if(Rss!=Pos)
+//	{
+//		if(Rss==Timeout)
+//		{
+//			testStepFail("UDS_Ser","Timeout No Response received");
+//			return;
+//		}
+//		else
+//		{
+//			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+//			return;
+//		}
+//	}
+//	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+//	if(TpRxData[0]!=0x6F)
+//		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+//	if(TpRxData[1]!=PID[0] &&TpRxData[2]!=PID[1])
+//		testStepFail("UDS_Ser","Response PID is [0x%2x %2x]",TpRxData[1],TpRxData[2]);
+//	if(TpRxData[3]!=inputOutputControlParameter)
+//		testStepFail("UDS_Ser","Response inputOutputControlParameter is not correct");
+//}
+
+
+void SID31_RoutineControl_EraseMemory(byte memoryaddress[],byte memorysize[],enum AddressMode Mode)
+{
+	byte SID31[12];
+
+	SID31[0]=0x31;
+	SID31[1]=0x01;
+	SID31[2]=0xFF;
+	SID31[3]=0x00;
+	SID31[4] =memoryaddress[0];
+	SID31[5] =memoryaddress[1];
+	SID31[6] =memoryaddress[2];
+	SID31[7] =memoryaddress[3];
+	SID31[8] =memorysize[0];
+	SID31[9] =memorysize[1];
+	SID31[10]=memorysize[2];
+	SID31[11]=memorysize[3];
+	PrintPID("UDS_Ser","RoutineControl_EraseMemory",SID31,elCount(SID31));
+	TP_Send(SID31,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID31_EraseMemory(byte ExpectResult)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x71)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]!=0x01)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=0xFF && TpRxData[3]!=0x00)
+		testStepFail("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	if(TpRxData[4]!=ExpectResult)
+		testStepFail("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+	if(5!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID31_RoutineControl_CheckProgrammingCondition(enum AddressMode Mode)
+{
+	byte SID31[4];
+
+	SID31[0]=0x31;
+	SID31[1]=0x01;
+	SID31[2]=0x02;
+	SID31[3]=0x03;
+	PrintPID("UDS_Ser","RoutineControl_CheckProgrammingCondition",SID31,elCount(SID31));
+	TP_Send(SID31,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID31_CheckProgrammingCondition(enum RoutineStatusRecord Result)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x71)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==0x01)
+	{
+		testStepPass("UDS_Ser","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=0x02 && TpRxData[3]!=0x03)
+		testStepFail("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	else
+		testSteppass("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+//	if(TpRxData[4]!=0x01 && TpRxData[4]!=0x00)
+//		testStepFail("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+//	else
+//		testSteppass("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+	if(5==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+  if((Result==0x00)&&(TpRxData[4]==0x00))
+  {
+    testStepPass("UDS_Ser","Expected result %d",TpRxData[4]);
+  }
+  else if((Result==0x00)&&(TpRxData[4]!=0x00))
+  {
+    testStepFail("UDS_Ser","Unexpected result %d",TpRxData[4]);
+  }
+  else if((Result==0x01)&&(TpRxData[4]==0x01))
+  {
+    testStepPass("UDS_Ser","Expected result %d",TpRxData[4]);
+  }
+  else if((Result==0x01)&&(TpRxData[4]!=0x01))
+  {
+    testStepFail("UDS_Ser","Unexpected result %d",TpRxData[4]);
+  }
+}
+
+Void SID31_RoutineControl_CheckCompleteAndCompatible(byte CheckSum[],enum AddressMode Mode)
+{
+	byte SID31[8];
+
+	SID31[0]=0x31;
+	SID31[1]=0x01;
+	SID31[2]=0x02;
+	SID31[3]=0x02;
+  SID31[4]=CheckSum[0];
+  SID31[5]=CheckSum[1];
+  SID31[6]=CheckSum[2];
+  SID31[7]=CheckSum[3];
+	PrintPID("UDS_Ser","RoutineControl_CheckCompleteAndCompatible",SID31,elCount(SID31));
+	TP_Send(SID31,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID31_CheckCompleteAndCompatible(enum RoutineStatusRecord Result)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x71)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==0x01)
+	{
+		testStepPass("UDS_Ser","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=0x02 && TpRxData[3]!=0x02)
+		testStepFail("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	else
+		testSteppass("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+//	if(TpRxData[4]!=0x01 && TpRxData[4]!=0x00)
+//		testStepFail("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+//	else
+//		testSteppass("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+	if(5==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+  if((Result==0x00)&&(TpRxData[4]==0x00))
+  {
+    testStepPass("UDS_Ser","Expected result %d",TpRxData[4]);
+  }
+  else if((Result==0x00)&&(TpRxData[4]!=0x00))
+  {
+    testStepFail("UDS_Ser","Unexpected result %d",TpRxData[4]);
+  }
+  else if((Result==0x01)&&(TpRxData[4]==0x01))
+  {
+    testStepPass("UDS_Ser","Expected result %d",TpRxData[4]);
+  }
+  else if((Result==0x01)&&(TpRxData[4]!=0x01))
+  {
+    testStepFail("UDS_Ser","Unexpected result %d",TpRxData[4]);
+  }
+}
+
+Void SID31_RoutineControl_CheckMemory(byte SignatureData[],enum AddressMode Mode)
+{
+	int i,length;
+	byte SID31[50];
+	SID31[0]=0x31;
+	SID31[1]=0x01;
+	SID31[2]=0x02;
+	SID31[3]=0x12;
+	for(i=0; i<elcount(SignatureData); i++)
+	{
+		SID31[i+4]=SignatureData[i];
+	}
+	length=4+elCount(SignatureData);
+
+	TP_Send(SID31,length,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID31_CheckMemory()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x71)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==0x01)
+	{
+		testStepPass("UDS_Ser","PositiveResponseSubfunction %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseSubfunction %x",TpRxData[1]);
+	if(TpRxData[2]!=0x02 && TpRxData[3]!=0x12)
+		testStepFail("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	else
+		testSteppass("UDS_Ser","Response DID is [0x%2x %2x]",TpRxData[2],TpRxData[3]);
+	if(TpRxData[4]!=0x10)
+		testStepFail("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+	else
+		testSteppass("UDS_Ser","Response routineStatusRecord  is [0x%2x]",TpRxData[4]);
+	if(5==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID34_RequestDownload(int dataFormatIdentifier,byte addressAndLengthFormatIdentifier,byte memoryaddress[],byte memorysize[],enum AddressMode Mode)
+{
+	byte SID34[11];
+	int  i,Size,Address;
+	SID34[0]  = 0x34;
+	SID34[1]  = dataFormatIdentifier;
+	SID34[2]  = addressAndLengthFormatIdentifier;
+	Size=addressAndLengthFormatIdentifier>>8;
+	Address=addressAndLengthFormatIdentifier&0xFF;
+	/////MemoryAddress//////
+	for(i=0; i<Address; i++)
+		SID34[i+3]  = memoryaddress[i];
+	/////MemorySize/////////
+	for(i=0; i<Size; i++)
+		SID34[i+3+Address]  = memorysize[i];
+	PrintPID("UDS_Ser","RequestDownload",SID34,elCount(SID34));
+	TP_Send(SID34,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+int CheckPosResponse_SID34_RequestDownload(byte lengthFormatIdentifier)
+{
+	int MaxNumberOfBlockLenth;
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return 0;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return 0;
+		}
+	}
+	MaxNumberOfBlockLenth = (TpRxData[2]<<8) + TpRxData[3] - 2;
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x74)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==lengthFormatIdentifier)
+		testStepFail("UDS_Ser","Unexpect PositiveResponselengthFormatIdentifier  %x",TpRxData[1]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+	return MaxNumberOfBlockLenth;
+}
+
+void SID35_RequestUpload(int dataFormatIdentifier,byte addressAndLengthFormatIdentifier,byte memoryaddress[],byte memorysize[],enum AddressMode Mode)
+{
+	byte SID35[11];
+	int  i,Size,Address;
+	SID35[0]  = 0x35;
+	SID35[1]  = dataFormatIdentifier;
+	SID35[2]  = addressAndLengthFormatIdentifier;
+	Size=addressAndLengthFormatIdentifier>>8;
+	Address=addressAndLengthFormatIdentifier&0xFF;
+	/////MemoryAddress//////
+	for(i=0; i<Address; i++)
+		SID35[i+3]  = memoryaddress[i];
+	/////MemorySize/////////
+	for(i=0; i<Size; i++)
+		SID35[i+3+Address]  = memorysize[i];
+	PrintPID("UDS_Ser","RequestDownload",SID35,elCount(SID35));
+	TP_Send(SID35,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+int CheckPosResponse_SID35_RequestUpload(byte lengthFormatIdentifier)
+{
+	int MaxNumberOfBlockLenth;
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return 0;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return 0;
+		}
+	}
+	MaxNumberOfBlockLenth = (TpRxData[2]<<8) + TpRxData[3] - 2;
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x75)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==lengthFormatIdentifier)
+		testStepFail("UDS_Ser","Unexpect PositiveResponselengthFormatIdentifier  %x",TpRxData[1]);
+	if(4!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+	return MaxNumberOfBlockLenth;
+}
+
+void SID36_TransferData(byte Data[],long length,int Counter,enum AddressMode Mode)
+{
+	byte SID36[65536];
+	int n;
+	SID36[0]=0x36;
+	SID36[1]=Counter;
+	//testStep("Chk 0x36","Transfer data. Send Counter=%d,SID36[1]=%d",Counter,SID36[1]);
+	for(n=0; n<length; n++)
+	{
+		SID36[n+2]=Data[n];
+	}
+
+	//PrintPID("Request","TransferData",SID36,10,"......"); //函数发生变化，需修改
+	TP_Send(SID36,length+2,Mode);
+	//writeLineEx(4,1,"%s-%f: Send $36 data",timeBuf,(timeNow()/100000.0));
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID36_TransferData(int Counter,enum AddressMode Mode)
+{
+	byte SID36[2];
+	SID36[0]=0x36;
+	SID36[1]=Counter;
+	//testStep("Chk 0x36","Transfer data. Send Counter=%d,SID36[1]=%d",Counter,SID36[1]);
+	//PrintPID("Request","TransferData",SID36,10,"......"); //函数发生变化，需修改
+	TP_Send(SID36,2,Mode);
+	//writeLineEx(4,1,"%s-%f: Send $36 data",timeBuf,(timeNow()/100000.0));
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID36_TransferData(int Counter)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[1]!=Counter)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseblockSequenceCounter   %x",TpRxData[1]);
+	if(TpRxData[0]!=0x76)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(2!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse_SID36_TransferData(int Counter,int Lenth)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[1]!=Counter)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseblockSequenceCounter   %x",TpRxData[1]);
+	if(TpRxData[0]!=0x76)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(Lenth!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void SID37_RequestTransferExit(enum AddressMode Mode)
+{
+	byte SID37[1];
+	SID37[0]=0x37;
+	PrintPID("UDS_Ser","RequestTransferExit",SID37,elCount(SID37));
+	TP_Send(SID37,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void SID37_RequestTransferExit(byte TransferRequestParameterRecord[],enum AddressMode Mode)
+{
+	byte SID37[10];
+	int  i;
+	SID37[0]=0x37;
+	for(i=0; i<elCount(TransferRequestParameterRecord); i++)
+		SID37[i+1]=TransferRequestParameterRecord[i];
+	PrintPID("UDS_Ser","RequestTransferExit",SID37,elCount(SID37));
+	TP_Send(SID37,elCount(TransferRequestParameterRecord)+1,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID37_RequestTransferExit()
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x77)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	transferResponseParameterRecord =TpRxData[1]<<8 + TpRxData[2];
+	if(3==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse_SID37_RequestTransferExit(int LenthOfRecord)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]!=0x77)
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(LenthOfRecord+1!=TpRxLength)
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+Void SID38_RequestFileTransfer(int modeOfOperation,byte filePathAndNameLength[],int filePathAndName,int dataFormatIdentifier,byte fileSizeparameterLength[],byte fileSizeUncompressed[],byte filesizeCompressed[],enum AddressMode Mode)
+{
+	byte SID38[12];
+	SID38[0]  = 0x38;
+	SID38[1]  = modeOfOperation;
+	SID38[2]  = filePathAndNameLength[0];
+	SID38[3]  = filePathAndNameLength[1];
+	SID38[4]  = filePathAndName;
+	SID38[5]  = dataFormatIdentifier;
+	SID38[6]  = fileSizeparameterLength[0];
+	SID38[7]  = fileSizeparameterLength[1];
+	SID38[8]  = fileSizeUncompressed[0];
+	SID38[9]  = fileSizeUncompressed[1];
+	SID38[10] = filesizeCompressed[0];
+	SID38[11] = filesizeCompressed[1];
+	PrintPID("UDS_Ser","RequestFileTransfer",SID38,elCount(SID38));
+	TP_Send(SID38,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+void CheckPosResponse_SID38_RequestFileTransfer(int modeOfOperation)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	if(TpRxData[0]==0x78)
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(TpRxData[1]==modeOfOperation)
+	{
+		testStepPass("UDS_Ser","PositiveResponsemodeOfOperation %x",TpRxData[1]);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[1]);
+}
+
+
+void TPSendRawMessage(byte RawData[],enum AddressMode Mode)
+{
+	PrintPID("UDS_Ser","Request",RawData,elCount(RawData));
+	TP_Send(RawData,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+}
+
+
+
+
+
+
+
+
+
+void CheckPosResponse(byte SID,int ExpectLength)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	if(SID==(TpRxData[0]-0x40))
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+		PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+	if(ExpectLength==TpRxLength)
+		testStepPass("UDS_Ser","Response data length is correct");
+	else
+		testStepFail("UDS_Ser","Response data length is not correct");
+}
+
+void CheckPosResponse(byte SID)
+{
+	if(Rss!=Pos)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Pos.Response but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+	}
+	if(SID==(TpRxData[0]-0x40))
+	{
+		testStepPass("UDS_Ser","PositiveResponseServiceID %x",TpRxData[0]);
+		PrintPID("UDS_Ser","Pos.Response",TpRxData,TpRxLength);
+	}
+	else
+		testStepFail("UDS_Ser","Unexpect PositiveResponseServiceID %x",TpRxData[0]);
+}
+
+int CheckNegResponse(int expectNRC)
+{
+	if(Rss!=Neg)
+	{
+		if(Rss==Timeout)
+		{
+			testStepFail("UDS_Ser","Timeout Non Response recived");
+			return 0;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect Nr.Response 0x%02x but get Pos.Response 0x%02x,0x%02x",expectNRC,TpRxData[0],TpRxData[1]);
+			return 1;
+		}
+	}
+	if(expectNRC == TpRxData[2])
+	{
+		PrintPID("UDS_Ser","Neg.Response: ",TpRxData,TpRxLength);
+		testStepPass("UDS_Ser","Expect NegativeResponseCode 0x%2x",TpRxData[2]);
+    return 1;
+	}
+	else
+	{
+		PrintPID("UDS_Ser","Neg.Response: ",TpRxData,TpRxLength);
+		NRC_Info(TpRxData[2]);
+		testStepFail("UDS_Ser","Unexpect NegativeResponseCode 0x%2x instead of 0x%2x",TpRxData[2],expectNRC);
+    return 0;
+	}
+}
+
+
+int CheckNegResponse(byte ExpectNRC[],int PosFlag,int NonFlag)
+{
+	int i;
+	int NRCFlag=0;
+	if(Rss!=Neg)
+	{
+		if(Rss==Timeout)
+		{
+			if(NonFlag==0)
+			{
+				testStepFail("UDS_Ser","Timeout Non Response recived");
+				return 0;
+			}
+			else
+			{
+				testStepPass("UDS_Ser","Timeout Non Response recived");
+				return 1;
+			}
+
+		}
+		else
+		{
+			if(PosFlag==0)
+			{
+				testStepFail("UDS_Ser","Expect Nr.Response but get Pos.Response");
+				return 0;
+			}
+			else
+			{
+				testStepPass("UDS_Ser","Get pos response");
+				return 1;
+			}
+		}
+	}
+	for(i=0; i<elCount(ExpectNRC); i++)
+	{
+		if(ExpectNRC[i]==TpRxData[2])
+			NRCFlag=1;
+	}
+	if(NRCFlag==1)
+	{
+		PrintPID("UDS_Ser","Neg.Response: ",TpRxData,TpRxLength);
+		testStepPass("UDS_Ser","Expect NegativeResponseCode 0x%2x",TpRxData[2]);
+    return 1;
+	}
+	else
+	{
+		PrintPID("UDS_Ser","Neg.Response: ",TpRxData,TpRxLength);
+		NRC_Info(TpRxData[2]);
+		testStepFail("UDS_Ser","Unexpect NegativeResponseCode 0x%2x",TpRxData[2]);
+    return 0;
+	}
+}
+
+void CheckNonResponse()
+{
+	if(Rss!=Timeout)
+	{
+		if(Rss==Neg)
+		{
+			testStepFail("UDS_Ser","Expect No response received but get Neg.Response 0x%02x",TpRxData[2]);
+			return;
+		}
+		else
+		{
+			testStepFail("UDS_Ser","Expect No response received but get Pos.Response 0x%02x,0x%02x",TpRxData[0],TpRxData[1]);
+			return;
+		}
+	}
+	else
+		testStepPass("UDS_Ser","Non Response recived");
+}
+
+
+
+void CheckCurrentSession(byte expectSession,enum AddressMode Mode)
+{
+	byte SID22_F186[3]= {0x22,0xf1,0x86};
+	TP_Send(SID22_F186,Mode);
+  if((gBusFlag == 1)||(gBusFlag == 2))
+	  Rss=ECU_Response(UDS_P2Client,UDS_P6Client);
+  else
+    Rss=ECU_Response(UDS_P6Client);
+	switch(Rss)
+	{
+	case Pos:
+		if(expectSession==TpRxData[3])
+			testStepPass("UDS_Ser","Current Session [0x%2x]",TpRxData[3]);
+		else
+		{
+			testStepFail("UDS_Ser","Current Session [0x%2x] Expect [0x%2x]",TpRxData[3],expectSession);
+		}
+		Rss=Pos;
+		break;
+	case Timeout:
+		Rss=Timeout;
+		testStepFail("UDS_Ser","p2/p2* timeout during test");
+		break;
+	default:
+		Rss=Neg;
+		testStepfail("UDS_Ser","Unexpect NegativeResponseCode 0x%2x",TpRxData[2]);
+		break;
+	}
+}
+
+void PrintPID(char stepTile[],char Info[],byte Data[],int len)
+{
+	int i;
+	char PrintData[102400];
+	for(i=0; i<len; i++)
+	{
+		if((Data[i]>>4)<10)
+			PrintData[i*3]=((Data[i]>>4)+0x30);
+		else
+			PrintData[i*3]=((Data[i]>>4)+0x37);
+		if((Data[i]&0x0F)<10)
+			PrintData[i*3+1]=((Data[i]&0x0F)+0x30);
+		else
+			PrintData[i*3+1]=((Data[i]&0x0F)+0x37);
+		PrintData[i*3+2]=0x20;
+	}
+	PrintData[len*3]='\0';
+	testStep(stepTile,"%s [%s]",Info,PrintData);
+}
+
+int CheckRxLength(int length)
+{
+	if(TpRxLength>length)
+		return 1;
+	else if(TpRxLength==length)
+		return 0;
+	else
+		return -1;
+}
+
+//int GetReceivedData(byte InputData[])
+//{
+//  if()
+//}
+
+void NRC_Info(byte nrc)
+{
+  switch(nrc)
+  {
+    case 0x11:
+      testStep("NRC","Get NRC(0x%2x) serviceNotSupported",nrc);
+      break;
+    case 0x12:
+      testStep("NRC","Get NRC(0x%2x) subFunctionNotSupported",nrc);
+      break;
+    case 0x13:
+      testStep("NRC","Get NRC(0x%2x) incorrectMessageLength",nrc);
+      break;
+    case 0x14:
+      testStep("NRC","Get NRC(0x%2x) responseTooLong",nrc);
+      break;
+    case 0x22:
+      testStep("NRC","Get NRC(0x%2x) conditionsNotCorrect",nrc);
+      break;
+    case 0x24:
+      testStep("NRC","Get NRC(0x%2x) requestSequenceError",nrc);
+      break;
+    case 0x31:
+      testStep("NRC","Get NRC(0x%2x) requestOutOfRange",nrc);
+      break;
+    case 0x33:
+      testStep("NRC","Get NRC(0x%2x) securityAccessDenied",nrc);
+      break;
+    case 0x35:
+      testStep("NRC","Get NRC(0x%2x) invalidKey",nrc);
+      break;
+    case 0x36:
+      testStep("NRC","Get NRC(0x%2x) exceedNumberOfAttempts",nrc);
+      break;
+    case 0x37:
+      testStep("NRC","Get NRC(0x%2x) requiredTimeDelayNotExpired",nrc);
+      break;
+    case 0x70:
+      testStep("NRC","Get NRC(0x%2x) uploadDownloadNotAccepted",nrc);
+      break;
+    case 0x71:
+      testStep("NRC","Get NRC(0x%2x) transferDataSuspended",nrc);
+      break;
+    case 0x72:
+      testStep("NRC","Get NRC(0x%2x) generalProgrammingFailure",nrc);
+      break;
+    case 0x73:
+      testStep("NRC","Get NRC(0x%2x) wrongBlockSequenceCounter",nrc);
+      break;
+    case 0x78:
+      testStep("NRC","Get NRC(0x%2x) requestCorrectlyReceived-ResponsePending",nrc);
+      break;
+    case 0x7e:
+      testStep("NRC","Get NRC(0x%2x) subfunctionNotSupportinActiveSession-ResponsePending",nrc);
+      break;
+    case 0x7f:
+      testStep("NRC","Get NRC(0x%2x) serviceNotSupportedInActiveSession",nrc);
+      break;
+    case 0x83:
+      testStep("NRC","Get NRC(0x%2x) engineIsRunning",nrc);
+      break;
+    case 0x84:
+      testStep("NRC","Get NRC(0x%2x) engineIsNotRunning",nrc);
+      break;
+    case 0x85:
+      testStep("NRC","Get NRC(0x%2x) engineRunTimeTooLow",nrc);
+      break;
+    case 0x92:
+      testStep("NRC","Get NRC(0x%2x) voltageTooHigh",nrc);
+      break;
+    case 0x93:
+      testStep("NRC","Get NRC(0x%2x) voltageTooLow",nrc);
+      break;
+    default:
+      testStepFail("NRC","Get NRC(0x%2x) Undefined Reason",nrc);
+      break;
+  }
+}
+
+void TesterPresentOnOff(enum on_offState on_off)
+{
+  if(on_off==P_on)
+    {
+      SID3E_TesterPresent(0x80,Functional);
+      setTimerCyclic(TesterPresentKeep,2000);
+    }
+  else
+    cancelTimer(TesterPresentKeep);
+}
+

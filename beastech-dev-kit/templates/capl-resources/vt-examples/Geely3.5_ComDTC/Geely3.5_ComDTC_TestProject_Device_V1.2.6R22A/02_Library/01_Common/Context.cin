@@ -1,0 +1,109 @@
+/*@!Encoding:936*/
+
+includes
+{
+
+}
+  
+variables
+{
+  /*----------Save log related variables-------------*/
+  char gRprtLogPath[500]="";
+  char gLogpath[500]="";
+  char gRprtName[500]="";
+  char gPicPath[500]="";
+  char gAbsPath[500];//absolutely path of test project
+  
+  
+}
+
+void BtrReset()
+{
+  setBtr(0,0x80,0x2B);//设置所有通道采样点81%
+  resetCan();
+}
+
+
+// save log without group
+void SetLog(char logname[])
+{
+  snprintf(gLogpath,200,"");
+  snprintf(gLogpath,200,"%s%s_{LocalTime}.asc",gRprtLogPath,logname);
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+// save log without group
+void SetLog(char logname[],int format)
+{
+  snprintf(gLogpath,200,"");
+  if(format==0)
+  {
+    snprintf(gLogpath,200,"%s%s_{LocalTime}.asc",gRprtLogPath,logname);
+  }
+  else
+  {
+    snprintf(gLogpath,200,"%s%s_{LocalTime}.blf",gRprtLogPath,logname);
+  }
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+// save log with group
+void SetLog(char testgroup[], char logname[])
+{
+  int k;
+  long tmnow[9],tmstart[9];
+  
+  getlocaltime(tmnow);
+  for(k=0;k<9;k++)
+  {
+    tmstart[k]=tmnow[k];
+  }
+  snprintf(gLogpath,500,"");
+  snprintf(gLogpath,500,"%s%s\\%s_%d-%d-%d_%d-%d-%d.blf",gRprtLogPath,testgroup,logname,tmstart[5]+1900,tmstart[4]+1,tmstart[3],tmstart[2],tmstart[1],tmstart[0]);
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+
+// save log with group. format can be changed.
+void SetLog(char testgroup[], char logname[], int format)
+{
+  snprintf(gLogpath,500,"");
+  if(format==0)
+  {
+    snprintf(gLogpath,500,"%s%s\\%s_{LocalTime}.asc",gRprtLogPath,testgroup,logname);    
+  }
+  else
+  {
+    snprintf(gLogpath,500,"%s%s\\%s_{LocalTime}.blf",gRprtLogPath,testgroup,logname);
+  }
+  stopLogging();
+  setLogFileName(gLogpath);
+  startLogging();
+}
+
+void SetLogReportPath(char nodeName[])
+{
+  int k;
+  int index;
+  long tmnow[9],tmstart[9];
+  
+  getlocaltime(tmnow);
+  for(k=0;k<9;k++)
+  {
+    tmstart[k]=tmnow[k];
+  }
+  getAbsFilePath("",gAbsPath,500);
+  snprintf(gRprtLogPath,200,"%s06_Report&Log\\Report&Log_%d-%d-%d_%d-%d-%d\\",gAbsPath,tmstart[5]+1900,tmstart[4]+1,tmstart[3],tmstart[2],tmstart[1],tmstart[0]);
+  snprintf(gRprtName,200,"%s00_%s_Report",gRprtLogPath,nodeName);
+  testReportFileName(gRprtName);
+  snprintf(gPicPath,200,"%sPicture\\",gRprtLogPath);
+}
+
+
+
+

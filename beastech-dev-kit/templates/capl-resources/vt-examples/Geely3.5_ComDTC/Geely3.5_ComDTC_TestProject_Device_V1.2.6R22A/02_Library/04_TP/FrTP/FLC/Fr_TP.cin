@@ -1,0 +1,241 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "Schedule_Config.cin"
+  #include "FRconfig.cin"
+}
+
+variables
+{
+  long FR_ConnHandleAPP_Phys;
+  long FR_ConnHandleAPP_Func;
+  long FR_ConnHandleBL;
+  
+  int FR_HandleFlag=0;
+  long FR_timeoutAS, FR_timeoutAR, FR_timeoutBS, FR_timeBR, FR_timeCS, FR_timeoutCR;
+}
+
+long FR_Tp_ConfigAPP_Phys(int remoteAddress,int localAddress )
+{
+  setFRConf_AS();
+  FR_ConnHandleAPP_Phys = FrTP_CreateConnUnicast(39,1,AppSlot1,1);
+  FrTP_AddConnSlots(FR_ConnHandleAPP_Phys,39, 3, -1,0);
+  FrTP_AddConnSlots(FR_ConnHandleAPP_Phys,-1, 0, AppSlot2,1);
+  FrTP_AddConnSlots(FR_ConnHandleAPP_Phys,-1, 0, AppSlot3,1);
+  FrTP_SetConnMode(FR_ConnHandleAPP_Phys, 1);
+  FrTP_SetAddresses(FR_ConnHandleAPP_Phys, localAddress, remoteAddress);
+  FR_timeoutAS = 1000;
+  FR_timeoutAR = 1000;
+  FR_timeoutBS = 1000;
+  FR_timeBR    = 20;
+  FR_timeCS    = 20;
+  FR_timeoutCR = 4000;
+  FrTP_SetTimingParams(FR_ConnHandleAPP_Phys, FR_timeoutAS, FR_timeoutAR, FR_timeoutBS, FR_timeBR, FR_timeCS, FR_timeoutCR);
+  FrTP_SetMaxPDULength(FR_ConnHandleAPP_Phys, 22);//
+  FrTP_SetBandwidthControl(FR_ConnHandleAPP_Phys, 0, 0);
+  FrTP_SetBufferSize(FR_ConnHandleAPP_Phys, 0);
+  FrTP_SetFillByte(FR_ConnHandleAPP_Phys, 0x00);
+  FrTP_SetExpertParam(FR_ConnHandleAPP_Phys, 68, 1);
+  FR_HandleFlag=1;
+  return FR_ConnHandleAPP_Phys;
+}
+
+long FR_Tp_ConfigAPP_Func(int remoteAddress,int localAddress )
+{
+  setFRConf_AS();
+  
+  FR_Tp_ConfigAPP_Phys(ECUAddress,LocalAddress);//
+  
+  FR_ConnHandleAPP_Func = FrTP_CreateConnUnicast(42,1,AppSlot1,1);
+  FrTP_AddConnSlots(FR_ConnHandleAPP_Func,-1, 0, AppSlot2,1);
+  FrTP_AddConnSlots(FR_ConnHandleAPP_Func,-1, 0, AppSlot3,1);
+  FrTP_SetConnMode(FR_ConnHandleAPP_Func, 1);
+  FrTP_SetAddresses(FR_ConnHandleAPP_Func, localAddress, remoteAddress);
+//  FrTP_Set2ndAddresses(ConnHandleAPP, 0x01, localAddress, ECUAddress);////
+  FR_timeoutAS = 1000;
+  FR_timeoutAR = 1000;
+  FR_timeoutBS = 1000;
+  FR_timeBR    = 20;
+  FR_timeCS    = 20;
+  FR_timeoutCR = 1000;
+  FrTP_SetTimingParams(FR_ConnHandleAPP_Func, FR_timeoutAS, FR_timeoutAR, FR_timeoutBS, FR_timeBR, FR_timeCS, FR_timeoutCR);
+  FrTP_SetMaxPDULength(FR_ConnHandleAPP_Func, 22);//
+  FrTP_SetBandwidthControl(FR_ConnHandleAPP_Func, 0, 0);
+  FrTP_SetBufferSize(FR_ConnHandleAPP_Func, 0);
+  FrTP_SetFillByte(FR_ConnHandleAPP_Func, 0x00);
+  FrTP_SetExpertParam(FR_ConnHandleAPP_Func, 68, 1);
+  FR_HandleFlag=1;
+  return FR_ConnHandleAPP_Func;
+}
+
+long FR_Tp_ConfigBL(int remoteAddress,int localAddress )
+{
+  setFRConf_BS();
+  FR_ConnHandleBL = FrTP_CreateConnUnicast(37,26,BLSlot1,1);
+  FrTP_AddConnSlots(FR_ConnHandleBL,-1, 0, BLSlot2,1);
+  FrTP_SetConnMode(FR_ConnHandleBL, 1);
+  FrTP_SetAddresses(FR_ConnHandleBL, localAddress, remoteAddress);
+  FrTP_Set2ndAddresses(FR_ConnHandleBL, 0x01, localAddress, ECUAddress);/////
+  FR_timeoutAS = 1000;
+  FR_timeoutAR = 1000;
+  FR_timeoutBS = 1000;
+  FR_timeBR    = 15;
+  FR_timeCS    = 15;
+  FR_timeoutCR = 1000;
+  FrTP_SetTimingParams(FR_ConnHandleBL, FR_timeoutAS, FR_timeoutAR, FR_timeoutBS, FR_timeBR, FR_timeCS, FR_timeoutCR);
+  FrTP_SetMaxPDULength(FR_ConnHandleBL, 254);
+  FrTP_SetBandwidthControl(FR_ConnHandleBL, 0, 0);
+  FrTP_SetBufferSize(FR_ConnHandleBL, 0);
+  FrTP_SetFillByte(FR_ConnHandleBL, 0x00);
+  FrTP_SetExpertParam(FR_ConnHandleBL, 68, 1);
+  FR_HandleFlag=2;
+  return FR_ConnHandleBL;
+}
+
+
+
+void FRTp_Close( long connHandle)
+{
+  if(connHandle == FR_ConnHandleAPP_Func)
+  {
+    testWaitForTimeout(10);
+    FrTP_DeleteConn(FR_ConnHandleAPP_Phys);
+  }
+  testWaitForTimeout(10);
+  FrTP_DeleteConn(connHandle);
+}
+
+//FrTP_FirstFrameInd (long connHandle, dword Length )
+//{
+//   TestSupplyTextEvent("TPFirstCFrecived");
+//  write("TPFirstCFrecived");
+//}
+void FrTP_TxConfirmationInd( long connHandle)
+{
+  testSupplyTextEvent("TxSuccessful");
+  write( "Data transmission on connection %d successful", connHandle); 
+}
+
+void FrTP_ReceptionInd( long connHandle, byte data[])
+{
+  TpRxLength=elcount( data);
+  memcpy( TpRxData, data, TpRxLength);
+
+  TestSupplyTextEvent("TPreciveData");
+} 
+
+void FrTP_FrameRxInd( long connHandle, long typeOfCPDU, BYTE buffer[])
+{
+  long SubTpye;
+  if(typeOfCPDU == 0 || typeOfCPDU == 1)
+  {
+    TestSupplyTextEvent("TPFirstCFrecived");
+  }
+}
+
+enum ResponseState FR_ECU_Response(int P2)
+{
+  if(P2 != 5000)
+  {
+    gNRC78Flag=0;//
+  }
+  
+  if(testWaitForTextEvent("TPFirstCFrecived",P2)==0)
+  {
+    return Timeout;
+  }
+
+  if(testWaitForTextEvent("TPreciveData",5000)==1)
+  {
+    if(TpRxData[0]==0x7f)
+    {
+      switch(TpRxData[2])
+      {
+        case 0x78:
+        {
+          gNRC78Flag=1;//
+//          write("NRC78 time=%f",timeNow()/100.0);
+          return FR_ECU_Response(5000);
+        }
+        default:
+        //  NRC_Info(TpRxData[2]);
+          break;
+      }
+//      t2 = timeNow()/100.0;
+      return Neg;
+    }
+    else
+    {
+//      t2 = timeNow()/100.0;
+      return Pos;
+    }
+  }
+  else
+  {
+    testStepFail("Chk","The CF is not incomplete");
+    return Timeout;
+  }
+}
+
+int FR_TP_Send(byte Data[],enum AddressMode Mode)
+{
+//  testJoinTextEvent("TxSuccessful");
+  if(FR_HandleFlag==1)
+  {
+    if(Mode==0)
+      FrTP_DataRequest(FR_ConnHandleAPP_Phys, Data, elCount(Data));
+    else
+      FrTP_DataRequest(FR_ConnHandleAPP_Func, Data, elCount(Data));
+  }
+  else
+  {  
+     FrTP_DataRequest(FR_ConnHandleBL, Data, elCount(Data));
+  }
+//  if(testWaitForAnyJoinedEvent(3000)>0)
+//  {
+////    t1 = timeNow()/100.0;
+////    testStep("Info","diag request received!");
+//    return 1;
+//  }
+  return 1;
+}
+
+int FR_TP_Send(byte Data[],long length,enum AddressMode Mode)
+{
+//  testJoinTextEvent("TxSuccessful");
+  if(length>elcount(Data))
+  {
+    if(FR_HandleFlag==1)
+    {
+      if(Mode==0)
+        FrTP_DataRequest(FR_ConnHandleAPP_Phys, Data, elCount(Data));
+      else
+        FrTP_DataRequest(FR_ConnHandleAPP_Func, Data, elCount(Data));
+    }
+    else
+    {  
+       FrTP_DataRequest(FR_ConnHandleBL, Data, elCount(Data));
+    }
+    write("Worning tp send data size small than given length");
+  }
+  else
+  {
+    if(FR_HandleFlag==1)
+    {
+      if(Mode==0)
+        FrTP_DataRequest(FR_ConnHandleAPP_Phys, Data, length);
+      else
+        FrTP_DataRequest(FR_ConnHandleAPP_Func, Data, length);
+    }
+    else
+    {  
+       FrTP_DataRequest(FR_ConnHandleBL, Data, length);
+    }
+  }
+//  if(testWaitForAnyJoinedEvent(3000)>0)
+//  {
+////    t2 = timeNow()/100.0;
+//    return 1;
+//  }
+  return 1;;
+}

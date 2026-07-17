@@ -1,0 +1,872 @@
+/*@!Encoding:936*/
+includes
+{
+
+}
+
+variables
+{
+  byte ENV_SendData[13] = {0x08,0x00,0x00,0x00,0xAA,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} ;
+}
+void ENV_Reset()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_Reset=1;
+  testWaitForTimeout(100);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_Reset=1;
+//  ENV_SendData[5] = 0xff;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aaff000000000000000000");
+}
+
+void ENV_Circuit1()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_Circuit1=1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x01;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00010000000000000000");
+}
+
+void ENV_Circuit2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_Circuit2=1;
+//  ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x02;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00020000000000000000");
+}
+
+void ENV_CANH_VB()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_VB=1;
+  testWaitForTimeout(50);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_VB=1;
+//  ENV_SendData[5] = 0x01;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa01000000000000000000");
+}
+
+void ENV_CANL_VB()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANL_VB=1;
+  testWaitForTimeout(50);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANL_VB=1;
+//  ENV_SendData[5] = 0x02;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa02000000000000000000");
+}
+
+void ENV_CANH_GND()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_GND=1;
+  testWaitForTimeout(50);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_GND=1;
+//  ENV_SendData[5] = 0x03;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa03000000000000000000");
+}
+
+void ENV_CANL_GND()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANL_GND=1;
+  testWaitForTimeout(50);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANL_GND=1;
+//  ENV_SendData[5] = 0x04;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa04000000000000000000");
+}
+
+void ENV_CANH_CANL()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL=1;
+  testWaitForTimeout(50);
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL=1;
+//  ENV_SendData[5] = 0x05;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa05000000000000000000");
+}
+
+void ENV_SignalGen_CANH()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_SignalGen_CANH=1;
+//  ENV_SendData[5] = 0x06;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa06000000000000000000");
+}
+
+void ENV_ScopA_Tx()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_ScopA_Tx=1;
+//  ENV_SendData[5] = 0x07;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa07000000000000000000");
+}
+
+void ENV_ScopB_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_ScopB_Rx =1;
+//  ENV_SendData[5] = 0x08;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa08000000000000000000");
+}
+
+void ENV_SignalGen_Tx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_SignalGen_Tx =1;
+//  ENV_SendData[5] = 0x09;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa09000000000000000000");
+}
+
+void ENV_Terminal_Resistance1()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_Terminal_Resistance1 =1;
+//  ENV_SendData[5] = 0x0A;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0A000000000000000000");
+}
+
+void ENV_Terminal_Resistance2()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_Terminal_Resistance2=1;
+//  ENV_SendData[5] = 0x0B;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0B000000000000000000");
+}
+
+void ENV_CANH_CANL_R1()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R1=1;
+//  ENV_SendData[5] = 0x0C;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0C000000000000000000");
+}
+
+void ENV_CANH_CANL_R2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R2 =1;
+//  ENV_SendData[5] = 0x0D;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0D000000000000000000");
+}
+
+void ENV_CANH_CANL_R3()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R3 =1;
+//  ENV_SendData[5] = 0x0E;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0E000000000000000000");
+}
+
+void ENV_CANH_CANL_R4()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R4=1;
+//  ENV_SendData[5] = 0x0F;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa0F000000000000000000");
+}
+
+void ENV_CANH_CANL_R5()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R5=1;
+//  ENV_SendData[5] = 0x10;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa10000000000000000000");
+}
+
+void ENV_CANH_CANL_R6()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R6 =1;
+//  ENV_SendData[5] = 0x11;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa11000000000000000000");
+}
+
+void ENV_CANH_CANL_R7()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R7=1;
+//  ENV_SendData[5] = 0x12;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa12000000000000000000");
+}
+
+void ENV_CANH_CANL_R8()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R8=1;
+//  ENV_SendData[5] = 0x13;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa13000000000000000000");
+}
+
+void ENV_CANH_CANL_R9()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R9 =1;
+//  ENV_SendData[5] = 0x14;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa14000000000000000000");
+}
+
+void ENV_CANH_CANL_R10()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_CANL_R10 =1;
+//  ENV_SendData[5] = 0x15;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);;
+////  SendTcpData("0200aa15000000000000000000");
+}
+
+void ENV_CANH_VB_R1()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_VB_R1=1;
+//  ENV_SendData[5] = 0x16;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa16000000000000000000");
+}
+
+void ENV_CANH_VB_R2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANH_VB_R2 =1;
+//  ENV_SendData[5] = 0x17;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa17000000000000000000");
+}
+
+void ENV_CANH_VB_R3()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_VB_R3=1;
+//  ENV_SendData[5] = 0x18;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa18000000000000000000");
+}
+
+void ENV_CANH_GND_R1()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_GND_R1=1;
+//  ENV_SendData[5] = 0x19;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa19000000000000000000");
+}
+
+void ENV_CANH_GND_R2()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANH_GND_R2=1;
+//  ENV_SendData[5] = 0x1A;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1a000000000000000000");
+}
+
+void ENV_CANL_GND_R1()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_CANL_GND_R1=1;
+//  ENV_SendData[5] = 0x1B;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1B000000000000000000");
+}
+
+void ENV_CANL_GND_R2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_CANL_GND_R2 =1;
+//  ENV_SendData[5] = 0x1C;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1C000000000000000000");
+}
+
+void ENV_C3_1()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_C3_1=1;
+//  ENV_SendData[5] = 0x1D;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1D000000000000000000");
+}
+
+void ENV_C3_2()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_C3_2=1;
+//  ENV_SendData[5] = 0x1E;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1E000000000000000000");
+}
+
+void ENV_C3_3()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_3 =1;
+//  ENV_SendData[5] = 0x1F;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa1F000000000000000000");
+}
+
+void ENV_C3_4()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_4 =1;
+//  ENV_SendData[5] = 0x20;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa20000000000000000000");
+}
+
+void ENV_C3_5()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_5 =1;
+//  ENV_SendData[5] = 0x21;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa21000000000000000000");
+}
+
+void ENV_C3_6()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_6 =1;
+//    ENV_SendData[5] = 0x22;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa22000000000000000000");
+}
+
+void ENV_C3_7()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_C3_7=1;
+//    ENV_SendData[5] = 0x23;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa23000000000000000000");
+}
+
+void ENV_C3_8()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_8 =1;
+//    ENV_SendData[5] = 0x24;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa24000000000000000000");
+}
+
+void ENV_C3_9()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_9 =1;
+//    ENV_SendData[5] = 0x25;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa25000000000000000000");
+}
+
+void ENV_C3_10()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_C3_10=1;
+//    ENV_SendData[5] = 0x26;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa26000000000000000000");
+}
+
+void ENV_C3_11()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_11 =1;
+//    ENV_SendData[5] = 0x27;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa27000000000000000000");
+}
+
+void ENV_C3_12()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_12 =1;
+//    ENV_SendData[5] = 0x28;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa28000000000000000000");
+}
+
+void ENV_C3_13()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_13 =1;
+//    ENV_SendData[5] = 0x29;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa29000000000000000000");
+}
+
+void ENV_C3_14()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_14 =1;
+//    ENV_SendData[5] = 0x2A;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2A000000000000000000");
+}
+
+void ENV_C3_15()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::ENV_C3_15=1;
+//    ENV_SendData[5] = 0x2B;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2B000000000000000000");
+}
+
+void ENV_C3_16()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C3_16 =1;
+//    ENV_SendData[5] = 0x2C;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2C000000001000000000");
+}
+
+void ENV_C1_1()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C1_1 =1;
+//    ENV_SendData[5] = 0x2D;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2D000000000000000000");
+}
+
+void ENV_C1_2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C1_2 =1;
+//    ENV_SendData[5] = 0x2E;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2E000000000000000000");
+}
+
+void ENV_C1_3()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C1_3 =1;
+//    ENV_SendData[5] = 0x2F;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa2F000000000000000000");
+}
+
+void ENV_C1_4()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C1_4 =1;
+//    ENV_SendData[5] = 0x30;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa30000000000000000000");
+}
+
+void ENV_C2_1()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C2_1 =1;
+//    ENV_SendData[5] = 0x31;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa31000000000000000000");
+}
+
+void ENV_C2_2()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C2_2 =1;
+//    ENV_SendData[5] = 0x32;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa32000000000000000000");
+}
+
+void ENV_C2_3()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C2_3 =1;
+//    ENV_SendData[5] = 0x33;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa33000000000000000000");
+}
+
+void ENV_C2_4()
+{
+  @sysvar::PreCmd::ENV_PreCmd::ENV_C2_4 =1;
+//    ENV_SendData[5] = 0x34;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa34000000000000000000");
+}
+
+void CANHIN_CANHOUT()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::CANHIN_CANHOUT=1;
+  testWaitForTimeout(20);
+  @ sysvar::PreCmd::ENV_PreCmd::CANHIN_CANHOUT=1;
+//    ENV_SendData[5] = 0x37;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa37000000000000000000");
+}
+
+void CANLIN_CANLOUT()
+{
+  @sysvar::PreCmd::ENV_PreCmd::CANLIN_CANLOUT =1;
+  testWaitForTimeout(20);
+  @sysvar::PreCmd::ENV_PreCmd::CANLIN_CANLOUT =1;
+//    ENV_SendData[5] = 0x38;
+//  ENV_SendData[6] = 0x00;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x00;
+//  ENV_SendData[9] = 0x00;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa38000000000000000000");
+}
+
+void Terminal_MinLoad_No_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Terminal_MinLoad_No_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x01;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x01;
+//  ENV_SendData[9] = 0x01;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00010001010000000000");
+}
+
+void Terminal_MinLoad_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Terminal_MinLoad_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x01;
+//  ENV_SendData[7] = 0x0A;
+//  ENV_SendData[8] = 0x01;
+//    ENV_SendData[9] = 0x01;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00010a01010000000000");
+}
+
+void Terminal_MaxLoad_No_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Terminal_MaxLoad_No_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x01;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x02;
+//    ENV_SendData[9] = 0x02;
+//  ENV_SendData[10] = 0x01;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00010002021000000000");
+}
+
+void Terminal_MaxLoad_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Terminal_MaxLoad_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x01;
+//  ENV_SendData[7] = 0x0A;
+//  ENV_SendData[8] = 0x02;
+//    ENV_SendData[9] = 0x02;
+//  ENV_SendData[10] = 0x10;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00010a02021000000000");
+}
+
+void Non_Terminal_MinLoad_No_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Non_Terminal_MinLoad_No_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x02;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x01;
+//    ENV_SendData[9] = 0x01;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00020001010000000000");
+}
+
+void Non_Terminal_MinLoad_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Non_Terminal_MinLoad_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x02;
+//  ENV_SendData[7] = 0x0A;
+//  ENV_SendData[8] = 0x01;
+//  ENV_SendData[9] = 0x01;
+//  ENV_SendData[10] = 0x00;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00020a01010000000000");
+}
+
+void Non_Terminal_MaxLoad_No_Rx()
+{
+  @ sysvar::PreCmd::ENV_PreCmd::Non_Terminal_MaxLoad_No_Rx=1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x02;
+//  ENV_SendData[7] = 0x00;
+//  ENV_SendData[8] = 0x02;
+//  ENV_SendData[9] = 0x02;
+//  ENV_SendData[10] = 0x10;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00020002021000000000");
+}
+
+void Non_Terminal_MaxLoad_Rx()
+{
+  @sysvar::PreCmd::ENV_PreCmd::Non_Terminal_MaxLoad_Rx =1;
+//    ENV_SendData[5] = 0x00;
+//  ENV_SendData[6] = 0x02;
+//  ENV_SendData[7] = 0x0A;
+//  ENV_SendData[8] = 0x02;
+//  ENV_SendData[9] = 0x02;
+//  ENV_SendData[10] = 0x10;
+//  SendTcpData_BYTE(ENV_SendData,TEH_CAN1_Socket);
+////  SendTcpData("0200aa00020a02021000000000");
+}
+

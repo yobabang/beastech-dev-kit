@@ -1,0 +1,269 @@
+/*@!Encoding:936*/
+
+on sysvar_update sysvar::DeviceControl::PCS::Command::Measure
+{
+  if(@this)
+  {
+    testSupplyTextEvent("Add_Measure");
+  }
+}
+ 
+on sysvar_update sysvar::DeviceControl::PCS::Command::initSerial
+{
+  if(@this)
+  {
+    testSupplyTextEvent("PCS_InitConfig");
+  }
+}
+
+On sysvar_update sysvar::DeviceControl::IPClient::Sockets::PCS_Socket
+{
+  if(@this > 0)
+  {
+    PCS_Socket=@this;
+    
+    OSC_InitConfig();
+  }
+}
+
+ON sysvar_update sysvar::DeviceControl::IPClient::RcvEvent::TcpRecData
+{
+  LONG LEN,index;
+  byte data[99999];
+  for(index = 0;index < elcount(PCS_RecvData);index++)
+  {
+    PCS_RecvData[index] = 0;
+  }
+  if(@sysvar::DeviceControl::IPClient::RcvEvent::Socket != PCS_Socket)
+    return;
+  sysGetVariableData(THIS,data,LEN);
+  Rcv_Size = LEN;
+  for(index = 0;index < LEN;index++)
+  {
+    PCS_RecvData[index] = data[index];
+    //write("PCS_RecvData[%d]:0x%x",index,PCS_RecvData[index]);
+  }
+}
+
+
+on sysvar_update sysvar::DeviceControl::PCS::Command::ID_Trigger
+{
+  if(@this)
+  {
+    testSupplyTextEvent("PCS_IDTrigger");
+  }
+}
+
+//on sysvar_update sysvar::DeviceControl::DSOX3034A::Parameters::Trigger::id
+//{
+//  char id[10];
+//  OSC_Trigger_setID(id);
+//}
+
+
+on sysvar_update sysvar::DeviceControl::PCS::Command::SavePicture
+{
+  if(@this>0)
+  {
+    testSupplyTextEvent("Save_Picture");
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::PCS::Command::MeasResult_Query
+{
+  if(@this)
+    testSupplyTextEvent("Meas_Query");
+}
+
+on sysvar_update sysvar::DeviceControl::PCS::Cursors::XCursor
+{
+  if(@this)
+    testSupplyTextEvent("XCursor");
+}
+
+
+
+
+
+double PCS_ReceiveDataStg(char Src[])
+{
+  char SelFront[100]="<Res scr=\"PCS\" pyid=\"-\"><!\\[CDATA\\[";
+  char SelBack[100]="\\]\\]></Res>";
+  char SubSrc_String[100]="";
+  double SubSrc_Double;
+  str_replace_regex(Src,SelFront,"");
+//  testWaitForTimeout(10);
+  str_replace_regex(Src,SelBack,"");
+//  testWaitForTimeout(10);
+  strncpy(SubSrc_String,Src,strlen(Src)-3);
+  str_replace_regex(SubSrc_String,"E","e");
+//  testWaitForTimeout(10);
+  strtod(SubSrc_String,SubSrc_Double);
+  return(SubSrc_Double);
+}
+
+
+
+
+void OSC_MeasureAdd(Char Type[],char Source[])
+{
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Type,Type);
+  sysSetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Sour,Source);
+  OSC_Meas_Add();
+  testWaitForTimeout(100);
+}
+
+void OSC_setChannelScale(int ChannelNo, float scale)
+{
+  int i;
+  float status[4];
+
+  scalebuff[ChannelNo-1]=scale;
+  for(i=0;i<elcount(status);i++)
+  {
+    status[i]=scalebuff[i];
+  }
+  OSC_Channel_setScale(status);
+}
+
+void OSC_setChannelDisplay(int ChannelNo, int isDisplay)
+{
+  int i;
+  int status[4];
+  
+  Displaybuff[ChannelNo-1]=isDisplay;
+  for(i=0;i<elcount(status);i++)
+  {
+    status[i]=Displaybuff[i];
+  }
+  OSC_Channel_setDisplay(status);
+}
+
+void OSC_setChannelOffset(int ChannelNo, float offset)
+{
+  int i;
+  float status[4];
+
+  offsetbuff[ChannelNo-1]=offset;
+  for(i=0;i<elcount(status);i++)
+  {
+    status[i]=offsetbuff[i];
+  }
+  OSC_Channel_setOffset(status);
+}
+
+//void OSC_setFunctionOperation(char operation[])
+//{
+//  sysSetVariableString("DeviceControl::DSOX3034A::Parameters::Function","operation",operation);
+//}
+
+void OSC_MeasureBitTimeWithinScreen( float TimebaseScale,float TimebasePosition)
+{
+  float bitlength,Ntime;
+  bitlength = 0;
+  
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+  
+  //添加测量
+  OSC_Meas_Clear();
+  OSC_MeasureAdd("PEDGes","math");
+//  testWaitForTimeout(1000);
+}
+
+
+float OSC_MeasureBitTimeWithinScreen_v77( float TimebaseScale,float TimebasePosition,LONG isDataField,long isBRS)
+{
+  float bitlength,Ntime;
+  bitlength = 0;
+  
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+  
+  //添加测量
+  OSC_Meas_Clear();
+  OSC_MeasureAdd("VAVerage AUTO ,","math");
+  testWaitForTimeout(1000);
+  
+//  //获取测量值
+//  Ntime = OSC_CursorQuery();
+//  if(Ntime != 0)
+//  {
+//    bitlength = Ntime/(_round( Ntime /0.000004) );
+//  }
+//  else
+//    teststepwarning("","未捕捉到上升沿，请检查");
+  
+  return bitlength * 1000000000;
+}
+
+float OSC_MeasureBitTime(float TimebaseScale,float TimebasePosition)
+{
+  float bitlength;
+  bitlength = 0;
+  
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+  
+  //添加测量
+  OSC_Meas_Clear();
+  OSC_MeasureAdd("NWidth","math");
+  testWaitForTimeout(1000);
+  
+//  //获取测量值
+//  bitlength = OSC_CursorQuery();
+  
+  return bitlength * 1000000000;
+}
+
+void OSC_MeasureBitVoltageWithinScreen(float TimebaseScale,float TimebasePosition)
+{
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+  
+  //添加测量
+  OSC_Meas_Clear();
+  OSC_MeasureAdd("Vbase","Channel1");
+  OSC_MeasureAdd("VTop","Channel1");
+  OSC_MeasureAdd("Vbase","Channel2");
+  OSC_MeasureAdd("VTop","Channel2");
+  OSC_MeasureAdd("Vbase","math");
+  OSC_MeasureAdd("VTop","math");
+}
+
+
+void OSC_MeasureCommonVoltageWithinScreen(float TimebaseScale,float TimebasePosition)
+{
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+  
+  //添加测量
+  OSC_Meas_Clear();
+  OSC_MeasureAdd("Vbase","math");
+  OSC_MeasureAdd("VTop","math");
+}
+
+void OSC_Trigger_ByCANID(char ID[])
+{
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(0);
+  testWaitForTimeout(100);
+  OSC_SBUS_Display(1);
+  testWaitForTimeout(5);
+  OSC_SBUS_Mode("CAN");
+  testWaitForTimeout(5);
+  testWaitForTimeout(5);
+  OSC_Trigger_Type("SBUS1");
+  testWaitForTimeout(5);
+  OSC_Trigger_Position("IDData");
+}

@@ -1,0 +1,41 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "N6700C_lower.cin"
+  #include "onSysvar_SPPS.cin"
+  #include "onSysvar_PPS.cin"
+}
+
+
+
+variables
+{
+  char DeviceName[256] = "N6700C";
+}
+
+
+void MainTest ()
+{
+  N6700C();
+}
+
+testcase N6700C()
+{
+  int res;
+  while(1)
+  {
+    testJoinTextEvent("PPS_InitConfig");//1
+    testJoinTextEvent("SPPS_InitConfig");//1
+    res= testWaitForAnyJoinedEvent(1000000);
+    CMD(res);
+  }
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):PPS_initConfig();break;
+    case(2):SPPS_initConfig();break;
+  }
+}

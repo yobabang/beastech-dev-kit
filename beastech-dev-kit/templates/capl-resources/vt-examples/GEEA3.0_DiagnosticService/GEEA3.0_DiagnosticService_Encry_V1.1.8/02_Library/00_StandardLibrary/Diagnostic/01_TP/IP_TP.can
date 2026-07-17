@@ -1,0 +1,1556 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: IP_TP.cin
+|  Comment:   Ethernet network layer functions of ISO13400-2:2013
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+| 20190621     1.1  LJY               Change connection establish sequence
+|1.
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+includes
+{
+  #include "..\..\..\..\03_Script\Parameters.cin"
+  #include "..\..\..\..\03_Script\UserDefine.cin"
+}
+
+variables
+{
+  //new add-10-14
+  float gTimeTCPDisCnct,gTimeTCPCnct;
+  int gTCPCnctFlag; 
+  int gECUInitTimeCheckFlag = 0;
+  dword gTolerateTimeForTCPConnect = 60000;////偏离后建立TCP的时间
+  dword gTolerateTimeForDiagInit = 1000;////TCP建立后诊断使能时间
+  dword gTolerateTimeForSYNMessage = 60000;////等待SYN报文时间
+  dword gECUIniTime=5000;
+//  float TCPConnectionRecordTime1=0,TCPConnectionRecordTime2=0;
+  
+  dword   gETH_EdgeNodeLogicAddress;
+  dword   gETH_TesterLogicAddress ;
+  dword   gETH_ECULogicAddress ;
+  dword   gETH_FunctionalLogicAddress;
+//  dword   gETH_VehicleIPv4Address;
+//  dword   gETH_TesterIPv4Address;
+  dword   gETH_netmask;
+  
+//  float   gETH_t1,gETH_t2;      //Used to calculate send and receive time
+//  float TP_T1;
+  
+  byte    gTpTxData[65536];     //Used to save data to be sent
+  dword   gTpTxLength;          //Used to save dala lenth
+  dword   gListenSocket;        //Used to identify the current listen
+  dword   gConnectionSocket;    //Used to identify the current tcp connection
+  char    gRxBuffer[65536];     //Used to save data to be received
+  dword   gConnectionECUAddress;    //Used to identify the current tcp connection
+
+  char    gIpLastErrStr[1024]  = "";//Used to save error information  
+  byte    gTcpRxBuffer[8192];   //Used to save TCP receive data
+  int     gIpLastErr           = 0;//Used to save last error code
+  BYTE    emptyMacAddress[6] = { 0x00,0x00,0x00,0x00,0x00,0x00};
+
+  msTimer ETH_ServerListen;
+  msTimer ETH_TP_TesterPresentTimer;
+  const long  WSA_IO_PENDING =  997;
+  
+  int ETHSendFlag = 0;
+  
+  struct ConnectionSocket
+  {
+    dword gConSocHandle;
+    dword gSocAdd;
+    dword gLogicalAddress;
+    dword gSocIndex;
+    int   State;
+    float gTimeTCPDisconnect;
+    float gTimeTCPReconnect;
+    byte  gSocketData[65535];
+  };
+  struct ConnectionSocket gConSoc[655350];
+  dword gConCount;
+  byte gMACAddressForTester[6];
+  
+  dword gIPAddressForECU ;
+  dword gIPAddressForTester ;
+  char  gIPAddressForECUChar[256];
+  int   gFlag_TCPConnected;
+
+  int  gConnectFlag = 1; //Used to confirm if the current TCP connection is valid or invalid
+  dword gTCPConnectionNum=0;  //Used to count the unmber of the connected TCP connection
+  dword gMaxTimeToWaitForTCPConnected = 50000;
+  
+ //Ethernet
+  enum EthNodeType {EdgeNode = 1,InternalNode = 2}; //EdgeNode:As a server for the TCP connection ; InternalNode:As a client for the TCP connection
+	dword  gTesterLogicAddress = 0x0E80;
+	dword  gECULogicAddress=0x1011;
+	dword   gFunctionalLogicAddress = 0x1FFF;
+	char gTesterIpv4Address[400] = "";
+  char gECUIpv4Address[400] = "";
+	char   gNetmask[400] = "";
+  enum EthNodeType EthNodeTypeNow = InternalNode;
+  //Ethernet
+  
+  //////
+  int    gNRC78Flag = 0;
+  enum   ResponseState {TIMEOUT,POS,NEG};
+  enum   TP_Switch {TP_ON = 1,TP_OFF = 0};
+  enum   Bus_Type {TP_CAN = 1,TP_CANFD = 2,TP_LIN = 3,TP_FLEXRAY = 4,TP_ETHERNET = 5};
+  enum   AddressMode {PHYSICAL = 0,FUNCTIONAL = 1};
+  byte Senddata[65535];
+  long Requestlength;
+  byte   gTpRxData[65535];
+  dword  gTpRxLength;
+  const int    gTPWaitTimeForP2 = 3000;
+	int gUDS_S3Client;
+  char errorbuffer[1024];
+  byte AnnouncementReceivedFlag=0;
+  byte ConnectToEthernetCommand=0;
+  
+  byte autoFindEdgeIPFlag=0;
+  
+  
+  ////queued
+  byte NRC78Num=0;
+  float TP_T1,TP_T2,TP_T3,TP_T4;
+//  byte QueueFirstCycle=0;
+  ////queued
+  
+  //DoIP Protocol
+  byte  gDoIP_ProtocolVersion = 0x02;
+  dword gUDP_Socket;
+  
+  //TCP段长度
+  dword TCPSegmentLength;
+  dword TCPSegmentIndex = 0;       // TCP数据段计数
+  byte  TcpRecvData[10][2000]; // 存储每个TCP数据段的数据，最大存储 10*1500
+  dword TcpRecvDataLength;
+  dword MultiTCPSegmentFlag,MultiTCPSegmentLength;
+  
+  msTimer  gmstimer_closetcp_for_linkdown;
+  msTimer  gmstimer_creattcp_for_doipdll;
+}
+
+on preStart
+{  
+
+}
+
+on timer gmstimer_creattcp_for_doipdll
+{
+  if(1 == @Diagnostic::ETH_AnnouncementMessageReceived) { @Diagnostic::ETH_TPparameterInit = 1; cancelTimer(gmstimer_creattcp_for_doipdll); }
+}
+
+on timer gmstimer_closetcp_for_linkdown
+{
+  tcpAbort(gConnectionSocket);
+}
+
+on timer ETH_ServerListen
+{
+
+}
+
+on timer ETH_TP_TesterPresentTimer
+{
+  byte Data[2] = {0x3E,0x80};
+  byte payload[6]={0x0E,0x80,0x1F,0xFF,0x3E,0x80};
+  
+//  SID3E_TesterPresent(FUNCTIONAL,SPRMIB_TRUE);
+  if(EthNodeTypeNow==EdgeNode)
+  {
+    DoIP_TCPSend(0x02,0x8001, payload, 6);
+  }
+  else
+  {
+    ETH_TP_Send(Data,FUNCTIONAL);
+  }
+  
+  
+  //SendTcpData( Data, elcount(Data), gETH_FunctionalLogicAddress, gETH_TesterLogicAddress); 
+}
+on sysvar_update Diagnostic::ETH_TPparameterInit
+{
+  gECULogicAddress=@Diagnostic::ETH_ECULogicAddress;
+  gTesterLogicAddress=@Diagnostic::ETH_TesterLogicAddress;
+  gFunctionalLogicAddress=@Diagnostic::ETH_FunctionalLogicAddress;
+  if(@Diagnostic::ETH_NodeType==1)
+    EthNodeTypeNow=EdgeNode;
+  else if(@Diagnostic::ETH_NodeType==2)
+    EthNodeTypeNow=InternalNode;
+  
+  sysGetVariableString( sysvar::Diagnostic::ETH_TesterIPAddress,gTesterIpv4Address,elcount(gTesterIpv4Address));
+  sysGetVariableString( sysvar::Diagnostic::ETH_VehicleIPAddress, gECUIpv4Address,elcount(gECUIpv4Address));
+  sysGetVariableString( sysvar::Diagnostic::ETH_ETHNetMask,gNetmask,  elcount(gNetmask));
+
+  
+  gUDS_S3Client=@Diagnostic::S3Client;
+  
+  ConnectToEthernetCommand=1;
+}
+
+on sysvar_update Diagnostic::Send_Flag
+{
+  byte tempAddressmode;
+  
+  
+  if(@this==1)
+  { 
+    tempAddressmode=@Diagnostic::AddressingMode;
+    Requestlength=elcount(sysvar::Diagnostic::Send_Data);
+    sysGetVariableData(sysvar::Diagnostic::Send_Data,Senddata,Requestlength);
+    if(tempAddressmode==0)
+      ETH_TP_Send(Senddata,Requestlength,PHYSICAL);
+    else if(tempAddressmode==1)
+      ETH_TP_Send(Senddata,Requestlength,FUNCTIONAL);
+  }
+}
+
+on sysvar_update Diagnostic::TP_TesterPresentSet
+{
+  if(@this==1)
+	{
+		setTimerCyclic(ETH_TP_TesterPresentTimer,gUDS_S3Client);
+	}
+	else if(@this==0)
+	{
+		cancelTimer(ETH_TP_TesterPresentTimer);
+	}  
+}
+
+on sysvar_update Diagnostic::ETH_SendVehicleAnnouncementRequest
+{
+  if(@this==1)
+	{
+		Send_VehicleAnnouncementRequest(); 
+	}
+}
+
+on sysvar_update DeviceControl::KL::KL30
+{
+//////  write("111111111111111111111111111111111111111111      %d    %d",@this,@Diagnostic::ETH_LinkStatus);
+//  if(@this==0 && @Diagnostic::ETH_LinkStatus == 1)
+//	{
+//		int i;
+//    for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//    { if(gConSoc[i].State == 1) { gConSoc[i].gTimeTCPDisconnect = timeNow()/100.0; }}
+//    if(@Diagnostic::ETH_TCPConnectionStatus == 1) { @Diagnostic::ETH_TimeTCPDisconnect = timeNow()/100.0; }
+//    @Diagnostic::ETH_AnnouncementMessageReceived = 0;
+//    cancelTimer(ETH_TP_TesterPresentTimer);
+////////    ETH_TP_Release();
+//    setTimer(gmstimer_closetcp_for_linkdown,gtime_closetcp_for_linkdown);
+//    @Diagnostic::ETH_TCPConnectionStatus = 0; 
+//    @Diagnostic::ETH_TCPReconnection = 0;
+//    @Diagnostic::ETH_LinkStatus = 0;
+//	}
+}
+
+void ETH_TP_Release()
+{
+  DoIP_CloseConnection();
+  tcpClose(gConnectionSocket);
+//////  tcpClose(gListenSocket);
+}
+
+//Used to receive data from DoIP connection
+Void DoIP_DataInd( byte buffer[], dword count, dword address, dword senderAddress) 
+{
+  if(address==gECULogicAddress)
+  {
+    sysSetVariableData(sysvar::Diagnostic::Receive_Data,buffer,count);
+    @Diagnostic::Receive_DataLength=count;
+    @Diagnostic::Receive_ConAll=1;
+    
+    TestSupplyTextEvent("ETHTPreciveData");
+    write( "Received %d byte  %x ..." , elcount(buffer), buffer[0]);
+  }
+}
+
+//Used to confirm data transition from DoIP connection
+void DoIP_DataCon( dword count)
+{
+  TestSupplyTextEvent("ETHSendDiagMessage");
+  @Diagnostic::Send_Con=1;
+}
+void _DoIP_MessageAcknowledgeInd( word payloadType, long code, word testerAddress, word ecuAddress)
+{
+//  TestSupplyTextEvent("ETHSendDiagMessage");
+  @Diagnostic::Send_DoipAckReceved=1;
+  @Diagnostic::Send_Con=1;
+}
+//void UDSRequestSendCon(ethernetPacket * myPacket)
+//{
+//  byte   UDSRequestSendCon[65535];
+//  dword  UDSRequestSendConLength;
+//  dword  i;
+//  
+//  if(myPacket.doip.IsAvailable())
+//  {
+//////    write("1111111111111111111111111111111111111111111111111111111111111111111111  %.6f",timeNow()/100000.0);
+//    switch(swapWord(myPacket.doip.word(2)))
+//    {
+//      case 0x8001:
+//////        write("22222222222222222222222222222222222222222222222222222222222222222222222222  %.6f",timeNow()/100000.0);
+//        
+//        UDSRequestSendConLength = myPacket.doip.byte(4)<<24 | myPacket.doip.byte(5)<<16 | myPacket.doip.byte(6)<<8 | myPacket.doip.byte(7);
+//////        write("333333333333333333333333333333333333333333333 %.6f %X",timeNow()/100000.0,UDSRequestSendConLength);
+//        for(i=0;i<UDSRequestSendConLength - 4;i++)
+//        {
+//          UDSRequestSendCon[i] = myPacket.doip.byte(i+12);
+//////          write("4444444444444444444444444444444444444  %X",myPacket.doip.byte(i+12));
+//        }
+//        if(memcmp(UDSRequestSendCon,Senddata,Requestlength) == 0) 
+//        {
+//////          write("5555555555555555555555555555555555555555555 %.6f",timeNow()/100000.0);
+//          @Diagnostic::Send_Con=1;
+//        }
+//        break;
+//      case 0x8002:
+//        break;
+//      case 0x8003:
+//        break;
+//    }
+//  }
+//}
+
+void _DoIP_VehicleConnectedInd()
+{
+  @Diagnostic::ETH_TCPConnectionStatus = 1;
+  @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+  write( "Vehicle connected.");
+}
+void DoIP_ErrorInd( int error)
+{
+  switch(error)
+  {
+    case 0:
+      writelineex( 0, 2, "No vehicle responded to the identification request");
+      break;
+    case 1:
+      writelineex( 0, 2, "Connection to vehicle failed");
+      break;
+    case 2:
+      writelineex( 0, 2, "Routing Activation failed ");
+      break;
+    case 3:
+      writelineex( 0, 2, "A negative ACK Code was received for a Diagnostic Message ");
+      break;
+    case 4:
+      writelineex( 0, 2, "No Ack for diagnostics message received  ");
+      break;
+    case 5:
+      writelineex( 0, 2, "A Generic DoIP header negative acknowledge was received ");
+      break;
+    default:
+      writelineex( 0, 2, "Reserved ");
+      break;
+  }
+}
+
+void _DoIP_ConnectionClosedInd( long reason)
+{
+  @Diagnostic::ETH_TCPConnectionStatus = 0;
+  @Diagnostic::ETH_TimeTCPDisconnect = timeNow()/100.0;
+  write( "ConnectionClosedInd( %d)", reason);
+}
+
+//Used to init ETH
+void ETH_TP_SetTransportParameters(dword ECULogicAddress,dword TesterLogicAddress,dword FunctionalLogicAddress,char TesterIPAddress[],char VehicleIPAddress[],char ETHNetMask[])
+{
+  dword result;
+  dword interfaceIndex;
+  
+  gETH_TesterLogicAddress=TesterLogicAddress;
+  //ETH_RawECULogicAddress=ECULogicAddress;
+  gETH_ECULogicAddress = ECULogicAddress;
+  gETH_FunctionalLogicAddress = FunctionalLogicAddress;
+//  gETH_TesterIPv4Address = ipGetAddressAsNumber(TesterIPAddress);
+//  gETH_VehicleIPv4Address = ipGetAddressAsNumber(VehicleIPAddress);
+  gETH_netmask = ipGetAddressAsNumber(ETHNetMask);
+  
+  gIPAddressForECU=addresstrans(gIPAddressForECU,VehicleIPAddress);
+  gIPAddressForTester=addresstrans(gIPAddressForTester,TesterIPAddress);
+  
+  interfaceIndex = 1;
+  
+//  result= ipAddAdapterAddress(interfaceIndex, gIPAddressForTester, gETH_netmask);
+  
+//  if( result != 0 )
+//  {
+//    write( "IpAddAdapterAddress failed, error code %d, last error %d", result, IpGetLastError());
+//  }
+
+  if(EthNodeTypeNow == EdgeNode)
+  {
+    if(gETH_EdgeNodeLogicAddress == 0 &&  gETH_EdgeNodeLogicAddress_UserDefine!= @Diagnostic::ETH_ECULogicAddress) { gETH_EdgeNodeLogicAddress = gETH_EdgeNodeLogicAddress_UserDefine; }
+    write("Initial DoIP!");
+    DoIP_SetProtocol(gDoIP_ProtocolVersion);   //1: Draft version (2010)
+    DoIP_SetLocalIPaddress(TesterIPAddress);
+    DoIP_SetVehicleAddress(VehicleIPAddress);
+    DoIP_SetTesterLogicalAddress( gETH_TesterLogicAddress);
+    DoIP_SetVehicleLogicalAddress( gETH_EdgeNodeLogicAddress);
+    DoIP_SetBroadcastIPaddress("255.255.255.255"); 
+    DoIP_SetVehicleTcpPort(13400);
+    DoIP_SetVehicleUdpPort(13400);
+    DoIP_SetReconnectInterval( 200, 100);
+    DoIP_SetReconnectDelay(ECUIniTime); 
+    DoIP_ConfigureRoutingActivationRequest(1,0x00,0x00000000);
+    DoIP_SetDiagnosticMessageTimeout(2000);
+    DoIP_SetIdentificationRequestVIN( "VECT0RVEH1CLE1234");
+    DoIP_ConnectToVehicle();
+//    write("TesterIPAddress=%s",TesterIPAddress);
+//    write("VehicleIPAddress=%s",VehicleIPAddress);
+//    write("gETH_TesterLogicAddress=%x",gETH_TesterLogicAddress);
+//    write("gETH_ECULogicAddress=%x",gETH_ECULogicAddress);
+    gETH_ECULogicAddress = @Diagnostic::ETH_ECULogicAddress;
+  }
+  else
+  {
+    Waitforcnnected(gMaxTimeToWaitForTCPConnected);
+  }
+}
+
+void Waitforcnnected(dword timeoutime)
+{
+  testWaitForTextEvent("TCPConnected",timeoutime);
+}
+
+//Used to set MAC for the tester
+void ETH_TP_SetTesterMAC(byte MAC[])
+{
+  gMACAddressForTester[0] = MAC[0];
+  gMACAddressForTester[1] = MAC[1];
+  gMACAddressForTester[2] = MAC[2];
+  gMACAddressForTester[3] = MAC[3];
+  gMACAddressForTester[4] = MAC[4];
+  gMACAddressForTester[5] = MAC[5];
+}
+
+void Server_Listen()
+{
+  long Result1;
+  int i;
+  
+  write("listening ...");
+  gListenSocket = TcpOpen( 0, 13400 );//建立一个TCP Socket
+  if(gListenSocket!=~0)
+  {
+    write("built TCP socket success ");
+  }
+  else
+    write("built TCP socket fail");
+    // Begin listening on TCP port.
+  TcpListen(gListenSocket);// listen for incoming connection requests
+  if (IpGetLastError() != 0)//判断监听TCP Socket是否成功
+  {
+    // if UdpSocket::Open fails, we print a message to the write window
+    write( "ETHTP_Err:<%BASE_FILE_NAME%> TcpSocket::Open failed with result %d", IpGetLastError() );
+  }
+  else
+    write("ETHTP:listen success");
+
+}
+
+
+//
+// Callback OnTcpListen is called on incomming connect request.
+//
+void OnTcpConnect( dword Socket, long Result)
+{
+  if (0 != Result)
+  {
+    IpGetLastSocketErrorAsString( Socket, gIpLastErrStr, elcount( gIpLastErrStr));
+    Writelineex(0, 2, "OnTcpConnect Error (%d): %s", IpGetLastSocketError(Socket), gIpLastErrStr);
+    snprintf(errorbuffer,elcount(errorbuffer),"OnTcpConnect Error (%d): %s", IpGetLastSocketError(Socket), gIpLastErrStr);
+    sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+    return;
+  }
+}
+
+//void OnTcpListen( dword socket, long result)
+//{
+//  dword gOtherConnection;
+//  int i,j;
+//  char ipaddressstring[20];
+//  dword addressesCount;
+//  dword temp_socket;
+//  dword temp_ipv4address;
+//  
+//  write("ETHTP:listen success2  %d    %f",result,timeNow()/100000.0);
+//
+//  if (result == 0)
+//  {
+//    temp_socket = TcpAccept(socket);
+//    temp_ipv4address = TcpGetRemoteAddress(temp_socket);
+//    
+//    // 遍历结构体
+//    for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//    {
+//      // 找到逻辑地址
+//      if(gecu_ipv4_logical_address_info[i].logicaladdress == gETH_ECULogicAddress) 
+//      { 
+//        // 逻辑地址与IP地址匹配均匹配
+//        if(temp_ipv4address == IpGetAddressAsNumber(gecu_ipv4_logical_address_info[i].ipv4address)) 
+//        { 
+//          gTCPConnectionNum = i;
+//          gConSoc[gTCPConnectionNum].gConSocHandle = temp_socket;
+//          gConSoc[gTCPConnectionNum].gLogicalAddress = gETH_ECULogicAddress;
+//          gConSoc[gTCPConnectionNum].gSocAdd = temp_ipv4address;
+//          gConSoc[gTCPConnectionNum].State = 1;
+//          gConSoc[gTCPConnectionNum].gTimeTCPReconnect = timeNow()/100.0;
+//          
+//          write("%f set gConnectionSocket ",timeNow()/100000.0);
+//          gConnectionSocket = gConSoc[gTCPConnectionNum].gConSocHandle;
+//          tcpReceive(gConnectionSocket, gTcpRxBuffer, elcount(gTcpRxBuffer) );
+//          ipGetAdapterAddressAsString( 1, ipaddressstring, addressesCount);
+//          sysSetVariableString( sysvar::Diagnostic::ETH_TesterIPAddress,ipaddressstring);
+//          sysSetVariableString( sysvar::Diagnostic::ETH_VehicleIPAddress, gECUIpv4Address);
+//          
+//          if(gflag_wait_for_multi_tcp_socket == 0)
+//          {
+//            
+//            @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+//            testSupplyTextEvent("TCPConnected");
+//            @Diagnostic::ETH_TCPConnectionStatus=1;
+//	          @Diagnostic::ETH_TCPReconnection = 1;
+//            gFlag_TCPConnected = 1;
+//          }
+////////          write("222222222222222222222222222222222222222 gConSoc[%d].State = %d  TCPcreat %08X %f",gTCPConnectionNum,gConSoc[gTCPConnectionNum].State,temp_ipv4address,timeNow()/100000.0);
+//        }
+//        else //这里不用判断
+//        { 
+//          int j;
+//          for(j=0;j<elcount(gecu_ipv4_logical_address_info);j++)
+//          {
+//            if(temp_ipv4address == IpGetAddressAsNumber(gecu_ipv4_logical_address_info[j].ipv4address))
+//            {
+//              gTCPConnectionNum = j;
+//              gConSoc[gTCPConnectionNum].gConSocHandle = temp_socket;
+//              gConSoc[gTCPConnectionNum].gLogicalAddress = gecu_ipv4_logical_address_info[j].logicaladdress;
+//              gConSoc[gTCPConnectionNum].gSocAdd = temp_ipv4address;
+//              gConSoc[gTCPConnectionNum].State = 1;
+//              gConSoc[gTCPConnectionNum].gTimeTCPReconnect = timeNow()/100.0;
+//              tcpReceive(gConSoc[gTCPConnectionNum].gConSocHandle, gConSoc[gTCPConnectionNum].gSocketData, elcount(gConSoc[gTCPConnectionNum].gSocketData) );
+////////              write("44444444444444444444444444444444444444444 gConSoc[%d].State = %d  TCPcreat %08X %f",gTCPConnectionNum,gConSoc[gTCPConnectionNum].State,temp_ipv4address,timeNow()/100000.0);
+//              break;
+//            }
+//          }
+//        }
+//        break;
+//      }
+//      else
+//      {
+//        if(temp_ipv4address == IpGetAddressAsNumber(gecu_ipv4_logical_address_info[i].ipv4address))
+//        {
+//          gTCPConnectionNum = i;
+//          gConSoc[gTCPConnectionNum].gConSocHandle = temp_socket;
+//          gConSoc[gTCPConnectionNum].gLogicalAddress = gecu_ipv4_logical_address_info[i].logicaladdress;
+//          gConSoc[gTCPConnectionNum].gSocAdd = temp_ipv4address;
+//          gConSoc[gTCPConnectionNum].State = 1;
+//          gConSoc[gTCPConnectionNum].gTimeTCPReconnect = timeNow()/100.0;
+//          tcpReceive(gConSoc[gTCPConnectionNum].gConSocHandle, gConSoc[gTCPConnectionNum].gSocketData, elcount(gConSoc[gTCPConnectionNum].gSocketData) );
+////////          write("333333333333333333333333333333333 gConSoc[%d].State = %d  TCPcreat %08X %f",gTCPConnectionNum,gConSoc[gTCPConnectionNum].State,temp_ipv4address,timeNow()/100000.0);
+//        }
+//      }
+//    }
+//    
+//    // 需要处理所有的TCP连接
+//    if(gflag_wait_for_multi_tcp_socket == 1)
+//    {
+//      for(j=0;j<elcount(gecu_ipv4_logical_address_info);j++)
+//      {
+//////        if(gConSoc[gTCPConnectionNum].State == 0) { break; }
+//        if(gConSoc[j].State == 0) { break; }
+//      }
+//      // 非所有的TCP已连接
+//      if(j != elcount(gecu_ipv4_logical_address_info)) { return; }
+//      else 
+//      {
+//        if(1 == gflag_reset_time_multi_chip_handle)
+//        { @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0; }
+//        else
+//        { 
+//          for(j=0;j<elcount(gecu_ipv4_logical_address_info);j++)
+//          { if(gecu_ipv4_logical_address_info[j].logicaladdress == gETH_ECULogicAddress) { @Diagnostic::ETH_TimeTCPReconnect = gConSoc[j].gTimeTCPReconnect; } }
+////////          write("0000000000000000000   %04X ",gETH_ECULogicAddress);
+////////          write("0000000000000000000   %f    %f ",gConSoc[0].gTimeTCPReconnect,gConSoc[1].gTimeTCPReconnect);
+//        }
+//        testSupplyTextEvent("TCPConnected");
+//        @Diagnostic::ETH_TCPConnectionStatus=1;
+//        @Diagnostic::ETH_TCPReconnection = 1;
+//        gFlag_TCPConnected = 1;
+////////        write("7777777777777777777777777777777777777   %f",timeNow()/100000.0);
+//      }
+//    }
+//    else
+//    {
+//      int i;
+////////      write("5555555555555555555555555555555      %04X        %08X",gETH_ECULogicAddress,temp_ipv4address);
+//      for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//      {
+//        if(gecu_ipv4_logical_address_info[i].logicaladdress == gETH_ECULogicAddress && temp_ipv4address == IpGetAddressAsNumber(gecu_ipv4_logical_address_info[i].ipv4address))
+//        {
+//          @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+//          write("type2 %f set gConnectionSocket ",timeNow()/100000.0);
+//          gConnectionSocket = temp_socket;
+//          tcpReceive(gConnectionSocket, gTcpRxBuffer, elcount(gTcpRxBuffer) );
+//          testSupplyTextEvent("TCPConnected");
+//          @Diagnostic::ETH_TCPConnectionStatus=1;
+//          @Diagnostic::ETH_TCPReconnection = 1;
+//          gFlag_TCPConnected = 1;
+//          break;
+//        }
+//      }
+//      if(i == elcount(gecu_ipv4_logical_address_info) && (gflag_multi_chip_handle==0))//20250421 石太佳，这里加一个判断，如果是单IP 才会使用下面的语句
+//      {
+//        @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+//        write("type3 %f set gConnectionSocket ",timeNow()/100000.0);
+//        gConnectionSocket = temp_socket;
+//        tcpReceive(gConnectionSocket, gTcpRxBuffer, elcount(gTcpRxBuffer) );
+//        testSupplyTextEvent("TCPConnected");
+//        @Diagnostic::ETH_TCPConnectionStatus=1;
+//        @Diagnostic::ETH_TCPReconnection = 1;
+//        gFlag_TCPConnected = 1;
+//      }
+//    }
+//  }
+//}
+void OnTcpListen( dword socket, long result)
+{
+  dword gOtherConnection;
+  int i,j;
+  char ipaddressstring[20];
+  dword addressesCount;
+  dword temp_socket;
+  dword temp_ipv4address;
+  
+  write("ETHTP:listen success2  %d    %f",result,timeNow()/100000.0);
+
+  if (result == 0)
+  {
+    temp_socket = TcpAccept(socket);
+    temp_ipv4address = TcpGetRemoteAddress(temp_socket);
+    
+    if (temp_ipv4address == IpGetAddressAsNumber(first_ip))
+    {
+      first_socket=temp_socket;
+      gConnectionSocket=temp_socket;
+      tcpReceive(gConnectionSocket, gTcpRxBuffer, elcount(gTcpRxBuffer) );
+      
+      if(gflag_wait_for_multi_tcp_socket ==0)
+      {
+           
+           
+           @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+           testSupplyTextEvent("TCPConnected");
+           @Diagnostic::ETH_TCPConnectionStatus=1;
+           @Diagnostic::ETH_TCPReconnection = 1;
+           gFlag_TCPConnected = 1;
+           
+        
+      }
+      
+    }
+    else if(temp_ipv4address == IpGetAddressAsNumber(second_ip))
+    {
+       
+       second_socket=temp_socket;
+      
+    }
+    if(gflag_wait_for_multi_tcp_socket ==1)
+    {
+       if(first_socket!=0 && second_socket!=0)
+      {
+          @Diagnostic::ETH_TimeTCPReconnect = timeNow()/100.0;
+           testSupplyTextEvent("TCPConnected");
+           @Diagnostic::ETH_TCPConnectionStatus=1;
+           @Diagnostic::ETH_TCPReconnection = 1;
+           gFlag_TCPConnected = 1;
+        
+      }
+       
+    }
+    
+  }
+    
+ 
+}
+/********************************************************
+This function is used to set receive data to the confirmed TCP connection
+ *********************************************************/
+void SetSendTCPConnection()
+{
+  int i;
+  for(i=0;i<gTCPConnectionNum;i++)
+  {
+    write("now check num is %d and state is %d and add is %x",i,gConSoc[i].State,swapDWord(gConSoc[i].gSocAdd));
+    if(gConSoc[i].State == 1)
+    {
+      if(gIPAddressForECU == swapDWord(gConSoc[i].gSocAdd))
+      {
+        write("Successfully get IP and it is %x",gConSoc[i].gSocAdd);
+        gConnectionSocket =gConSoc[i].gConSocHandle;
+        tcpReceive(gConSoc[i].gConSocHandle, gTcpRxBuffer, elcount(gTcpRxBuffer) );
+        testSupplyTextEvent("TCPConnected");
+        @Diagnostic::ETH_TCPConnectionStatus=1;
+        gFlag_TCPConnected = 1;
+        
+        sysSetVariableString( sysvar::Diagnostic::ETH_TesterIPAddress,gTesterIpv4Address);
+        sysSetVariableString( sysvar::Diagnostic::ETH_VehicleIPAddress, gECUIpv4Address);
+      }
+    }
+  }
+}
+
+// error
+void OnTcpClose( dword socket, long result)
+{
+  int i;
+  writeLineEx(1, 1, " [ OnTcpClose called. (socket: %d, result: %d) ]", socket, result);
+  if (result == 0)
+  {
+    dword temp_ipv4address;
+    int i;
+    temp_ipv4address = TcpGetRemoteAddress(socket);
+    if(temp_ipv4address == IpGetAddressAsNumber(first_ip) )
+    {
+        @Diagnostic::ETH_TCPConnectionStatus=0;
+        @Diagnostic::ETH_TCPReconnection = 0;
+       first_socket=0;
+      
+      
+    }
+    else if (temp_ipv4address == second_socket)
+    {
+       second_socket=0;
+      
+      
+    }
+//    for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//    {
+//      if(temp_ipv4address == IpGetAddressAsNumber(gecu_ipv4_logical_address_info[i].ipv4address))
+//      { gConSoc[i].State = 0; gConSoc[i].gTimeTCPDisconnect = timeNow()/100.0;
+////////        write("OnTcpClose 111111111111111111111111111111111111 gConSoc[%d].State = %d TCPclose %08X  %f",i,gConSoc[i].State,temp_ipv4address,timeNow()/100000.0);
+//      }
+//    }
+    write("close tcp-stj");
+    tcpClose(socket);
+    // 需要检测所有TCP一起的复位时间()
+//    if(gflag_reset_time_multi_chip_handle == 1)
+//    {
+//      for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++) { if(gConSoc[i].State != 0) { break; } }
+//      // 均已断开,获取最开始断开的时间
+//      if(i == elcount(gecu_ipv4_logical_address_info))
+//      {
+//        for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//        {
+//          if(i == 0) { @Diagnostic::ETH_TimeTCPDisconnect = gConSoc[i].gTimeTCPDisconnect; }
+//          else 
+//          {
+//            if(@Diagnostic::ETH_TimeTCPDisconnect > gConSoc[i].gTimeTCPDisconnect) { @Diagnostic::ETH_TimeTCPDisconnect = gConSoc[i].gTimeTCPDisconnect; }
+//          }
+//        }
+////////        write("888888888888888888888888888888  gConSoc[0].gTimeTCPDisconnect = %f;  gConSoc[1].gTimeTCPDisconnect = %f  ",gConSoc[0].gTimeTCPDisconnect,gConSoc[1].gTimeTCPDisconnect);
+//        @Diagnostic::ETH_TCPConnectionStatus=0;
+//        @Diagnostic::ETH_TCPReconnection = 0;
+//      }
+//    }
+//    else // 不需要检测所有TCP的复位时间
+//    {
+//      // 当前关闭的不是用于通信的socket
+//      if(temp_ipv4address != TcpGetRemoteAddress(gConnectionSocket)) { return; }
+//      else { @Diagnostic::ETH_TimeTCPDisconnect = timeNow()/100.0; @Diagnostic::ETH_TCPConnectionStatus=0; @Diagnostic::ETH_TCPReconnection = 0; }
+//    }
+    cancelTimer(ETH_TP_TesterPresentTimer);
+  }
+}
+
+
+void OnTcpReceive( dword socket, long result, dword address, dword port, byte buffer[], dword size)
+{
+  char  addressString[64] = "";
+  char  AddressString[64] = "";
+  char Data[1024]="";
+//////  write("99999999999999999999999999999999   gConnectionSocket = %d; socket = %d  %f",gConnectionSocket,socket,timeNow()/100000.0);
+  if ( gConnectionSocket == socket)
+  {
+    if(MultiTCPSegmentFlag == 1) { TCPSegmentIndex++; }
+    memcpy(TcpRecvData[TCPSegmentIndex],buffer,size);
+    TCPSegmentLength = size;
+    TcpRecv( socket);
+  }
+
+  if (0 != result)
+  {
+    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+    writelineex( 0, 2, "OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+    snprintf(errorbuffer,elcount(errorbuffer),"OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+    sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+    return;
+  }
+}
+
+void OnTcpSend( dword socket, long result, char buffer[], dword size)
+{
+  byte tempdata[500];
+//  TestSupplyTextEvent("senddiagmessage");
+//  write("1111111111111111111111111111");
+//  char2bytearray(buffer,tempdata,size);
+//  PrintPID("IP","Send Request",tempdata,size);
+  if (0 != result)
+  {
+    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+    writelineex( 0, 2, "OnTcpSend Error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+    
+    snprintf(errorbuffer,elcount(errorbuffer),"OnTcpSend Error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+    sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+  }
+}
+
+on ethernetStatus *
+{
+  if(this.status == 0) 
+  { 
+    int i;
+//    for(i=0;i<elcount(gecu_ipv4_logical_address_info);i++)
+//    { 
+//      if(gConSoc[i].State == 1) 
+//      { 
+//        gConSoc[i].gTimeTCPDisconnect = timeNow()/100.0; 
+//      }
+//    }
+    if(@Diagnostic::ETH_TCPConnectionStatus == 1) 
+    { 
+      @Diagnostic::ETH_TimeTCPDisconnect = timeNow()/100.0; 
+    }
+    @Diagnostic::ETH_AnnouncementMessageReceived = 0;
+    cancelTimer(ETH_TP_TesterPresentTimer);
+    ETH_TP_Release();
+    @Diagnostic::ETH_TCPConnectionStatus = 0; 
+    @Diagnostic::ETH_TCPReconnection = 0;
+  }
+  else 
+  { 
+    int flag = 1;
+    if(flag == 0)
+    {
+      if(1 == @Diagnostic::ETH_NodeType) 
+      { 
+        setTimerCyclic(gmstimer_creattcp_for_doipdll,10); 
+      }
+      else if(2 == @Diagnostic::ETH_NodeType) 
+      { 
+        setTimer(gmstimer_closetcp_for_linkdown,gtime_closetcp_for_linkdown); 
+      }
+    }
+    flag = 0;
+  }
+}
+
+on ethernetPacket*
+{
+  dword length;
+  char buffer[100];
+  long Requestlength1,Requestlength2;
+  byte tempData[65535];
+  
+  if((EthNodeTypeNow == InternalNode)&&(this.doip.IsAvailable()))
+  {
+    length = this.doip.byteLength;
+//    if(this.dir==rx)
+//    {
+      if(length >= 12)
+      {
+//////        if(((this.doip.byte(8)<<8)+(this.doip.byte(9))) == gECULogicAddress)
+//////        {
+//////          gTpRxLength = length - 12;
+//////          this.doip.GetData(12,gTpRxData,gTpRxLength);
+//////          TestSupplyTextEvent("ETHTPreciveData");
+//////        if(@Diagnostic::Queue_EnableFlag==1)
+//////          {
+//////            @Diagnostic::Queue_ResExist=1;
+//////            if(gTpRxData[0]==0x7F&&gTpRxData[2]==0x78)
+//////            {
+//////              @Diagnostic::Queue_NRC78Flag=1;
+//////              NRC78Num++;
+//////              TP_T1 = timeNowFloat()/100000;
+//////              TP_T2 = timeNowFloat()/100000;
+//////              if(NRC78Num!=1)
+//////              {
+//////                TP_T3 = timeNowFloat()/100000;
+//////                if((TP_T3-TP_T2)>8)
+//////                {
+//////                  snprintf(buffer,elcount(buffer),"NRC78 Check Timeout");
+//////                  sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+//////                  NRC78Num=0;
+//////                  @Diagnostic::Queue_NRC78CheckResult=1;
+//////                  @Diagnostic::Queue_NRC78Flag=0;
+//////                }
+//////                else if((TP_T3-TP_T2)>5)
+//////                {
+//////                  snprintf(buffer,elcount(buffer),"NRC78 Timeout");
+//////                  sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+//////                }
+//////                else
+//////                {
+//////                  TP_T2 = timeNowFloat()/100000;
+//////                  TP_T4 = timeNowFloat()/100000;
+//////                  if((TP_T4-TP_T1)>60)
+//////                  {
+//////                    snprintf(buffer,elcount(buffer),"P4 TimeOut");
+//////                    sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+//////                    NRC78Num=0;
+//////                    @Diagnostic::Queue_NRC78CheckResult=0;
+//////                    @Diagnostic::Queue_NRC78Flag=0;
+//////                  }
+//////                }
+//////              }
+//////            }
+//////            else
+//////            {
+//////              if(@Diagnostic::Queue_NRC78Flag==1)
+//////              {
+//////                @Diagnostic::Queue_NRC78Flag=0;
+//////                @Diagnostic::Queue_NRC78CheckResult=2;
+//////                NRC78Num=0;
+//////              }
+//////  //          	gTpRxLength=elcount(gTpRxData);
+//////          sysSetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,gTpRxLength);
+//////          @Diagnostic::Receive_DataLength=gTpRxLength;
+//////        @Diagnostic::Queue_DRQ_R=1;
+//////        //      write("111111111111111");
+//////            }
+//////          }
+//////          else
+//////          {
+//////  //        	gTpRxLength=elcount(gTpRxData);
+//////            sysSetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,gTpRxLength);
+//////            @Diagnostic::Receive_DataLength=gTpRxLength;
+//////          }
+//////          @Diagnostic::Receive_ConAll=1;
+//////          
+//////          write( "ETHTP:Received TpRxLength=%d byte : 0x%x 0x%x 0x%x 0x%x  ..." , gTpRxLength, gTpRxData[0], gTpRxData[1], gTpRxData[2], gTpRxData[3]);
+//////        }
+        if((((this.doip.byte(10)<<8)+(this.doip.byte(11))) == gECULogicAddress)||(((this.doip.byte(10)<<8)+(this.doip.byte(11))) == gFunctionalLogicAddress))
+        {
+          if((this.doip.byte(12)==0x3E)&&(length >= 14)&&(this.doip.byte(13)==0x80))
+          {
+          }
+          else
+          {
+            gTpTxLength = length - 12;
+            this.doip.GetData(12,gTpTxData,gTpTxLength);
+            TestSupplyTextEvent("ETHSendDiagMessage");
+            @Diagnostic::Send_Con=1;
+            @Diagnostic::ETH_TCPReconnection = 0;
+//////            if(@Diagnostic::Queue_EnableFlag==1)
+//////            {
+//////              @Diagnostic::Queue_DRQ_S++;
+//////              switch(@Diagnostic::Queue_DRQ_S)
+//////              {
+//////                case 1:
+//////                  Requestlength1=elcount(sysvar::Diagnostic::Send_Data);
+//////                  sysGetVariableData(sysvar::Diagnostic::Send_Data,tempData,Requestlength1);
+//////                  syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer0,tempData,Requestlength1);
+//////                  break;
+//////                case 2:
+//////                  if(@Diagnostic::Queue_FirstCycleFlag==1)
+//////                  {
+//////                    @Diagnostic::Queue_FirstCycleFlag=0;
+//////                  }
+//////                  else
+//////                  {
+//////                    sysGetVariableData(sysvar::Diagnostic::Queue_SendBuffer1,tempData,Requestlength2);
+//////                    syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer0,tempData,Requestlength2);
+//////                  }
+//////                  Requestlength2=elcount(sysvar::Diagnostic::Send_Data);
+//////                  sysGetVariableData(sysvar::Diagnostic::Send_Data,tempData,Requestlength2);
+//////                  syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer1,tempData,Requestlength2);
+//////                  break;
+//////              }
+//////            }
+////////            write( "ETHTP:Send TpRxLength=%d byte : 0x%x 0x%x 0x%x 0x%x  ..." , gTpTxLength, gTpTxData[0], gTpTxData[1], gTpTxData[2], gTpTxData[3]);
+          }
+
+        }
+      }
+//    }
+  }
+  if(this.dir == rx && this.simulated == 0 && this.doip.byteLength > 30)
+  {
+    if(autoFindEdgeIPFlag == 1 )
+    {
+      FindDoIP_AnnouncementOnPacket(this);
+    }
+    else
+    {
+      AnnouncementReceivedFlag = 1;
+    }
+  }
+}
+
+long FindDoIP_AnnouncementOnPacket(ethernetPacket * myPacket)
+{
+  char ipaddressstring[20];
+  dword addressesCount;
+  
+  if(myPacket.doip.IsAvailable() && myPacket.doip.byte(0) == gDoIP_ProtocolVersion && (myPacket.doip.byte(1) == (0xFF-gDoIP_ProtocolVersion)) && swapWord(myPacket.doip.word(2)) == 4 )/* DoIP车辆声明触发 */
+  {
+    long logicAddress;
+    
+    logicAddress = swapWord(myPacket.doip.word(25)); 
+    
+    ipGetAddressAsString(myPacket.ipv4.source,gECUIpv4Address,elcount(gECUIpv4Address));
+    write("onDoIPUDPPacketReceived：scrip = %s, logic address = %04X",gECUIpv4Address,logicAddress);
+    
+    gETH_EdgeNodeLogicAddress = logicAddress;
+    //@Diagnostic::ETH_ECULogicAddress = logicAddress;//石太佳 20250417 注释掉此行，这里不能修改ECU 逻辑地址
+    {
+      char TestIpAddress_str[20];
+      dword TestIpAddress_dword;
+      
+      TestIpAddress_dword = ipGetAddressAsNumber(TestIpAddress_str);
+      
+      IP_GetAddressWithinSameCluster(TestIpAddress_str,gECUIpv4Address);
+      if( TestIpAddress_dword != ipGetAddressAsNumber(TestIpAddress_str))
+      {
+        ipAddAdapterAddress(1,ipGetAddressAsNumber(TestIpAddress_str),ipGetAddressAsNumber("255.255.0.0"));
+      }
+      
+      sysSetVariableString( sysvar::Diagnostic::ETH_TesterIPAddress,TestIpAddress_str);
+      sysSetVariableString( sysvar::Diagnostic::ETH_VehicleIPAddress, gECUIpv4Address);
+    }
+    
+    
+    
+    @Diagnostic::ETH_AnnouncementMessageReceived = 1;
+    AnnouncementReceivedFlag=1;
+  }
+  return 1;
+}
+
+//Used to get received data by TCP connection
+long TcpRecv( dword socket)
+{
+  int result = 0;
+  int i;
+  
+  
+  result = TcpReceive( socket,TcpRecvData[TCPSegmentIndex],elCount(TcpRecvData[TCPSegmentIndex]));
+  
+  if ( 0 != result)
+  {
+    gIpLastErr = IpGetLastSocketError( socket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "ETHTP_Err:TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+      
+      snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+      sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);     
+    }
+  }
+  write("receive TCP data byte[0]=%x",TcpRecvData[TCPSegmentIndex][0]);
+  /* 0x8001: DiagnosticMessage(完整的诊断响应或响应的第一个TCP数据段) */
+  if((TcpRecvData[TCPSegmentIndex][0] == gDoIP_ProtocolVersion)&&(TcpRecvData[TCPSegmentIndex][1] == 0xFF-gDoIP_ProtocolVersion)&&(TcpRecvData[TCPSegmentIndex][2] == 0x80)&&(TcpRecvData[TCPSegmentIndex][3] == 0x01))
+  {
+    gTpRxLength = (TcpRecvData[TCPSegmentIndex][4]<<24)|(TcpRecvData[TCPSegmentIndex][5]<<16)|(TcpRecvData[TCPSegmentIndex][6]<<8)|(TcpRecvData[TCPSegmentIndex][7]);
+    gTpRxLength = gTpRxLength - 4;
+////////    for(i=0;i<gTpRxLength;i++)  { gTpRxData[i] = TcpRecvData[TCPSegmentIndex][i+12]; } //接收第一个数据段数据
+    memcpy_off(gTpRxData,0,TcpRecvData[TCPSegmentIndex],12,TCPSegmentLength);
+    if(TCPSegmentLength < gTpRxLength + 12)     // 当前TCP段数据长度小于DoIP包的长度，说明DoIP包在TCP层分段
+    {
+      MultiTCPSegmentFlag = 1;  //TCP分段标志
+      MultiTCPSegmentLength = TCPSegmentLength - 12;  //获取的诊断响应的总长度
+      return 1;
+    }
+    else                                        // 当前TCP段数据长度不小于DoIP包的长度，说明DoIP包在TCP层未分段
+    {
+      TestSupplyTextEvent("ETHTPreciveData");
+      sysSetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,gTpRxLength);
+      @Diagnostic::Receive_DataLength = gTpRxLength;
+      @Diagnostic::Receive_ConAll = 1;
+////////      write( "ETHTP:Received TpRxLength=%d byte : 0x%02X 0x%02X 0x%02X 0x%02X  ..." , gTpRxLength, gTpRxData[0], gTpRxData[1], gTpRxData[2], gTpRxData[3]);
+    }
+  }
+  /*  */
+  if(MultiTCPSegmentFlag == 1) //需要对分段数据进行处理
+  {
+////////    for(i=0;i<TCPSegmentLength;i++) { gTpRxData[MultiTCPSegmentLength + i] = TcpRecvData[i]; }
+    memcpy_off(gTpRxData,MultiTCPSegmentLength,TcpRecvData[TCPSegmentIndex],0,TCPSegmentLength);
+    MultiTCPSegmentLength = MultiTCPSegmentLength + TCPSegmentLength;
+    if(MultiTCPSegmentLength >= gTpRxLength) 
+    { 
+      MultiTCPSegmentFlag = 0; 
+      TCPSegmentIndex = 0;
+      TestSupplyTextEvent("ETHTPreciveData");
+      sysSetVariableData(sysvar::Diagnostic::Receive_Data,gTpRxData,gTpRxLength);
+      @Diagnostic::Receive_DataLength=gTpRxLength;
+      @Diagnostic::Receive_ConAll=1;
+////////      write( "ETHTP:Received TpRxLength=%d byte : 0x%02X 0x%02X 0x%02X 0x%02X  ..." , gTpRxLength, gTpRxData[0], gTpRxData[1], gTpRxData[2], gTpRxData[3]);
+    }
+  }
+  /* TCP分段处理完成后重置标志位 */
+  if(MultiTCPSegmentFlag == 0) { MultiTCPSegmentLength = 0;  TCPSegmentLength = 0; } 
+  
+//////  20240414_yangjing: 新增TCP粘包处理机制
+  
+  
+  
+  
+  
+  
+  
+//////  20240413_yangjing: 新增TCP分段处理机制，此部分注释
+//////  result = TcpReceive( socket, gTcpRxBuffer, elcount(gTcpRxBuffer));
+//////
+//////  if ( 0 != result)
+//////  {
+//////    gIpLastErr = IpGetLastSocketError( socket);
+//////
+//////    if ( WSA_IO_PENDING != gIpLastErr)
+//////    {
+//////      IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+//////
+//////      writelineex( 0, 2, "ETHTP_Err:TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+//////      
+//////      snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+//////      sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);     
+//////    }
+//////  }
+//////  
+//////  gTpRxLength = (gTcpRxBuffer[4]<<24)|(gTcpRxBuffer[5]<<16)|(gTcpRxBuffer[6]<<8)|(gTcpRxBuffer[7]);
+//////  gTpRxLength = gTpRxLength-4;
+//////  if((gTcpRxBuffer[0]==0x02)&&(gTcpRxBuffer[1]==0xFD)&&(gTcpRxBuffer[2]==0x80)&&(gTcpRxBuffer[3]==0x01))
+//////  {
+//////    for(i=0;i<=gTpRxLength;i++)
+//////    {
+//////      gTpRxData[i] = gTcpRxBuffer[i+12];
+//////    }
+////////  setTimer(ETH_T1,2);
+////////  TestSupplyTextEvent("ETHTPreciveData");
+////////  write( "ETHTP:Received TpRxLength=%d byte : 0x%x 0x%x 0x%x 0x%x  ..." , gTpRxLength, gTpRxData[0], gTpRxData[1], gTpRxData[2], gTpRxData[3]);
+//////  }
+//////  else
+//////  {
+//////    
+//////  }
+  return result;  
+}
+
+void SendTcpData(byte buffer[], long size,dword vehicleAddress, dword testerAddress)
+{
+  byte TCPData[70000];
+  dword i,j;
+//  long result;
+//  char errorbuffer[100],errormsgbuffer[100];
+
+  
+  TCPData[0]= 0x02;
+  TCPData[1]= 0xFD;
+  TCPData[2]= 0x80;
+  TCPData[3]= 0x01;
+  TCPData[4]= size+4>>24;
+  TCPData[5]= size+4>>16;
+  TCPData[6]= size+4>>8;
+  TCPData[7]= size+4&0xFF;
+  TCPData[8]= testerAddress>>8;
+  TCPData[9]= testerAddress&0xFF;
+  TCPData[10]= vehicleAddress>>8;
+  TCPData[11]= vehicleAddress&0xFF;
+  gTpTxLength=size+12;
+
+//  write("ETHTP:TpTxLength=%d ",gTpTxLength);
+  for(i=0;i<size;i++)
+  {
+    TCPData[i+12]=buffer[i];
+  }
+  
+  if(gflag_multi_chip_handle == 1) 
+  { 
+    if(gflag_address_mode_change == 1) { TCPData[10]= 0x1F; TCPData[11]= 0xFF; }
+    
+
+      gIpLastErr = TCPSend(gConnectionSocket, TCPData, gTpTxLength); 
+
+      if(0x1FFF != vehicleAddress) 
+      { 
+        TCPData[10]= second_logical_address >> 8; 
+        TCPData[11]= second_logical_address & 0xFF; 
+      }
+      TCPSend(second_socket, TCPData, gTpTxLength);
+
+  }
+  else 
+  { 
+     gIpLastErr = TCPSend(gConnectionSocket, TCPData, gTpTxLength); 
+  }
+  
+//  write("ETHTP:TCPSendData:0x%lx,0x%lx,0x%lx,0x%lx,  elcount(TCPData)=%d ",TCPData[12],TCPData[13],TCPData[14],TCPData[15],elcount(TCPData));
+  
+//////  if (0 != TCPSend(gConnectionSocket, TCPData, gTpTxLength))
+//////  {
+//////    gIpLastErr = IpGetLastSocketError( gConnectionSocket);
+//////
+//////    if ( WSA_IO_PENDING != gIpLastErr)
+//////    {
+//      IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+//////
+//////      writelineex( 0, 2, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+//////    }
+//////  }
+//////  else
+//////  {
+//////    writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");
+//////  }
+
+
+  if (gIpLastErr == 0)
+  {
+    // sending took place immediately.
+    // => OnTcpSend is NOT called.
+////////    write("ETHTP:Tcp data sent successfully!");
+//    TestSupplyTextEvent("ETHSendDiagMessage");
+  }
+  else
+  {
+    if (gIpLastErr == -1)
+    {
+      gIpLastErr = IpGetLastSocketError(gConnectionSocket);
+      if (gIpLastErr == 997)
+      {
+        // sending is done asynchronously.
+        // => OnTcpSend is called when done sending.
+////////        writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");  
+//        TestSupplyTextEvent("ETHSendDiagMessage");
+      }
+      else
+      {
+        IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+        writeLineEx( 1, 3, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);   
+        snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+        sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+       
+      }
+    }
+    else
+    {
+//////////        IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+//////////        writeLineEx( 1, 3, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);   
+//////////        snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+//////////        sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+    }
+  }
+}
+
+void SendTcpDatasmall2(byte buffer[], long size,dword vehicleAddress, dword testerAddress)
+{
+  byte TCPData[65536];
+  dword i;
+//  long result;
+  
+  TCPData[0]= 0x02;
+  TCPData[1]= 0xFD;
+  TCPData[2]= 0x80;
+  TCPData[3]= 0x01;
+  TCPData[4]= (size+2)>>24;
+  TCPData[5]= (size+2)>>16;
+  TCPData[6]= (size+2)>>8;
+  TCPData[7]= (size+2)&0xFF;
+  TCPData[8]= testerAddress>>8;
+  TCPData[9]= testerAddress&0xFF;
+  TCPData[10]= vehicleAddress>>8;
+  TCPData[11]= vehicleAddress&0xFF;
+  gTpTxLength=size+12;
+
+//  write("ETHTP:TpTxLength=%d ",gTpTxLength);
+  for(i=0;i<size;i++)
+  {
+    TCPData[i+12]=buffer[i];
+  }
+//  write("ETHTP:TCPSendData:0x%lx,0x%lx,0x%lx,0x%lx,  elcount(TCPData)=%d ",TCPData[12],TCPData[13],TCPData[14],TCPData[15],elcount(TCPData));
+  
+//  if (0 != TCPSend(gConnectionSocket, TCPData, gTpTxLength))
+//  {
+//    gIpLastErr = IpGetLastSocketError( gConnectionSocket);
+//
+//    if ( WSA_IO_PENDING != gIpLastErr)
+//    {
+//      IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+//
+//      writelineex( 0, 2, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+//    }
+//  }
+//  else
+//  {
+//    writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");
+//  }
+  
+   gIpLastErr=TCPSend(gConnectionSocket, TCPData, gTpTxLength);
+ 
+  if (gIpLastErr == 0)
+  {
+    // sending took place immediately.
+    // => OnTcpSend is NOT called.
+////////    write("ETHTP:Tcp data sent successfully!");
+//    TestSupplyTextEvent("ETHSendDiagMessage");
+  }
+  else
+  {
+    if (gIpLastErr == -1)
+    {
+      gIpLastErr = IpGetLastSocketError(gConnectionSocket);
+      if (gIpLastErr == 997)
+      {
+        // sending is done asynchronously.
+        // => OnTcpSend is called when done sending.
+////////        writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");        
+      }
+      else
+      {
+        IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+        writeLineEx( 1, 3, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);   
+        snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+        sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+      }
+    }
+    else
+    {
+      IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+      writeLineEx( 1, 3, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);   
+      snprintf(errorbuffer,elcount(errorbuffer),"ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+      sysSetVariableString( sysvar::Diagnostic::ErrorMessage,errorbuffer);
+    }
+  }
+}
+
+int ETH_TP_Send(byte Data[],enum AddressMode Mode)
+{
+  int  a;
+  long EventHandle1;
+  
+  
+  ETHSendFlag = 0;
+  if(Mode==PHYSICAL)
+  {
+    if(EthNodeTypeNow == EdgeNode)
+    {
+      DoIP_DataReq( Data, elCount(Data), gETH_ECULogicAddress, gETH_TesterLogicAddress);
+//      DoIP_TCPSend(0x02,0x8001, payload, 6);
+    }
+    else
+    {
+      SendTcpData( Data, elCount(Data), gETH_ECULogicAddress, gETH_TesterLogicAddress);
+    }
+//    if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//    {
+//      write("Ethernet data send successfully!");
+//    }
+//    gETH_t1=timenow()/100.0;
+//    TP_T1 = timeNowFloat()/10000;
+  }
+  else
+  {
+    if(EthNodeTypeNow == EdgeNode)
+    {
+      DoIP_DataReq( Data, elCount(Data), gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+    }
+
+    else
+    {
+      SendTcpData( Data, elCount(Data), gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+    }
+//    if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//    {
+//      write("Ethernet data send successfully!");
+//    }
+////    gETH_t1=timenow()/100.0;
+//    TP_T1 = timeNowFloat()/10000;
+  }
+  return 1;
+}
+
+int ETH_TP_Send(byte Data[],long length,enum AddressMode Mode)
+{
+  int a;
+  long EventHandle1;
+  ETHSendFlag = 0;
+  
+  if(length>elcount(Data))
+  {
+    if(Mode==PHYSICAL)
+    {
+      if(EthNodeTypeNow == EdgeNode)
+      {
+        DoIP_DataReq( Data, elcount(Data), gETH_ECULogicAddress, gETH_TesterLogicAddress);
+      }
+      else
+      {
+        SendTcpData( Data, elcount(Data), gETH_ECULogicAddress, gETH_TesterLogicAddress);
+      }
+//      if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//      {
+//        write("Ethernet data send successfully!");
+//      }
+////      gETH_t1=timenow()/100.0;
+//      TP_T1 = timeNowFloat()/10000;
+    }
+    else
+    {
+      if(EthNodeTypeNow == EdgeNode)
+      {
+        DoIP_DataReq( Data, elcount(Data), gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+      }
+      else
+      {
+        SendTcpData( Data, elcount(Data), gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+      }
+//     if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//  {
+//    write("Ethernet data send successfully!");
+//  }
+//////      gETH_t1=timenow()/100.0;
+//    TP_T1 = timeNowFloat()/10000;
+    }
+    write("ETHTP:Warning tp send data size small than given length");
+  }
+  else
+  {
+    if(Mode==0)
+    {
+      if(EthNodeTypeNow == EdgeNode)
+      {
+        DoIP_DataReq( Data, length, gETH_ECULogicAddress, gETH_TesterLogicAddress);
+      }
+      else
+      {
+        SendTcpData( Data, length, gETH_ECULogicAddress, gETH_TesterLogicAddress);
+      }
+//      if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//      {
+//        write("Ethernet data send successfully!");
+//      }
+////      gETH_t1=timenow()/100.0;
+//      TP_T1 = timeNowFloat()/10000;
+    }
+    else
+    {
+      if(EthNodeTypeNow == EdgeNode)
+      {
+        DoIP_DataReq( Data, length, gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+      }
+      else
+      {
+        SendTcpData( Data, length, gETH_FunctionalLogicAddress, gETH_TesterLogicAddress);
+      }
+//      if(testWaitForTextEvent("ETHSendDiagMessage",500) == 1)
+//      {
+//        write("Ethernet data send successfully!");
+//      }
+////      gETH_t1=timenow()/100.0;
+//      TP_T1 = timeNowFloat()/10000;
+    }
+  }
+  return 1;;
+}
+dword addresstrans(dword b,char ipv4[])
+{
+  dword a;
+  a=IpGetAddressAsNumber(ipv4);
+  b=((a&0xFF)<<24)+((a&0xff00)<<8)+((a&0xff0000)>>8)+((a&0xff000000)>>24);
+  return b;
+}
+
+void Send_VehicleAnnouncementRequest()
+{
+  byte DoIPMessage[65535];
+  
+  DoIPMessage[0] = 0xFF;
+  DoIPMessage[1] = 0x00;
+  DoIPMessage[2] = 0x00;
+  DoIPMessage[3] = 0x01;
+  UdpSendTo(gUDP_Socket, 0xFFFFFFFF, 13400, DoIPMessage,8);
+}
+
+/* 取同网段的IP地址 */
+void IP_GetAddressWithinSameCluster(char dst[],char scr[])
+{
+  char[10] address[long];
+  long pos_dot[long];
+  long offset;
+  offset = 0;
+
+  while(1)
+  {
+    long index;
+    index = pos_dot.size();
+    pos_dot[index] = strstr_off(scr,offset,".");
+    if(pos_dot[index] < 0)
+      break;
+    offset = pos_dot[index] + 1;
+  }
+  
+  for(long index : pos_dot)
+  {
+    if(index == 0)
+      substr_cpy(address[index],scr,0,pos_dot[index],elcount(scr));
+    else
+      substr_cpy(address[index],scr,pos_dot[index-1] + 1,pos_dot[index] - pos_dot[index-1] - 1,elcount(scr));
+  }
+  
+  /* 改变最后一个字节 */
+  if(atol( address[3]) != 254)
+    snprintf(address[3],elcount(address[3]),"%d",atol( address[3]) + 1 );
+  else
+    snprintf(address[3],elcount(address[3]),"%d",atol( address[3]) - 1 );
+  snprintf(dst,elcount(dst),"%s.%s.%s.%s",address[0],address[1],address[2],address[3]);
+  
+  address.clear();
+  pos_dot.clear();
+}
+
+void _DoIP_VehicleAnnouncementInd( char VIN[], WORD logAddr, BYTE entityIdent[], BYTE groupIdent[], BYTE furtherActionReq, BYTE VINGIDsyncStatus)
+{
+  @Diagnostic::ETH_AnnouncementMessageReceived = 1;
+}
+
+void MainTest()
+{
+  gUDP_Socket = udpOpen(0,13400);
+  
+  while(1)
+  {
+    if(EthNodeTypeNow == EdgeNode && ConnectToEthernetCommand==1 && AnnouncementReceivedFlag==1)
+    {
+      ETH_TP_SetTransportParameters(gECULogicAddress,gTesterLogicAddress,gFunctionalLogicAddress,gTesterIpv4Address,gECUIpv4Address,gNetmask);
+      ConnectToEthernetCommand=0;
+    }
+    else if(EthNodeTypeNow == InternalNode && ConnectToEthernetCommand==1)
+    {
+      int i = 0;
+      if(i == 0) { Server_Listen(); }
+      ETH_TP_SetTransportParameters(gECULogicAddress,gTesterLogicAddress,gFunctionalLogicAddress,gTesterIpv4Address,gECUIpv4Address,gNetmask);
+      i = 1;
+      ConnectToEthernetCommand=0;
+    }
+    testWaitForTimeout(100);
+  }
+}

@@ -1,0 +1,110 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "uBOB.cin"
+}
+
+variables
+{
+  enum T_mode{T_off,T_on};
+}
+
+void SetBatteryVoltage(float V)
+{
+  testStepWarning("Warning","Can't set voltage by BOB");
+}
+
+
+
+/// <UDSonLIN>
+void LINBusFaultSet(enum LinFaultType fault)
+{
+  switch(fault)
+  {
+    case LIN_BAT:
+      LIN2BAT(T_on);
+      break;
+      
+    case LIN_GND:
+      LIN2GND(T_on);
+      break;
+  }
+}
+/// <UDSonLIN>
+void LINBusFaultReset()
+{
+//  switch(fault)
+//  {
+//    case LIN_BAT:
+//      LIN2BAT(T_off);
+//      break;
+//      
+//    case LIN_GND:
+//      LIN2GND(T_off);
+//      break;
+//  }
+//  AllDeviceInit();
+}
+
+void AllDeviceInit()
+{
+  BOBReset();
+  
+}
+
+void FRBusFaultSet(enum FRFaultType fault)
+{
+  switch(fault)
+  {
+    case BP_ShortTo_BM:
+      BP2BM(T_on);
+      break;
+      
+    case BP_BAT:
+      
+      break;
+      
+    case BP_GND:
+      CANH2G(T_on);
+      break;
+      
+    case BM_BAT:
+      break;
+      
+    case BM_GND:
+      break;
+      
+    case BP_Open:
+      
+      break;
+      
+    case BM_Open:
+      break;
+      
+    
+    Default:
+      testStepFail("Fail","Set fail -> Unknown type of VH6501_CANBusFaultSet!");
+      break;
+  }
+}
+void FRBusFaultReset()
+{
+  AllDeviceInit();
+  testWaitForTimeout(100);
+  resetFlexRayCCEx(gresumFrmChnl_FR,1,50,180,60,"");
+  TRC();
+  SimVehBat(0x82);
+}
+
+void TestWaitForCurInRange(float current,long time)
+{
+  testStepWarning("Warning","Can't get current by BOB")
+  testWaitForTimeout(time);
+}
+
+float GetVolt()
+{
+  float volt[1];
+  VH1150_VoltageGet(volt);
+  return volt[0];
+}

@@ -1,0 +1,172 @@
+/*@!Encoding:936*/
+
+variables
+{
+  long   Ret, Tmp[1];   
+  char   DevName[20] = "VH1150",ActualDevice[128],DevType[128];
+  long   gOpenSearch,gDevHandle = 0;
+//  enum   VH1150_PowerMode{T_off,T_on};//JL
+}
+
+void VH1150_InitConfig()//JL
+{
+  VH1150_Open();
+  VH1150_VoltageSet(12);
+//  VH1150_KL30(T_on);
+//  testwaitfortimeout(500);
+//  VH1150_KL15(T_on);
+//  testwaitfortimeout(500);
+  VH1150_KL31(T_on);
+  testwaitfortimeout(500);
+}
+
+
+void VH1150_VoltageSet(float Volt)
+{
+  if (gDevHandle)
+  {      
+    Ret=  VHDevSetVoltageVBatt(gDevHandle, Volt);
+    VH1150_HandleAPIRet(Ret, "VHDevSetVoltageVBatt");
+//    testStep("TestStep","Set Voltage %f V",Volt);
+  }
+}
+
+float VH1150_CurrentGet()
+{
+  float Curr[10];
+  if (gDevHandle)
+  {      
+    Ret=  VHDevGetCurrent(gDevHandle,1 ,Curr);
+//    VH1150_HandleAPIRet(Ret, "VHDevSetVoltageVBatt");
+//    testStep("TestStep","Get Power Supply Current %f mA",Curr[0]);
+    write("Get Current %f mA",Curr[0]);
+  }
+  return Curr[0];
+}
+
+
+void VH1150_KL30(enum T_mode PowerMode)
+{
+  if (gDevHandle) 
+  {
+    Ret = VHDevSetRelay (gDevHandle, 0, PowerMode);
+    VH1150_HandleAPIRet(Ret, "VHDevSetRelay");
+    if(PowerMode==1)
+      testStep("","KL30 on");
+    else      
+      testStep("","KL30 off");
+//    testStep("","Power Mode KL30=%d [0-Off,1-On]",PowerMode);
+    writeToLog("kL30=%d [0-off,1-on]",PowerMode);
+  }
+  else
+  {
+    testStep("TestStep","Error Occurred During Test");
+  }
+}
+
+void VH1150_KL15(enum T_mode PowerMode)
+{
+  if (gDevHandle) 
+  {
+    Ret = VHDevSetRelay (gDevHandle, 1, PowerMode);
+    VH1150_HandleAPIRet(Ret, "VHDevSetRelay");
+    if(PowerMode==1)
+      testStep("","KL15 on");
+    else      
+      testStep("","KL15 off");
+//    testStep("","Power Mode Kl15=%d [0-Off,1-On]",PowerMode);
+    writeToLog("kL15=%d [0-off,1-on]",PowerMode);
+  }
+  else
+  {
+    testStep("TestStep","Error Occurred During Test");
+  }
+}
+
+void VH1150_KL31(enum T_mode PowerMode)
+{
+  if (gDevHandle)
+  {
+    Ret = VHDevSetRelay (gDevHandle, 2, PowerMode);
+    VH1150_HandleAPIRet(Ret, "VHDevSetRelay");
+//    testStep("","Power Mode KL31=%d [0-Off,1-On]",PowerMode);
+    writeToLog("kL31=%d [0-off,1-on]",PowerMode);
+  }
+  else
+  {
+    testStep("TestStep","Error Occurred During Test");
+  }
+}
+
+void VH1150_Open()
+{
+  Ret = VHDevSearchOpen(Tmp, DevType, ActualDevice, elcount(ActualDevice));
+  VH1150_HandleAPIRet(Ret, "OpenSearch");  
+//  write("gOpenSearch is %d", gOpenSearch);
+  if(Ret==0) 
+  {
+    gDevHandle = Tmp[0];
+//    write("OpenSearch() opened %s device %s (size: %i) using handle %d", DevType, ActualDevice,elcount(ActualDevice), gDevHandle) ;
+  }
+  VHDevSetCurrentMeasurementRange(gDevHandle,2);
+}
+
+void VH1150_Close()
+{
+  Ret = VHDevClose(gDevHandle);
+//  write("Close() for handle %d",gDevHandle) ;
+  VH1150_HandleAPIRet(Ret, "Close");
+}
+
+
+
+void VH1150_HandleAPIRet (long Ret, char Str[])
+{
+  char ErrStr[128];
+  if(Ret==0) {
+//    write("%9.3f %NODE_NAME% ok on %s",  timeNow()*1.E-5, Str);
+    Return; 
+  }
+
+  VH1150_ErrToStrPrint(Ret, ErrStr);
+//  write("%9.3f %NODE_NAME% Error %d %s on %s",  timeNow()*1.E-5, Ret, ErrStr, Str);
+  Return; 
+}
+
+void VH1150_ErrToStrPrint(long ErrNumber, char ErrStr[])
+{
+  Switch(ErrNumber) {
+    case  0:   strncpy(ErrStr, "ERR_OK                          ", elcount(ErrStr)); break;
+    case -1:   strncpy(ErrStr, "ERR_FAILED                      ", elcount(ErrStr)); break;
+    case  2:   strncpy(ErrStr, "ERR_INVALID_HANDLE              ", elcount(ErrStr)); break;
+    case  3:   strncpy(ErrStr, "ERR_NOT_IMPLEMENTED             ", elcount(ErrStr)); break;
+    case  4:   strncpy(ErrStr, "ERR_INVALID_PARAMETER           ", elcount(ErrStr)); break;
+    case  5:   strncpy(ErrStr, "ERR_DEVICE_INUSE                ", elcount(ErrStr)); break;
+    case  6:   strncpy(ErrStr, "ERR_VIA_NL                      ", elcount(ErrStr)); break;
+    case  7:   strncpy(ErrStr, "ERR_VIA_CAST                    ", elcount(ErrStr)); break;
+    case  8:   strncpy(ErrStr, "ERR_AINFAILED                   ", elcount(ErrStr)); break;
+    case  9:   strncpy(ErrStr, "ERR_AINNODATA                   ", elcount(ErrStr)); break;
+    case 10:   strncpy(ErrStr, "ERR_DRIVERDLL_NOT_LOADED        ", elcount(ErrStr)); break;
+    case 11:   strncpy(ErrStr, "ERR_INTERNAL_NONL               ", elcount(ErrStr)); break;
+    case 12:   strncpy(ErrStr, "ERR_VOLTAGEPROFILE_RUNNING      ", elcount(ErrStr)); break;
+    case 13:   strncpy(ErrStr, "ERR_HARDWARE_REV_NUMBER_TOO_LOW ", elcount(ErrStr)); break;
+    case 14:   strncpy(ErrStr, "ERR_CALIB_FAILED                ", elcount(ErrStr)); break;
+    case 15:   strncpy(ErrStr, "ERR_OPEN_NO_REPLACEMENT_FOUND   ", elcount(ErrStr)); break;
+    case 16:   strncpy(ErrStr, "ERR_INCOMPATIBLE_DEVICE         ", elcount(ErrStr)); break;
+    case 17:   strncpy(ErrStr, "ERR_NO_ANPowerModeER_FROM_INTERFACE    ", elcount(ErrStr)); break;
+    default:   strncpy(ErrStr, "Unknown error code"              , elcount(ErrStr)); break;
+  }
+  Return;
+}
+
+
+void ShowVoltage(enum eSwitch pState)
+{
+  
+}
+
+void WaitPowerOn()
+{
+  
+}
+

@@ -1,0 +1,246 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "DSOX3034A_lower.cin"
+  #include "DSOX3034A_SysVar.cin"
+  #pragma library("capldll.dll")
+}
+
+variables
+{
+  char DeviceName[256] = "DSOX3034A";
+  float scalebuff[4];
+  int Displaybuff[4];
+  float offsetbuff[4];
+}
+
+void MainTest ()
+{
+  DSOX3034A();
+}
+
+testcase DSOX3034A()
+{
+  int index;
+  while(1)
+  {
+    testJoinTextEvent("PCS_InitConfig");//1
+    testJoinTextEvent("PCS_IDTrigger");//2
+    testJoinTextEvent("Add_Measure");//3
+    testJoinTextEvent("Save_Picture"); //4
+    testJoinTextEvent("Meas_Query");//5
+    testJoinTextEvent("XCursor");//6
+//    testJoinTextEvent("InitSerial");//7
+    
+    index =testWaitForAnyJoinedEvent(600000);
+    CMD(index);
+  }
+}
+
+void CMD(int index)
+{
+  switch(index)
+  {
+    case(1):PCS_InitConfig();break;
+    case(2):PCS_IDTrigger();break;
+    case(3):PCS_Measure_Macro(@sysvar::DeviceControl::PCS::Command::MEAS_TYPE);break;
+    case(4):Save_Picture();break;
+    case(5):Meas_Query();break;
+    case(6):OSC_Cursor_Xdelta();break;
+//    case(7):OSC_InitSerial();break;
+  }
+}
+
+void PCS_InitConfig()//初始化
+{
+  char buffer[20];
+  int Bustype;
+  
+  OSC_InitConfig();
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::BusType,buffer,elcount(buffer));
+  if(strncmp(buffer,"CAN",elcount(buffer))==0)
+  {
+    Bustype = 1;
+  }
+  if(strncmp(buffer,"CANFD",elcount(buffer))==0)
+  {
+    Bustype = 2;
+  }
+  if(strncmp(buffer,"LIN",elcount(buffer))==0)
+  {
+    Bustype = 3;
+  }
+  switch(Bustype)
+  {
+    case(1):  
+    {
+      OSC_CAN_Init();
+      break;
+    }
+    case(2):
+    {
+      OSC_CANFD_Init();
+      break;
+    }
+    case(3):
+    {
+      OSC_LIN_Init();
+      break;
+    }
+    default: break;
+  }
+  
+}
+
+void PCS_IDTrigger()//触发波形，设置时基
+{
+  char TriggerID[10];
+  float TimebaseScale,TimebasePosition;
+  //触发波形
+  OSC_initSerialCAN();
+  testWaitForTimeout(10);
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,TriggerID,elcount(TriggerID));
+  OSC_Trigger_setID(TriggerID);//触发ID为任意
+  testWaitForTimeout(10);
+  OSC_IDTrigger();
+  testWaitForTimeout(10);
+  SendTcpData(":SINGle\n");
+  testWaitForTimeout(100);
+  //设置时基
+  TimebaseScale=@sysvar::DeviceControl::PCS::Timebase::Scale;
+  TimebasePosition=@sysvar::DeviceControl::PCS::Timebase::position;
+  OSC_SetTimebaseScale(TimebaseScale);
+  testWaitForTimeout(100);
+  OSC_SetTimebasePosition(TimebasePosition);
+  testWaitForTimeout(100);
+}
+
+
+void Meas_Query()
+{
+  char CMD[100];
+  char type[20],source[20];
+  double result;
+  Rcv_Begin=1;
+  Rcv_Size=0;
+  
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Type,type,elcount(type));
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::Meas_Sour,source,elcount(source));
+  snprintf(CMD,elcount(CMD),":MEASure:%s? %s\n",type,source);
+  //WRITE(CMD);
+  SendTcpData(CMD); 
+  
+  testWaitForTimeout(100);
+  strtod(PCS_RecvData,result);//字符转浮点数
+  //write("[OSC][Meas_Query]%5.4f",result);
+  sysSetVariableFloat(sysvar::DeviceControl::PCS::Parameter::Meas_Result,result);
+}
+
+void PCS_Measure_Macro(int index)
+{
+  switch(index)
+  {
+    case(1):OSC_BitVoltMeasure();break;
+    case(2):OSC_CommVoltMeasure();break; 
+    case(3):OSC_BitTimeMeasure();break;
+    case(4):OSC_EdgeTimeMeasure();break;
+  }
+}
+
+/// <PCS_Macro>
+void OSC_BitVoltMeasure()
+{
+  SendTcpData(":MEASure:CLEar\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VTOP CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VBASe CHANnel2\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VTOP MATH\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VBASe CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VTOP CHANnel2\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:VBASe MATH\n");
+}
+
+/// <PCS_Macro>
+void OSC_CommVoltMeasure()
+{
+  char TriggerID[10];
+  float TimebaseScale,TimebasePosition;
+  
+  //更改算子
+  OSC_Function_setOeperation("ADD");
+  testWaitForTimeout(10);
+  sysGetVariableString(sysvar::DeviceControl::PCS::Parameter::TriggerID,TriggerID,elcount(TriggerID));
+  OSC_Trigger_ByCANID(TriggerID);
+  OSC_Singel_Trigger();
+  
+  TimebaseScale=@sysvar::DeviceControl::PCS::Timebase::Scale;
+  TimebasePosition=@sysvar::DeviceControl::PCS::Timebase::position;
+  
+  OSC_MeasureCommonVoltageWithinScreen(TimebaseScale,TimebasePosition);
+  testWaitForTimeout(1000);
+}
+
+/// <PCS_Macro>
+void OSC_BitTimeMeasure()
+{
+  SendTcpData(":MEASure:CLEar\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:PEDGes CHANnel1\n");//设置上升沿计数器
+  testWaitForTimeout(10);
+  SendTcpData(":MARKer:XDELta?\n");  //使用光标跟踪并回读
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:TDELta\n");
+  testWaitForTimeout(10);
+  SendTcpData(":DISPlay:SIDebar CURSors\n");
+  testWaitForTimeout(10);
+}
+
+/// <PCS_Macro>
+void OSC_EdgeTimeMeasure()
+{
+  write("11111111");
+  SendTcpData(":MEASure:CLEar\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:RISetime CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:FALLtime CHANnel2\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:FALLtime CHANnel1\n");
+  testWaitForTimeout(10);
+  SendTcpData(":MEASure:RISetime CHANnel2\n");
+  testWaitForTimeout(10);
+//  OSC_MeasureAdd("falltime","Channel1");
+//  testWaitForTimeout(10);
+//  OSC_MeasureAdd("risetime","Channel1");
+//  testWaitForTimeout(10);
+//  OSC_MeasureAdd("falltime","Channel2");
+//  testWaitForTimeout(10);
+//  OSC_MeasureAdd("risetime","Channel2");
+//  testWaitForTimeout(10);
+//  OSC_MeasureAdd("falltime","math");
+//  testWaitForTimeout(10);
+//  OSC_MeasureAdd("risetime","math");
+//  testWaitForTimeout(10);
+}
+
+void OSC_InitSerial()
+{
+  float TimebaseScale,TimebasePosition;
+  
+  //初始化序列
+  TimebaseScale=@sysvar::DeviceControl::PCS::Timebase::Scale;
+  TimebasePosition=@sysvar::DeviceControl::PCS::Timebase::position;
+  OSC_initSerialCAN();
+  OSC_SetTimebaseScale(TimebaseScale);
+  OSC_SetTimebasePosition(TimebasePosition);
+//  //设置触发条件
+//  OSC_setTriggerType("SBUS1");
+//  OSC_setTriggerPosition("IDData");
+}
+
+

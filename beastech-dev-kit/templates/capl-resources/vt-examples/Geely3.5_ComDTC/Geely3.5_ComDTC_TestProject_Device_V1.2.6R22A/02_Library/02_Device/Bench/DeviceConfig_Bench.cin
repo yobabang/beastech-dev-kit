@@ -1,0 +1,392 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "02_PreCmd\PPS.cin"
+  #include "02_PreCmd\ENV.cin"
+  #include "02_PreCmd\DRB.cin"
+  #include "02_PreCmd\VT.cin"
+  #include "02_PreCmd\PSRB.cin"
+  #include "02_PreCmd\PreCmd.cin"
+}
+
+variables
+{
+  enum T_mode{T_off,T_on};
+  int gVTIntSupplyFlag = 0;//0:机柜程控电源供电，VT仅控制通断; 1:VT7001供电
+}
+
+void SetBatteryVoltage(float V)
+{
+  if(gVTIntSupplyFlag)
+  {
+    VT7001_VoltageSet(V);
+  }
+  else
+  {
+    PPS_VoltageSet(V);
+  }
+}
+
+
+
+/// <FaultOnLIN>
+void LINBusFaultSet(enum LinFaultType fault)
+{
+  switch(fault)
+  {
+    case LIN_BAT:
+      ENV_CANH_VB();
+      testStep("Info","Short LIN to Bat");
+      testWaitForTimeout(100);
+      break;
+      
+    case LIN_GND:
+      
+      ENV_CANH_GND();
+      testStep("Info","Short LIN to GND");
+      testWaitForTimeout(100);
+      
+      break;
+    case LIN_FltRst:
+      
+      ENV_Reset();
+      testStep("Info","Reset LIN bus fault");
+      testWaitForTimeout(100);
+      break;
+  }
+}
+/// <FaultOnLIN>
+void LINBusFaultReset()
+{
+  ENV_Reset();
+  testWaitForTimeout(100);
+  DRB_ALL_RESET();
+  testWaitForTimeout(500);
+}
+/// <FaultOnLIN>
+void LINBusFaultConnect(int chanl)
+{
+  switch(chanl)
+  {
+    case 1:
+      ENV_CAN_Connect();// connect ENV to DRB1
+      testWaitForTimeout(100);
+      LIN1_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN1.");
+      break;
+    case 2:
+      ENV_CAN_Connect();// connect ENV to DRB1
+      testWaitForTimeout(100);
+      LIN2_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN2.");
+      break;
+    case 3:
+      ENV_CAN_Connect();// connect ENV to DRB1
+      testWaitForTimeout(100);
+      LIN3_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN3.");
+      break;
+    case 4:
+      ENV_CAN_Connect();// connect ENV to DRB1
+      testWaitForTimeout(100);
+      LIN4_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN4.");
+      break;
+    case 5:
+      ENV_FR_Connect();// connect ENV to DRB2
+      testWaitForTimeout(100);
+      LIN5_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN5.");
+      break;
+    case 6:
+      ENV_FR_Connect();// connect ENV to DRB2
+      testWaitForTimeout(100);
+      LIN6_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN6.");
+      break;
+    case 7:
+      ENV_FR_Connect();// connect ENV to DRB2
+      testWaitForTimeout(100);
+      LIN7_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN7.");
+      break;
+    case 8:
+      ENV_FR_Connect();// connect ENV to DRB2
+      testWaitForTimeout(100);
+      LIN8_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect LIN8.");
+      break;
+    default:
+      testStep("Info","Unknown channel.");
+      break;
+  }
+}
+
+void AllDeviceInit()
+{
+//  VH1150_InitConfig();
+  PSRB_InitConfig();
+  testWaitForTimeout(100);
+  
+  DRB_InitConfig();
+  testWaitForTimeout(500);
+  
+  PPS_InitConfig();
+  testWaitForTimeout(100);
+  
+  ENV_CAN_InitConfig();
+  testWaitForTimeout(200);
+  
+  VTSystem_InitConfig();
+  testWaitForTimeout(100);
+  
+  
+}
+/// <FaultOnFR>
+void FRBusFaultSet(enum FRFaultType fault)
+{
+  switch(fault)
+  {
+    case BP_ShortTo_BM:
+      StopKeySlot();
+      resetFlexRayCCEx(gresumFrmChnl_FR,1,50,180,60,"");
+      testWaitForTimeout(100);
+      testStep("Info","Stop the keyslot");
+      break;
+//      ENV_CANH_CANL();
+//      testWaitForTimeout(100);
+//      testStep("Info","Short BP to BM");
+//      break;
+      
+    case BP_BAT:
+      ENV_CANH_VB();
+      testWaitForTimeout(100);
+      testStep("Info","Short BP to BAT");
+      break;
+      
+    case BP_GND:
+      ENV_CANH_GND();
+      testWaitForTimeout(100);
+      testStep("Info","Short BP to GND");
+      break;
+      
+    case BM_BAT:
+      ENV_CANL_VB();
+      testWaitForTimeout(100);
+      testStep("Info","Short BM to BAT");
+      break;
+      
+    case BM_GND:
+      ENV_CANL_GND();
+      testWaitForTimeout(100);
+      testStep("Info","Short BM to GND");
+      break;
+      
+    case BP_Open:
+      CANHIN_CANHOUT();
+      testWaitForTimeout(100);
+      testStep("Info","Open BP");
+      break;
+      
+    case BM_Open:
+      CANLIN_CANLOUT();
+      testWaitForTimeout(100);
+      testStep("Info","Open BM");
+      break;
+    case FrFlt_Rst:
+      if(gresumFrmChnl_FR==1)
+      {
+        frSetKeySlot(1,1,1,KeySlot1,3);//RXQ, 
+        frSetKeySlot(1,1,2,KeySlot2,1);
+        resetFlexRayCCEx(gresumFrmChnl_FR,1,50,180,60,"");
+        NetwrkRequestOnTPBus();
+        TRC();
+        SimVehBat(gUbat12);
+      }
+      testStep("Info","Reset FR Fault.");      
+      break;
+//      ENV_Reset();
+//      testWaitForTimeout(100);
+//      if(gresumFrmChnl_FR==1)
+//      {
+//        resetFlexRayCCEx(gresumFrmChnl_FR,1,50,180,60,"");
+//        NetwrkRequestOnTPBus();
+//        TRC();
+//        SimVehBat(gUbat12);
+//      }
+//      testStep("Info","Reset FR Fault.");
+//      break;
+    Default:
+      testStepFail("Fail","Unknown type of FR Fault!");
+      break;
+  }
+}
+/// <FaultOnFR>
+void FRBusFaultReset()
+{
+  ENV_Reset();
+  testWaitForTimeout(100);
+  DRB_ALL_RESET();
+  
+  testStep("Info","Reset all channel.");
+  testwaitfortimeout(500);
+  
+  resetFlexRayCCEx(gresumFrmChnl_FR,1,50,180,60,"");
+  TRC();
+  SimVehBat(gUbat12);
+}
+/// <FaultOnFR>
+void FRBusFaultConnect(int chanl)
+{
+  switch(chanl)
+  {
+    case 1:
+      FR1_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect FR1.");
+      break;
+    case 2:
+      FR2_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect FR2.");
+      break;
+    default:
+      testStep("Info","Unknown channel.");
+      break;
+  }
+  ENV_FR_Connect();
+  testWaitForTimeout(100);
+}
+
+/// <FaultOnCAN>
+void CANBusFaultConnect(int chanl)
+{
+  switch(chanl)
+  {
+    case 1:
+      CAN1_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect CAN1.");
+      break;
+    case 2:
+      CAN2_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect CAN2.");
+      break;
+    case 3:
+      CAN3_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect CAN3.");
+      break;
+    case 4:
+      CAN4_Connect();
+      testWaitForTimeout(200);
+      testStep("Info","Connect CAN4.");
+      break;
+    default:
+      testStep("Info","Unknown channel.");
+      break;
+  }
+  ENV_CAN_Connect();
+  testWaitForTimeout(100);
+}
+
+/// <FaultOnCAN>
+void CANBusFaultSet(enum FRFaultType fault)
+{
+  switch(fault)
+  {
+    case BP_ShortTo_BM:
+      ENV_CANH_CANL();
+      testWaitForTimeout(100);
+      testStep("Info","Short CANH to CANL");
+      break;
+      
+    case BP_BAT:
+      ENV_CANH_VB();
+      testWaitForTimeout(100);
+      testStep("Info","Short CANH to BAT");
+      break;
+      
+    case BP_GND:
+      ENV_CANH_GND();
+      testWaitForTimeout(100);
+      testStep("Info","Short CANH to GND");
+      break;
+      
+    case BM_BAT:
+      ENV_CANL_VB();
+      testWaitForTimeout(100);
+      testStep("Info","Short CANL to BAT");
+      break;
+      
+    case BM_GND:
+      ENV_CANL_GND();
+      testWaitForTimeout(100);
+      testStep("Info","Short CANL to GND");
+      break;
+      
+    case BP_Open:
+      CANHIN_CANHOUT();
+      testWaitForTimeout(100);
+      testStep("Info","Open CANH");
+      break;
+      
+    case BM_Open:
+      CANLIN_CANLOUT();
+      testWaitForTimeout(100);
+      testStep("Info","Open CANL");
+      break;
+    case FrFlt_Rst:
+      ENV_Reset();
+      testWaitForTimeout(100);
+      testStep("Info","Reset CAN Bus Fault.");
+      break;
+    Default:
+      testStepFail("Fail","Unknown type of CAN bus Fault!");
+      break;
+  }
+}
+/// <FaultOnCAN>
+void CANBusFaultReset()
+{
+  ENV_Reset();
+  testWaitForTimeout(100);
+  DRB_ALL_RESET();
+  
+  testStep("Info","Reset all channel.");
+  testwaitfortimeout(500);
+}
+
+
+void TestWaitForCurInRange(float current,long time)
+{
+  float cur;
+  if(testWaitForSignalInRange(sysvar::VTS::M1_Out1::AvgCurrent,0,current/1000.0,time)>0)
+  {
+    cur=@sysvar::VTS::M1_Out1::AvgCurrent;
+    testStepPass("Pass","The current is %5.3fmA",cur*1000);
+  }
+  else
+  {
+    cur=@sysvar::VTS::M1_Out1::AvgCurrent;
+    testStepWarning("Warning","Time out! The current is %5.3fmA, expected is %5.3fmA",cur*1000,current);
+  }
+  testWaitForTimeout(2000);
+
+}
+
+float GetVolt()
+{
+  float volt[1];
+//  VH1150_VoltageGet(volt);
+  return volt[0];
+}

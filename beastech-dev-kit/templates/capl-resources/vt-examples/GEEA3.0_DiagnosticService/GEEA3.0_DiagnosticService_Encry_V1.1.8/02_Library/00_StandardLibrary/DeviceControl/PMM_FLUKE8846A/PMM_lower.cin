@@ -1,0 +1,39 @@
+/*@!Encoding:936*/
+
+variables
+{
+//  enum PPS_OutputSts{PPS_On,PPS_Off};
+  char PMM_SendData[100]="";
+}
+
+void SendTcpData(char cmd[])
+{
+  strncpy(PMM_SendData,cmd,100);
+  
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPHandle = @sysvar::DeviceControl::IPClient::Sockets::PMM_Socket;//使用的socket
+  sysSetVariableString(sysvar::DeviceControl::IPClient::SendEvent::SendData, PMM_SendData);//发送的数据
+  @sysvar::DeviceControl::IPClient::SendEvent::TCPSend = 1;//发送数据, 触发事件
+}
+
+void PMM_InitConfig()
+{
+  SendTcpData("SYSTem:REMote\n");
+  testWaitForTimeout(100);
+  SendTcpData("ZERO:AUTO ON\n");
+  testWaitForTimeout(100);
+}
+
+void PMM_REMote()
+{
+  SendTcpData("SYSTem:REMote\n");
+}
+
+void PMM_VoltageMeasure()
+{
+  SendTcpData("MEASure:VOLTage:DC? 10\n");
+}
+
+void PMM_ResistanceMeasure()
+{
+  SendTcpData("MEASure:RESistance? 20000\n");
+}

@@ -1,0 +1,39 @@
+/*@!Encoding:936*/
+variables
+{
+  dword ADCU_IPAddr1 = 0xC6122C31;//198.18.44.49
+  dword ADCU_IPAddr2 = 0xC6122C34;//198.18.44.52
+  
+  dword ADMC_IPAddr1 = 0xC6122C31;//198.18.44.49
+  dword ADMC_IPAddr2 = 0xC6122C34;//198.18.44.52
+  
+  dword ADSC_IPAddr1 = 0xC6122C32;//198.18.44.50
+  dword ADSC_IPAddr2 = 0xC6122C33;//198.18.44.51
+}
+
+void ConnectionSocketGet_ADCU(dword socket)
+{
+  dword socket_tmp;
+  
+  socket_tmp = tcpAccept(socket);
+  if(swapDWord(tcpGetRemoteAddress(socket_tmp)) == ADCU_IPAddr1)
+    gConnectionSocket = socket_tmp;
+}
+
+void ConnectionSocketGet_ADMC(dword socket)
+{
+  dword socket_tmp;
+  
+  socket_tmp = tcpAccept(socket);
+  if(swapDWord(tcpGetRemoteAddress(socket_tmp)) == ADMC_IPAddr1)
+    gConnectionSocket = socket_tmp;
+}
+
+void ConnectionSocketGet_ADSC(dword socket)
+{
+  dword socket_tmp;
+  
+  socket_tmp = tcpAccept(socket);
+  if(swapDWord(tcpGetRemoteAddress(socket_tmp)) == ADSC_IPAddr1)
+    gConnectionSocket = socket_tmp;
+}

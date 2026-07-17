@@ -1,0 +1,133 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "DRB_lower.cin"
+  #include "..\DevParameter.cin"
+}
+
+variables
+{
+  enum DRB_CH_Number ch;
+}
+
+//根据Channel名称获取对应的DRB ID和相应的通道
+on sysvar_update sysvar::DeviceControl::DRB::Query::ChannelName
+{
+  int i, j;
+  char ChannelName[20];
+  
+  //获取主程序传来的CAN/LIN通道名称变量
+  sysGetVariableString(sysvar::DeviceControl::DRB::Query::ChannelName, ChannelName, elcount(ChannelName));
+  for(i=0; i<DRB_NUM; i++)
+  {
+    for(j=0; j<8; j++)
+    {
+      if(strncmp(DRB_List[i].channel[j],ChannelName,20) == 0)
+      {
+        //查找CAN/LIN通道在对应的哪块DRB的哪个通道和DRB ID
+        @sysvar::DeviceControl::DRB::Query::DRBId = DRB_List[i].id;
+        @sysvar::DeviceControl::DRB::Query::DRBCH = j + 1;
+      }
+    }
+  }
+}
+
+//设置DRB的channel和ID
+void DRB_Config()
+{
+  word id;
+  ch = (enum DRB_CH_Number) @sysvar::DeviceControl::DRB::Query::DRBCH;
+  id = @sysvar::DeviceControl::DRB::Query::DRBId;
+  SetDRBId(id);
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::DRB_InitConfig
+{
+  testsupplyTextEvent("DRB_InitConfig");
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::ECU
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    DRB_ECU(ch,Connect);
+  }
+  else
+  {
+    DRB_ECU(ch,DisConnect);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::Tester
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    DRB_DEV(ch,Connect);
+  }
+  else
+  {
+    DRB_DEV(ch,DisConnect);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::PMM
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    DRB_PMM(PMM_CANH_CANL_Res);
+  }
+  else
+  {
+    DRB_PMM(PMM_DisConnect);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::ENV
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    DRB_ENV(ENV_Connect);
+  }
+  else
+  {
+    DRB_ENV(ENV_DisConnect);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::VH6501
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    DRB_Stress(Stress_Input_Connect);
+  }
+  else
+  {
+    DRB_Stress(Stress_DisConnect);
+  }
+}
+
+on sysvar_update sysvar::DeviceControl::DRB::Command::PCS
+{
+  DRB_Config();
+  
+  if(@this > 0)
+  {
+    testsupplyTextEvent("OSC_Connect");
+//    ConnectWithPCS();
+  }
+  else
+  {
+    testsupplyTextEvent("OSC_DisConnect");
+//    DisconnectWithPCS();
+  }
+}

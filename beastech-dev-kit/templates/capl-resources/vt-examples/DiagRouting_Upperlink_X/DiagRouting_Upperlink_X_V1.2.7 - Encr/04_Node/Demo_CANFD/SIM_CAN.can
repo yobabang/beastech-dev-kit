@@ -1,0 +1,143 @@
+/*@!Encoding:936*/
+includes
+{ 
+  #include "..\..\01_Input\TestParameter.cin"
+  #pragma library("..\..\02_Library\02_DLL\\capldll.dll")  
+  #include "Domain.cin"  
+  #include "..\CANFD_TP.cin"
+
+}
+
+variables
+{ 
+  char SID2A_EcuNumber;
+  
+  struct ServiceVars  EcuResp[EcuSum][3]; 
+  char   ResponseCode = -1;
+  int    Response_flag[EcuSum];
+  msTimer Timer_GetResponseTask, Timer_ResponseTask, Timer_DllDataUpdate;
+  int burst;
+  message 0x7ff temp_message = {FDF = 1, BRS = 1, dlc = 15};
+
+}
+
+on start
+{
+  byte i,j;
+  
+  //初始化connHandle
+  CanTp_ConnHandleSave();
+  
+  //初始化任务调度定时器
+  dllBufferInit();
+  setTimer(Timer_DllDataUpdate, 1); 
+  
+  setTimer(Timer_GetResponseTask, 10);
+  setTimer(Timer_ResponseTask, 10);   //开启任务处理定时器
+  for(i=0;i<EcuSum;i++)    
+  {
+    if(EcuAddressTable[i].Domain == DomainID)
+    {
+      Response[i].Packet.SourceID = EcuAddressTable[i].TargetID;
+      Response[i].Packet.TargetID = EcuAddressTable[i].SourceID;
+    }
+  }
+}
+
+//-------------------------------------------------------------------------------
+
+/*
+**生成诊断应答任务
+*/
+on timer Timer_GetResponseTask
+{
+  int i;
+  qword const_1 = 0x01;
+  qword Response_Indication;
+  Response_Indication = @GW::Response_Indication;
+  setTimer(Timer_GetResponseTask, 10);
+  for(i=0; i<EcuSum; i++)
+  {
+    if(EcuAddressTable[i].Domain == DomainID)
+    {
+      Response_flag[i] = ((Response_Indication & (const_1<<i))>>i);
+    }
+  }
+}
+
+/*
+**发送诊断应答任务
+*/
+on timer Timer_ResponseTask
+{
+  int i;
+  for(i=0; i<EcuSum; i++)
+  {
+    if(EcuAddressTable[i].Domain == DomainID)
+    {
+      if(Response[i].Flag==1 && Response_flag[i]==1)
+      {
+//        write("Response[i].Flag=%x",Response[i].Flag);
+//        write("Response_flag[i]=%x",Response_flag[i]);
+        Send_DiagResponse(Response[i].Packet);
+        ResponseDataToTester(Response[i].Packet);
+        Response[i].Flag=0;
+      }
+    }
+  }
+  setTimer(Timer_ResponseTask, 10);
+}
+
+on timer Timer_DllDataUpdate
+{
+  long len, i;
+  word ECUREQSN, ECURESPSN;
+  setTimer(Timer_DllDataUpdate, 5);
+  len = dllRespDataQueueLength();
+  //write("len=%d",len);
+  if(len !=0)
+  {
+    //write("len=%d",len);
+  }
+  
+  for(i=0; i<len; i++)
+  {
+    //write("33333333333333");
+    //将诊断响应根据SourceID放入对应的数组中
+    dllDeRespDataQueue();
+    ECURESPSN                           = GetEcuSN(dllGetRespDatatargetID());
+    //write("Domain = %d ,DomainID = %d",EcuAddressTable[ECURESPSN].Domain, DomainID);
+    //write("33333333333333");
+    //Response[ECURESPSN].TimeStamp       = dllGetRespDataTimer() / 100.0; //1ms
+    if(EcuAddressTable[ECURESPSN].Domain == DomainID)
+    {
+      //dllDeRespDataQueue();
+      Response[ECURESPSN].Network_num     = dllGetRespDataNetwork();
+      Response[ECURESPSN].Packet.Length   = dllGetRespDataLength();
+      //write("length=%x",Response[ECURESPSN].Packet.Length);
+      Response[ECURESPSN].Packet.SourceID = dllGetRespDatatargetID();
+      Response[ECURESPSN].Packet.TargetID = dllGetRespDataSourceID();
+      //Response[ECURESPSN].Flag = 1;
+      dllGetRespTranData(Response[ECURESPSN].Packet.Length, Response[ECURESPSN].Packet.Payload);
+    }
+    else{
+      Response[ECURESPSN].Network_num     = dllGetRespDataNetwork();
+      Response[ECURESPSN].Packet.Length   = dllGetRespDataLength();
+      //write("length=%x",Response[ECURESPSN].Packet.Length);
+      Response[ECURESPSN].Packet.SourceID = dllGetRespDatatargetID();
+      Response[ECURESPSN].Packet.TargetID = dllGetRespDataSourceID();
+      //Response[ECURESPSN].Flag = 1;
+      dllGetRespTranData(Response[ECURESPSN].Packet.Length, Response[ECURESPSN].Packet.Payload);
+      
+      
+      dllPutRespDataLength(Response[ECURESPSN].Packet.Length);
+      dllPutRespDataNetwork(EcuAddressTable[ECURESPSN].Domain);
+      dllPutRespDataSourceID(Response[ECURESPSN].Packet.TargetID);
+      dllPutRespDatatargetID(Response[ECURESPSN].Packet.SourceID);
+      dllPutRespTranData(Response[ECURESPSN].Packet.Length, Response[ECURESPSN].Packet.Payload);
+      dllEnRespDataQueue();      
+    }
+  }
+
+}
+

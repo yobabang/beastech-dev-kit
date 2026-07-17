@@ -1,0 +1,239 @@
+/*@!Encoding:936*/
+variables
+{
+  //此参数默认为1，如果配置为0，将不打印P2  P4   NRC78 相关的错误，
+  //第一次执行工程，请设置为1，充分发现P2 P4 NRC78之后的错误后，
+  //第二次执行可以改为0 
+  int NRC78_Fail_Print_Enable = 1;
+  //SWRS的版本，如果>=V8, 边缘节点在TCP连接，没有收到3E80时会向车内发送3E80 并维持自身的会话模式
+  const int SWRS_VERSION =7;
+  
+  enum  T_mode{T_off,T_on};
+  
+  // 边缘节点逻辑地址(无法通过车辆声明报文获取到边缘节点信息时使用)
+  dword  gETH_EdgeNodeLogicAddress_UserDefine = 0x1001;
+  
+  
+  // ECU包含多个逻辑地址与IP地址信息（例如 2.0平台 DHU的 SOC1202 与 MCU1201）
+  // 测试内部以太网ECU 必须设置这里，脚本会从这里获取ECU 的IP 和逻辑地址，
+  //如果ECU 只有一个地址 second_ip\second_logical_address不需要设置
+  //只设置ip  和 logical_address 地址
+  //socket默认为0，请勿修改
+  char first_ip[20]="198.18.44.49";
+  long first_logical_address=1301;
+  long first_socket=0;
+  
+  char second_ip[20]="198.18.44.52";
+  long second_logical_address=1304;
+  long second_socket=0;
+  
+  
+  
+  struct ECUINFO { char ipv4address[20]; long logicaladdress; };
+//  struct ECUINFO gecu_ipv4_logical_address_info[2] = 
+//  {
+//    {"198.18.44.49",0x1301},
+//    {"198.18.44.52",0x1304}
+//  };
+  // ECU是否需要所有TCP发送数据
+  int   gflag_multi_chip_handle = 0;
+  // ECU是否需要等待所有TCP连接
+  int   gflag_wait_for_multi_tcp_socket = 0;
+  // 是否需要将物理寻址转换为功能寻址
+  int   gflag_address_mode_change = 0;
+  // 需要特殊处理的服务
+  byte  gserviceid_to_be_handle[3] = { 0x10,0x11,0x3E };
+  // 多IP与逻辑地址时复位时间根据所有TCP重连时间计算标识
+  int   gflag_reset_time_multi_chip_handle = 0;
+  
+  /* link up后延迟发送RST的时间 */
+  long   gtime_closetcp_for_linkdown = 100;
+  
+  /* PBL 队列请求测试参数 */
+  int   gflag_did_used = 1;                                   // 是否使用读取 DID 流程测试队列请求(不适用于非CAN/CANFD总线，必须期望肯定响应)
+  long  gtimes_queued_test = 10;                              // 未验证队列场景时重复次数
+  long  gdid_queued_used[3] = { 0xF18C,0xF186,0xF18C };       // 队列请求测试时使用的 DID 参数
+  const int glength_queued_used_1 = 3;                        // 不使用 DID 流程测试时队列请求测试时第一个请求的数据长度(非CAN/CANFD总线不适用)
+  byte  gdata_queued_used_1[65535] = { 0x22,0xF1,0x8C};       // 不使用 DID 流程测试时队列请求测试时第一个请求的数据(非CAN/CANFD总线不适用)
+  const int glength_queued_used_2 = 3;                        // 不使用 DID 流程测试时队列请求测试时第二个请求的数据长度(非CAN/CANFD总线不适用)
+  byte  gdata_queued_used_2[65535] = { 0x22,0xF1,0x86};       // 不使用 DID 流程测试时队列请求测试时第二个请求的数据(非CAN/CANFD总线不适用)
+  const int glength_queued_used_3 = 3;                        // 不使用 DID 流程测试时队列请求测试时第三个请求的数据长度(非CAN/CANFD总线不适用)
+  byte  gdata_queued_used_3[65535] = { 0x22,0xF1,0x8C};       // 不使用 DID 流程测试时队列请求测试时第三个请求的数据(非CAN/CANFD总线不适用)
+  
+  dword TestStepIntervalTime=1;//测试步骤间隔时间
+  dword TestStepIntervalTimeLIN=20;//LIN测试步骤间隔时间
+  dword FuntionalRequestIntervalTime=500; //功能寻址请求间隔
+  dword gTCPConnectTimeoutValue = 2500;////TCP重连超时时间(重连超过此时间判断Fail)
+  dword gTimeForTCPConnect = 60000;////脚本等待TCP重新建立时间
+  dword gTimeForDiagInit = 1000;////TCP建立后诊断使能时间
+  dword gTimeForTCPDisconnect = 2500;////脚本等待TCP断开时间
+  
+  dword gTimeWaitForSecuAccess=1;//启动后执行解锁偏离时间
+  dword DelayTimer=10000;//DelayTime定时器超时时间（单位为ms)
+  byte WaringOrErrorFlag=1; //P2超时报warning还是error，1是warning,2是Error;
+  int gTestTypeFlag = 1;//用以标识是否采用仿真节点进行条件信号仿真，采用弹窗 = 0；采用仿真节点 = 1
+  int gPowerTypeFlag = 0;//用以标识上电类型，采用弹窗 = 0；机柜或其它设备 = 1 --------------------设置为1 请测试人员自己编写供电控制代码 下方的kl30  kl15  
+  
+  byte boldMainStepFlag=0; //1=Enable
+  //测试报告是否加粗关键测试步骤，该功能处于测试阶段，存在偶发加粗失败现象
+  //使能此功能后如出现[/B]、[B]等字体，可将测试报告拖动至GEEA3.0_DiagnosticService\02_Library\00_StandardLibrary\Common\ReportParsing.exe文件内，报告关键步骤会自动加粗
+  
+  //多帧请求报文参数自填
+  message 0x0 TP_RequestMultiFrame={dlc=8,byte(0)=0x3,byte(1)=0x22,byte(2)=0xED,byte(3)=0x20};//
+  
+  //F18A测试期望值自填,长度为6的字符串，如果不填 测试程序就会弹框
+  char F18AValue[20]="";//若希望弹窗执行测试比对，将此变量赋值为空""即可
+
+  //23服务参数自填
+  byte Ser23TestAutomated=1;//23服务测试参数是否通过读取DID:D122,D123,D124输入,0否、1是
+  //下为自填参数
+  byte Ser23AddLen14Supported=0;//是否支持addressAndLengthFormatIdentifier=0x14
+  byte Ser23AddLen24Supported=1;//是否支持addressAndLengthFormatIdentifier=0x24
+  byte Ser23AddLen44Supported=0;//是否支持addressAndLengthFormatIdentifier=0x44
+  byte Ser23SecurityLevel=0x05;//解锁等级，如无需解锁则填0xFF
+  word ReadMaxLen=1000;//单次23服务请求读取数据的最大长度
+  struct MemoryAddressLength
+  {
+    dword Address;
+    dword Length;
+  };
+  const int Ser23MemorySegmentNum=0;//内存段数
+  struct MemoryAddressLength Ser23Memory[4]=
+  {
+    {0x40000000,0x2000},//内存地址，内存长度
+    {0x50000000,0x2000},
+    {0x60000000,0x2000},
+    {0x70000000,0x2000}
+  };
+  //23服务参数自填
+  
+  //27服务算法阶段
+  int  AlgorithmVersion = 3;//==2是v2阶段，==3是v3阶段
+  int  AlgorithmVersion_3Seed = 0;
+  
+  //28服务子网段测试参数
+  byte TestSubnetCommunicationControlFlag=1;//是否测试28服务子网段控制参数
+  struct subNetCommunicationMaping
+  {
+    char network[50];
+    byte value;
+    byte canChannelNumber;//对应CANoe通道编号
+  };
+  struct subNetCommunicationMaping GEEA30_E245[10]=
+  {
+    {"Connectivity CANFD"       ,1,0},//在结构体每行第三个参数填写对应网段在CANoe的Channel编号，CAN1则填1，若无此路CAN则填写0；
+    {"ZCUD CANFD2"              ,2,1},
+    {"ZCUDM Private CANFD"      ,3,0},
+    {"ZCUP CAN1"                ,4,0},
+    {"BodyExposed CAN"          ,5,0},
+    {"ZCUD CANFD1"              ,6,2},
+    {"Propulsion CAN"           ,7,0},
+    {"ZCUP CANFD5"              ,8,0},
+    {"ChassisCANFD2"            ,9,0}
+  };
+  //28服务子网段测试参数
+
+  //信号仿真测试场景描述
+  enum E_SignalPurpose { SIGNALPROGRAMMING = 0x01, SIGNALHARDRESET = 0x02 };
+  
+  //29服务测试参数
+  char testerCertName[300] = "Geely3.0";//正向认证证书名称
+  char testerCertName_NRC50[300] = "NRC50";//NRC50测试证书名称
+  char testerCertName_NRC51[300] = "NRC51";//NRC51测试证书名称
+  char testerCertName_NRC52[300] = "NRC52";//NRC52测试证书名称
+  char testerCertName_NRC53[300] = "NRC53";//NRC53测试证书名称
+  char testerCertName_NRC54[300] = "NRC54";//NRC54测试证书名称
+  char hashFunction[10]="SHA-256"; 
+  char ocspResponseString[10000]="308205150a0100a082050e3082050a06092b0601050507300101048204fb308204f730820175a181ce3081cb310b300906035504061302434e311d301b060a0992268993f22c640119160d436f6e6e65637465642043617231153013060a0992268993f22c64011916054765656c793111300f060355040813085a68656a69616e673111300f0603550407130848616e677a686f7531263024060355040a131d4765656c79204175746f6d6f62696c6520486f6c64696e6773204c7464311b3019060355040b13124765656c792054727573742043656e746572311b301906035504031312706b692d6f6373702e6765656c792e636f6d180f32303234303731393130313732325a30819030818d3065300d060960864801650304020105000420dd72ecaf05d01ceb630a0ba36bd6f99d6235e354fd31ccb1c6e214ecdbbf17bf04203762b748a649ab053b535aa4154f582099e31bd778244945f5da4a234cc7920e021012c50b46e1dc6814ff0e55a479daf52d8000180f32303234303731393130313732325aa011180f32303234303731393130323232325a300a06082a8648ce3d04030203490030460221009b93fa826422f017ffe4dc0b30a8461561ae3e8e22e4782ee9a5a9fdd05017160221008767665aed09696dab6c7fb4e9a32f8f246dabe4e339c87108284eecdb6191baa08203233082031f3082031b308202c1a003020102020d00b5d0e4e069e289ed239001d6300a06082a8648ce3d0403023081a2310b300906035504061302434e3111300f060355040813085a68656a69616e673111300f0603550407130848616e677a686f7531263024060355040a131d4765656c79204175746f6d6f62696c6520486f6c64696e6773204c7464311b3019060355040b13124765656c792054727573742043656e746572312830260603550403131f45787465726e616c2053657276696365732049737375696e6720434e2d43413022180f32303230303932393036343034315a180f32303330303932393036343034315a3081cb310b300906035504061302434e311d301b060a0992268993f22c640119160d436f6e6e65637465642043617231153013060a0992268993f22c64011916054765656c793111300f060355040813085a68656a69616e673111300f0603550407130848616e677a686f7531263024060355040a131d4765656c79204175746f6d6f62696c6520486f6c64696e6773204c7464311b3019060355040b13124765656c792054727573742043656e746572311b301906035504031312706b692d6f6373702e6765656c792e636f6d3059301306072a8648ce3d020106082a8648ce3d03010703420004e3e8508686b75ff37fcf19bc129642f519a3c40aca4d6de0adcf3aaa4f392426875d94349dd33238e8f421c4dd384e2120ed771e3a2c2aa28295c5f438b545bfa381ac3081a930090603551d1304023000301d0603551d0e041604143a4ee395eca1cf2d752ef2f56b5063e6a576b0b3300b0603551d0f0404030205e030130603551d25040c300a06082b06010505070309303a06082b06010505070101042e302c302a06082b06010505073001861e687474703a2f2f706b692d6f6373702e6765656c792e636f6d3a32353630301f0603551d230418301680141af4917626b15c6a817af85a3e1fbfb1c93b8f65300a06082a8648ce3d04030203480030450220316b7fc061f220c5e0de9c9a1eccaeb99bb66badcbe997138676ed262c466f9f022100d73c52461a5cb424865994c5fec100c84caf5727e07e5d6a573799295a6c001f";
+  //OCSP响应数据
+  byte ocspBytearray[5000];
+  word ocspLen;
+  char errorMsg[500];
+  byte challenge[32]={0xAD,0x95,0x37,0xF6,0xC8,0x04,0x56,0x99,0xCE,0x04,0x19,0x88,0x68,0x83,0xB3,0xA1}; 
+  byte testerCertByte[2000];
+  dword testerCertByteLength;
+  char testerCertString[4000];
+  byte ownerShip[1000];
+  dword ownerShipLength;
+  char ownerShipString[2000];
+  //29服务测试参数
+  
+  /* 快照记录号自填(除0x20与0x21) */
+ // const int gnum_of_snapshot_record_num = 0;                                 // 除0x20与0x21外快照记录号的数量
+  byte   gdtc_snapshot_record_num[1] = { 0x00 };                             // 除0x20与0x21外快照记录号的数据
+  /* 扩展记录号自填(除0xFF) */
+  const int gnum_of_extended_record_num = 0;                                 // 除0xFF外扩展记录号的数量
+  byte   gdtc_extended_record_num[1] = { 0x00 };                             // 除0xFF外扩展记录号的数据
+}
+
+void kl30(enum T_mode sw)
+{
+  if(gPowerTypeFlag==0)// gPowerTypeFlag设置为0 时 采用弹框提示测试人员上下电
+  {
+    if(sw==T_on)
+    {
+      testWaitForTesterConfirmation("Please set KL30 ON");
+    }
+    else if(sw==T_off)
+    {
+      testWaitForTesterConfirmation("Please set KL30 OFF");
+    }
+  }
+  else//设置为其他值时 默认采用VH1150的控制方式，也可以替换自己的供电控制代码
+  {
+    @sysvar::DeviceControl::KL::KL30 = sw;
+    if(sw==T_on)
+    {
+      @sysvar::DeviceControl::PPS::settingVoltage = 12;
+      testJoinTextEvent("PPS_setVoltage");
+      
+    }
+    else if(sw==T_off)
+    {
+      @sysvar::DeviceControl::PPS::settingVoltage = 0;
+      testJoinTextEvent("PPS_setVoltage");
+      
+    }
+  }
+  
+  teststep("","KL30 = %d",sw);
+}
+
+void kl15(enum T_mode sw)
+{
+  if(gPowerTypeFlag==0)// gPowerTypeFlag设置为0 时 采用弹框提示测试人员上下电
+  {
+    if(sw==T_on)
+    {
+      testWaitForTesterConfirmation("Please set KL15 ON");
+    }
+    else if(sw==T_off)
+    {
+      testWaitForTesterConfirmation("Please set KL15 OFF");
+    }
+  }
+  else//设置为其他值时 默认采用VH1150的控制方式，也可以替换自己的供电控制代码
+  {
+    @sysvar::DeviceControl::KL::KL15 = sw;
+    if(sw==T_on)
+    {
+      @sysvar::DeviceControl::PPS::settingVoltage = 12;
+      testJoinTextEvent("PPS_setVoltage");
+      
+    }
+    else if(sw==T_off)
+    {
+      @sysvar::DeviceControl::PPS::settingVoltage = 0;
+      testJoinTextEvent("PPS_setVoltage");
+      
+    }
+  }
+  
+  teststep("","KL15 = %d",sw);
+}
+
+//如果使用PSRB断地，需在PSRB模块中实现该接口
+void kl31(enum T_mode sw)
+{
+  @sysvar::DeviceControl::KL::KL31 = sw;
+}

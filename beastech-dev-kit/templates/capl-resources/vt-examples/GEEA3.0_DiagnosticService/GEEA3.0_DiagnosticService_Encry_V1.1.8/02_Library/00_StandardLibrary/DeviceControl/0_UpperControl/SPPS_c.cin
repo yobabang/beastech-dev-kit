@@ -1,0 +1,29 @@
+/*@!Encoding:936*/
+
+void SPPS_InitConfig()
+{
+  @sysvar::DeviceControl::SPPS::InitConfig = 1;
+}
+
+
+//设置地漂电压
+void SPPS_SetVoltage(float V)
+{
+  @sysvar::DeviceControl::SPPS::settingVoltage = V;
+}
+
+
+//设置地漂电压和电流
+void SPPS_SetVoltage(float V, float C)
+{
+  @sysvar::DeviceControl::SPPS::settingVoltage = V;
+  testWaitForTimeout(100);
+  @sysvar::DeviceControl::SPPS::settingCurrent = C;
+  testWaitForTimeout(100);
+}
+
+//设置地漂电源输出状态（off=0 on=1）
+void SPPS_Output(int status)
+{
+  @sysvar::DeviceControl::SPPS::output = status;
+}

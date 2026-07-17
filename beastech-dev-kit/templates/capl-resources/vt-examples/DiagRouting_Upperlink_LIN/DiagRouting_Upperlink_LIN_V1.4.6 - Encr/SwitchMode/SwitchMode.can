@@ -1,0 +1,302 @@
+/*@!Encoding:936*/
+includes
+{
+  #pragma library ("GenSAKey2.dll")
+  #pragma library ("osek_tp.dll")
+}
+
+variables
+{
+  word DiagReq  = 0x701;//在此修改诊断请求ID
+  word DiagResp = 0x601;//在此修改诊断响应ID
+  char  DiagChannel[100] = "DiagCAN"; //在此修改诊断通道名称
+  
+  byte Pincode[16] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  //修改安全常熟
+  byte SecSeed[32];
+  byte SecKey[16];
+  
+  long handle = 0;
+  
+  byte gTx[100];
+  byte gRx[100];
+  byte Crc[63];
+  
+  msTimer VehMtn_Timer;
+  msTimer VehSpd_Timer;
+  msTimer EngSt_Timer;
+  msTimer DcAct_Timer;
+  
+  byte VehMtn_Counter =0;
+  byte VehSpd_Counter =0;
+  byte EngSt_Counter =0;
+  byte DcAct_Counter =0;
+  
+  message CAN2.0x82 VehMtn = {//此处修改通道和ID
+    dlc=15,//0-15
+    FDF=1 //0-CAN,1-CANFD
+  };
+  message CAN3.0x9F VehSpd = {//此处修改通道和ID
+    dlc=15,//0-15
+    FDF=1 //0-CAN,1-CANFD
+  };
+  message CAN4.0x4B EngSt = {//此处修改通道和ID
+    dlc=8,//0-15
+    FDF=0 //0-CAN,1-CANFD
+  };
+  message CAN4.0x149 DcAct = {//此处修改通道和ID
+    dlc=8,//0-15
+    FDF=0 //0-CAN,1-CANFD
+  };
+}
+
+on timer VehSpd_Timer
+{
+  int i = 0;
+  dword crc = 0;
+  if(VehSpd_Counter==0xFF)
+    VehSpd_Counter=0;
+  
+  VehSpd.byte(0) = 0x30;           //修改信号所在的字节的值
+  VehSpd.byte(1) = 0x00;
+//  VehSpd.byte(2) = 0x00;
+//  VehSpd.byte(3) = 0x00;
+//  VehSpd.byte(4) = 0x00;
+//  VehSpd.byte(5) = 0x00;
+//  VehSpd.byte(6) = 0x00;
+//  VehSpd.byte(7) = 0x00;
+  
+  VehSpd.byte(62) = VehSpd_Counter;   //赋值Counter
+  
+  for(i=0;i<62;i++)
+    Crc[i] = VehSpd.byte(i);      //将除了Crc位之外的byte赋值给数组Crc
+  
+  VehSpd.byte(63) = CRC8(Crc,62);
+
+  output(VehSpd);
+  ++VehSpd_Counter;
+}
+
+on timer VehMtn_Timer
+{
+  int i = 0;
+  dword crc = 0;
+  if(VehMtn_Counter==0xFF)
+    VehMtn_Counter=0;
+  
+  VehMtn.byte(0) = 0x00;
+  VehMtn.byte(1) = 0x00;
+//  VehMtn.byte(2) = 0x00;
+//  VehMtn.byte(3) = 0x00;
+//  VehMtn.byte(4) = 0x00;
+//  VehMtn.byte(5) = 0x00;
+//  VehMtn.byte(6) = 0x00;
+//  VehMtn.byte(7) = 0x00;
+  
+  for(i=0;i<62;i++)
+    Crc[i] = VehMtn.byte(i);
+  
+  VehMtn.byte(62) = VehMtn_Counter;
+  
+  
+
+  output(VehMtn);
+  ++VehMtn_Counter;
+}
+
+on timer EngSt_Timer
+{
+  int i = 0;
+  dword crc = 0;
+  if(EngSt_Counter==0xFF)
+    EngSt_Counter=0;
+  
+  EngSt.byte(0) = 0x00;
+  EngSt.byte(1) = 0x00;
+//  EngSt.byte(2) = 0x00;
+//  EngSt.byte(3) = 0x00;
+//  EngSt.byte(4) = 0x00;
+//  EngSt.byte(5) = 0x00;
+//  EngSt.byte(6) = 0x00;
+//  EngSt.byte(7) = 0x00;
+  
+  for(i=0;i<6;i++)
+    Crc[i] = EngSt.byte(i);
+  
+  EngSt.byte(6) = EngSt_Counter;
+  
+
+  output(EngSt);
+  ++EngSt_Counter;
+}
+
+on timer DcAct_Timer
+{
+  int i = 0;
+  dword crc = 0;
+  if(DcAct_Counter==0xFF)
+    DcAct_Counter=0;
+  
+  DcAct.byte(0) = 0x00;
+  DcAct.byte(1) = 0x00;
+//  DcAct.byte(2) = 0x00;
+//  DcAct.byte(3) = 0x00;
+//  DcAct.byte(4) = 0x00;
+//  DcAct.byte(5) = 0x00;
+//  DcAct.byte(6) = 0x00;
+//  DcAct.byte(7) = 0x00;
+  
+  for(i=0;i<6;i++)
+    Crc[i] = DcAct.byte(i);
+  
+  DcAct.byte(6) = DcAct_Counter;
+  DcAct.byte(7) = CRC8(Crc,6);
+  
+  output(DcAct);
+  ++DcAct_Counter;
+}
+
+void MainTest ()
+{
+  Init();
+  
+  setTimerCyclic(VehSpd_Timer,1000);   //设置信号报文周期
+  setTimerCyclic(VehMtn_Timer,1000);
+  setTimerCyclic(EngSt_Timer,1000);
+  setTimerCyclic(DcAct_Timer,1000);
+  
+  while(1)
+  {
+    testWaitForTimeout(1);
+  }
+}
+
+void Init()
+{
+  handle = CanTpCreateConnection(0);
+  write("%d",handle);
+  CanTpSetTxIdentifier(handle,DiagReq);
+  CanTpSetRxIdentifier(handle,DiagResp);
+  
+  CanTpSetMaxCANFDFrameLength(handle,64);//当诊断为CANFD时解注释此行代码，64表示CANFD最大长度
+  
+  setBusContext(getBusNameContext(DiagChannel));
+}
+
+void SecurityAccess(int Level)
+{
+  int i=0,j=0;
+  gTx[0] = 0x27;
+  gTx[1] = Level;
+  CanTpSendData(handle,gTx,2);
+  testWaitForTextEvent("DiagResp",1000);
+  
+  for(i=0;i<elcount(SecSeed);i++)
+  {
+    SecSeed[i+16] = gRx[i+2];
+  }
+  
+  GenerateKey(SecSeed,SecKey,Level);
+  
+  gTx[0] = 0x27;
+  gTx[1] = Level+1;
+  for(j=0;j<elcount(SecKey);j++)
+  {
+    gTx[i+2] = SecKey[i];
+  }
+  
+  CanTpSendData(handle,gTx,18);
+  if(1==testWaitForTextEvent("DiagResp",1000))
+  {
+    write("解锁成功！");
+  }
+  else
+  {
+    write("解锁失败！");
+  }
+}
+
+void GenerateKey(byte SeedArray[],byte KeyArray[],int level)
+{
+  char temp[400];
+  int i;
+  
+  for(i=0;i<16;i++)
+  {
+    SeedArray[16+i] = Pincode[i];
+  }
+  
+  SeedParameter(SeedArray,32,0x01);
+  GenerateKeyExOpt(KeyArray,16,"GenSAKey2.dll");
+}
+
+void CanTp_ReceptionInd(long connHandle, byte data[])
+{
+  if(connHandle == handle)
+  {
+    memcpy(gRx,data,elcount(data));
+    testSupplyTextEvent("DiagResp");
+  }
+}
+
+on preStop
+{
+  CanTpCloseConnection(handle);
+}
+
+on key 'a' //按键盘小写a 英文输入法 进入03会话
+{
+  gTx[0] = 0x10;
+  gTx[1] = 0x03;
+  CanTpSendData(handle,gTx,2);
+}
+
+on key 's' //解锁03等级
+{
+  SecurityAccess(0x03);
+}
+
+on key 'd' //切换usgmode
+{
+  gTx[0] = 0x2F;
+  gTx[1] = 0xDD;
+  gTx[2] = 0x0A;
+  gTx[3] = 0x03;
+  gTx[4] = 0x0B;
+  CanTpSendData(handle,gTx,5);
+}
+
+on key 'f' //切换usgmode
+{
+  gTx[0] = 0x2F;
+  gTx[1] = 0x42;
+  gTx[2] = 0x9E;
+  gTx[3] = 0x03;
+  gTx[4] = 0x00;
+  gTx[5] = 0x80;
+  CanTpSendData(handle,gTx,6);
+}
+
+byte CRC8(byte data[],int length)
+{
+  int i=0,j=0;
+  byte CRC = 0xFF;
+  for(i=0;i<length;i++)
+  {
+    CRC ^= data[i];
+    for(j=0;j<8;j++)
+    {
+      if((CRC&0x80)!=0)
+      {
+        CRC <<=1;
+        CRC ^=0x07;
+      }
+      else
+      {
+        CRC<<=1;
+      }
+    }
+  }
+  CRC ^= 0xFF;
+  CRC &= 0xFF;
+  return CRC;
+}

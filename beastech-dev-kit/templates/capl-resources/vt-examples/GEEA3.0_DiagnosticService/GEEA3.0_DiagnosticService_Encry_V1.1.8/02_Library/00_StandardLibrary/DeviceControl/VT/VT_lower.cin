@@ -1,0 +1,80 @@
+/*@!Encoding:936*/
+
+variables
+{
+  char DeviceName[256] = "VT";
+}
+
+void VTSystem_InitConfig()
+{
+  VT7001_InitConfig();
+}
+
+void VT7001_InitConfig()
+{
+  sysvar::VTS::M1_VT7001.SetInterconnectionMode(1);
+}
+
+void VT7001_KL30(enum T_mode sw)
+{
+  int chk1;
+  float t1,t2;
+  
+  if(sw==T_on)
+  {
+    VT7001_OutNumActSet(1,1);
+//    testStep("Context","kl30 on");
+  }
+  else
+  {
+    VT7001_OutNumActSet(1,0);
+//    testStep("Context","kl30 off");
+  } 
+}
+
+void VT7001_KL15(enum T_mode sw)//JL
+{
+  int chk1;
+  float t1,t2;
+  
+  if(sw==T_on)
+  {
+    sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(0.001);
+    testWaitForTimeout(100);
+    VT7001_OutNumActSet(2,1);
+    t1=timenow()/100.0;
+    chk1=testWaitForSignalInRange(sysvar::VTS::M1_Out2::AvgVoltage,6,20,200);
+   
+//    teststep("Context","kl15 on");
+    if(chk1 == 1)
+    {
+      t2=timenow()/100.0;
+      sysvar::VTS::M1_Out2::AvgVoltage.SetTransferCycle(1);
+    }
+    else
+    {
+      testStep("step","set KL15 time out");
+    }
+  }
+  else
+  {
+//    testStep("","kl15 off");
+    VT7001_OutNumActSet(2,0);
+  }
+}
+
+void VT7001_OutNumActSet(int OutNum,int Sts)
+{
+  switch(OutNum)
+  {
+    case 1:
+      @sysvar::VTS::M1_Out1::Active = Sts;  
+      break;
+    case 2:
+      @sysvar::VTS::M1_Out2::Active = Sts;
+      break;   
+    default:
+      testStepWarning("VT","Invalid channel used only 1/2 are avliable.");
+      break;
+  }
+}

@@ -1,0 +1,26 @@
+/*@!Encoding:936*/
+/* 勿修改此文件 */
+variables
+{
+
+}
+
+on sysvar_update sysvar::DeviceControl::PMM::Command::InitConfig
+{
+  testSupplyTextEvent("PMM_InitConfig");
+}
+
+on sysvar_update sysvar::DeviceControl::PMM::Command::REMOTE_MODE
+{
+  PMM_REMote();
+}
+
+on sysvar_update sysvar::DeviceControl::PMM::Command::RESistance_MEAS
+{
+  PMM_ResistanceMeasure();
+}
+
+on sysvar_update sysvar::DeviceControl::PMM::Command::VOLTage_MEAS
+{
+  PMM_VoltageMeasure();
+}

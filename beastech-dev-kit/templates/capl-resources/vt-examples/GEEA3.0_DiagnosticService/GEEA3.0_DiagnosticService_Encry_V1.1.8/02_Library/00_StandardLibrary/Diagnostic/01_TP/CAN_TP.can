@@ -1,0 +1,688 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: CAN_TP.cin
+|  Comment:   CAN network layer functions of ISO15765-2:2016
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+| 20200318     1.1  LJY               Fixed version
+|1.Change the parameter of function CAN_ECU_Response from P6 to P2 and change the waiting time of final response to 10s
+|2.Add confirmation of the data send in the function CAN_TP_Send
+|3.Change the description of the write in on Timer from 'Send TP' to 'Send TesterPresent'
+|4.Add function CanTp_SendCon
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+
+}
+
+variables
+{
+	//  int SoutcesID,TargetID,DiagMode,BlockSize,STmin,AddressingMode,N_AS,N_AR,N_BS,N_BR,N_CS,N_CR;
+	//SoutcesID:源物理地址，//TargetID：目标地址；//DiagMode：诊断模式 //BlockSize：流控分包数
+	//STmin：流控分包时间间隔 //AddressingMode：寻址模式  //N_AS,N_BS,N_BR,N_CS,N_CR：  时间参数
+	long  CAN_handlefun;
+	long  CAN_connHandle;
+  long gCANHandle1;
+	long gCANFuncHandle1;
+	int  gCAN_RequestID = 0x734;
+	int  gCAN_ResponseID = 0x634;
+	int  gCAN_FuncRequestID = 0x7FF;
+//	dword   CAN_TP_PhyRequestID  = 0x700;
+//	dword   CAN_TP_FuncRequestID = 0x7DF;
+//	dword   CAN_TP_ResponseID    = 0x600;
+
+	int   CAN_TP_AS = 25;
+	int   CAN_TP_AR = 25;
+	int   CAN_TP_BS = 75;
+	int   CAN_TP_BR = 10;
+	int   CAN_TP_CS = 20;
+	int   CAN_TP_CR = 150;
+	int   CAN_TP_BlockSize = 0;
+	int   CAN_TP_STmin = 0x14;
+	int   gFC_WaitReceived;
+
+	msTimer CAN_TP_TesterPresentTimer,CANFD_TP_TesterPresentTimer;
+	//msTimer RandomTesterPresent;
+	message 0x000 CAN_TP_TesterPresentFrame = {dlc = 8,byte(0) = 0x02,byte(1) = 0x3E,byte(2) = 0x80};
+  message 0x000 CANFD_TP_TesterPresentFrame0 = {brs=0,fdf=1,dlc = 8,byte(0) = 0x02,byte(1) = 0x3E,byte(2) = 0x80};
+  message 0x000 CANFD_TP_TesterPresentFrame1 = {brs=1,fdf=1,dlc = 8,byte(0) = 0x02,byte(1) = 0x3E,byte(2) = 0x80};
+  //
+  int    gBusFlag = 1;//CAN:1 CANFD:2 LIN:3 FlexRay:4 Ethernet:5
+  enum   AddressMode {PHYSICAL = 0,FUNCTIONAL = 1};
+  int    gNRC78Flag = 0;
+  byte   gTpRxData[65535];
+  dword  gTpRxLength;
+  int gUDS_P2Client = 150;
+	int gUDS_P2ClientDelay = 5000;
+	int gUDS_P6Client = 500;
+	int gUDS_P6ClientDelay = 5000;
+
+	int gUDS_S3Client ;
+	int gUDS_S3Server = 5000;
+  enum   ResponseState {TIMEOUT,POS,NEG};
+  enum   TP_Switch {TP_ON = 1,TP_OFF = 0};
+  enum   Bus_Type {TP_CAN = 1,TP_CANFD = 2,TP_LIN = 3,TP_FLEXRAY = 4,TP_ETHERNET = 5};
+  const int    gTPWaitTimeForP2 = 3000;
+  
+  int gAPPFlag;
+  int gNMFlag;
+  int BRSbitSwitch;
+  byte gPaddingValue=0xAA;
+//  float TP_T1,TP_T2,TesTime;
+//  msTimer TPinitdelay;
+  byte NRC78Num=0;
+  float TP_T1,TP_T2,TP_T3,TP_T4;
+  byte QueueFirstCycle=0;
+
+  /* 20240812: For Send Con */
+  long  gIndex_Of_SN;   // Index of SN
+  long  gIndex_Of_SN_0; // Index of SN_0
+  long  gCount_Of_SN_0; // Count of SN_0
+  long  gFlag_MultiFrame;
+  long  gTP_TX_DL_CAN = 8;
+  long  gTP_TX_DL_CANFD;
+}
+on message *
+{
+   if((this.id == gCAN_ResponseID)&&(((this.byte(0)&0xF0) == 0)||((this.byte(0)&0xF0) == 0x10)))
+  {
+    testSupplyTextEvent("CANTPreciveFirstData");
+    @Diagnostic::Receive_ConFirst=1;
+    @Diagnostic::CAN_FirstData_Time=timeNowFloat()/100000.0;
+  }
+  /* 物理寻址 */
+  if(this.id == gCAN_RequestID)
+  { 
+    if(gFlag_MultiFrame == 1) 
+    {
+      if((this.byte(0) & 0xFF) == 0x20) { gCount_Of_SN_0++; }
+      if((gCount_Of_SN_0 == gIndex_Of_SN_0) && ((this.byte(0) & 0x0F) == gIndex_Of_SN)) { @Diagnostic::Receive_ConAll = 0; @Diagnostic::Receive_ConFirst = 0; @Diagnostic::Send_Con = 1; }
+    }
+    else { @Diagnostic::Receive_ConAll = 0; @Diagnostic::Receive_ConFirst = 0; @Diagnostic::Send_Con = 1; }
+  }
+  /* 功能寻址 */
+  else if(this.id == gCAN_FuncRequestID)
+  { if(this.byte(0) == 0x02 && this.byte(1) == 0x3E && this.byte(2) == 0x80) { return; } else { @Diagnostic::Receive_ConAll = 0; @Diagnostic::Receive_ConFirst = 0; @Diagnostic::Send_Con = 1; } }
+}
+
+on timer CAN_TP_TesterPresentTimer
+{
+	output(CAN_TP_TesterPresentFrame);
+//	write("Send TesterPresent");
+}
+on timer CANFD_TP_TesterPresentTimer
+{
+  if(BRSbitSwitch==1)
+	  output(CANFD_TP_TesterPresentFrame1);
+  else if(BRSbitSwitch==0)
+    output(CANFD_TP_TesterPresentFrame0);
+//	write("Send TesterPresent");
+}
+
+//on timer RandomTesterPresent
+//{
+//	int i;
+//
+//	if(gNowTestrePresent< gNumOfTesterPresent)
+//	{
+//		output(CAN_TP_TesterPresentFrame);
+//		write("Send TesterPresent");
+//		i = random(1000);
+//		setTimer(RandomTesterPresent,i);
+//		gNowTestrePresent++;
+//	}
+//	else
+//	{
+//		output(CAN_TP_TesterPresentFrame);
+//		write("Send TesterPresent");
+//	}
+//}
+
+void CAN_TP_Release()
+{
+	CanTpCloseConnection(CAN_handlefun);
+	CanTpCloseConnection(CAN_connHandle);
+}
+
+void CAN_TP_CreatConnection(long PhyHandle,long FuncHandle,dword InputReqID,dword InputResID,dword InputFuncReqID)
+{
+  FuncHandle = CAN_TP_Fun_Config(InputFuncReqID,InputResID);
+	PhyHandle = CAN_TP_Config(InputReqID,InputResID);
+}
+
+
+void CAN_TP_SetPadding(long paddingValue)
+{
+  CanTpSetPadding(CAN_connHandle, paddingValue);
+}
+
+void CAN_TP_SetTransportParameters(int AS,int AR,int BS,int BR,int CS,int CR,int BlockSize,int ST)
+{
+	CAN_TP_AS = AS;
+	CAN_TP_AR = AR;
+	CAN_TP_BS = BS;
+	CAN_TP_BR = BR;
+	CAN_TP_CS = CS;
+	CAN_TP_CR = CR;
+	CAN_TP_BlockSize = BlockSize;
+	CAN_TP_STmin = ST;
+}
+long CAN_TP_Config(dword SoutcesID,dword TargetID )
+{
+	int DiagMode=0;
+	int AddressingMode=0;
+
+	CAN_connHandle =CanTpCreateConnection(DiagMode);   //配置诊断模式 0
+  if(@Diagnostic::CAN_FDFlag==1)
+  {
+    CanTpSetMaxCANFDFrameLength(CAN_connHandle,@Diagnostic::CAN_FDFrameLength);
+    gTP_TX_DL_CANFD = @Diagnostic::CAN_FDFrameLength;
+    CanTpSetBitRateSwitch(CAN_connHandle, BRSbitSwitch);
+    CanTpFI_Enable(CAN_connHandle);
+  }
+	CanTpSetTxIdentifier(CAN_connHandle, SoutcesID);   //发送ID
+	CanTpSetRxIdentifier(CAN_connHandle, TargetID);    //目标ID
+	CanTpUseFlowControlFrames(CAN_connHandle, 1);     //使用流控制
+//  CanTpSetFlowControlDelay( connHandle, 50);   //流控制延迟发送
+	CanTpSetSTmin(CAN_connHandle, CAN_TP_STmin);  //流控制的时间间隔
+	CanTpSetBlockSize( CAN_connHandle, CAN_TP_BlockSize);   //流控制的包数
+	CanTpSetAddressType(CAN_connHandle, AddressingMode);  //Set the addressing type, where 1 indicates functional, 0 physical.
+  CanTpSetPadding(CAN_connHandle,gPaddingValue);
+
+ 
+	CanTpSetTimeoutAs(CAN_connHandle,CAN_TP_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+	CanTpSetTimeoutAr(CAN_connHandle,CAN_TP_AR);//
+	CanTpSetTimeBr(CAN_connHandle,CAN_TP_BR);//This value determines the time until the next Flow Control Frame is sent.
+	CanTpSetTimeoutBs(CAN_connHandle,CAN_TP_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+	CanTpSetTimeCs(CAN_connHandle,CAN_TP_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame.
+	CanTpSetTimeoutCr(CAN_connHandle,CAN_TP_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame.
+	return CAN_connHandle;
+}
+
+long CAN_TP_Fun_Config(dword SoutcesID,dword TargetID )
+{
+	int DiagMode=0;
+//  int BlockSize=0;
+//  int STmin=0x14;
+	int AddressingMode=1;
+//  int N_AS=25;
+//  int N_AR=25;
+//  int N_BS=75;
+//  int N_BR=10;
+//  int N_CS=20;
+//  int N_CR=150;
+
+	CAN_handlefun =CanTpCreateConnection(0);
+  if(@Diagnostic::CAN_FDFlag==1)
+  {
+    CanTpSetMaxCANFDFrameLength(CAN_handlefun,@Diagnostic::CAN_FDFrameLength);
+    CanTpSetBitRateSwitch(CAN_handlefun, @Diagnostic::CAN_FDbitRateSwitch);
+    CanTpFI_Enable(CAN_handlefun);
+  }
+	CanTpSetTxIdentifier(CAN_handlefun, SoutcesID);   //发送ID
+	CanTpSetRxIdentifier(CAN_handlefun, TargetID);    //目标ID
+	CanTpUseFlowControlFrames(CAN_handlefun, 0);     //使用流控制
+//  CanTpSetFlowControlDelay( handlefun, 50);   //流控制延迟发送
+  CanTpSetPadding(CAN_handlefun,gPaddingValue);
+
+	CanTpSetSTmin(CAN_handlefun, CAN_TP_STmin);
+	CanTpSetBlockSize(CAN_handlefun, CAN_TP_BlockSize);
+	CanTpSetAddressType(CAN_handlefun, AddressingMode);
+  
+	CanTpSetTimeoutAs(CAN_handlefun,CAN_TP_AS);//These timeouts specify the maximum time between giving a CAN frame to the transceiver and the confirmation of the sending of the frame on the bus
+	CanTpSetTimeoutAr(CAN_handlefun,CAN_TP_AR);//
+	CanTpSetTimeBr(CAN_handlefun,CAN_TP_BR);//This value determines the time until the next Flow Control Frame is sent.
+	CanTpSetTimeoutBs(CAN_handlefun,CAN_TP_BS);//This timeout defines how long the transmitter waits for a Flow Control Frame
+	CanTpSetTimeCs(CAN_handlefun,CAN_TP_CS);   //This value determines the time when the transmitter sends the next Consecutive Frame.
+	CanTpSetTimeoutCr(CAN_handlefun,CAN_TP_CR);  //This timeout defines how long the receiver waits for a Consecutive Frame.
+	return CAN_handlefun;
+}
+
+void CanTp_ErrorInd( long connHandle, long error)
+{
+  char buffer[100];
+
+  if(error != 5)
+  {
+  	if(gBusFlag == 1)
+  	{
+  		write( "Error %d for connection %d", error, connHandle);
+  //		testStep("TP","Error %d for connection %d", error, connHandle);
+      snprintf(buffer,elcount(buffer),"Error %d for connection %d", error, connHandle);
+      sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+  	}
+
+  	if(gBusFlag == 2)
+  	{
+  		write( "CANTP_Err:Error %d for connection %d", error, connHandle);
+  //		testStep("TP","Error %d for connection %d", error, connHandle);
+      snprintf(buffer,elcount(buffer),"Error %d for connection %d", error, connHandle);
+      sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+  	}
+  }
+}
+
+int CAN_TP_Send(byte Data[],enum AddressMode Mode)
+{
+	if(Mode==0)
+		CanTpSendData(CAN_connHandle,Data,elcount(Data));//
+	else
+		CanTpSendData(CAN_handlefun,Data,elcount(Data));//
+	return 1;
+}
+
+int CAN_TP_Send(byte Data[],int length,enum AddressMode Mode)
+{
+	if(length>elcount(Data))
+	{
+		if(Mode==0)
+			CanTpSendData(CAN_connHandle,Data,elcount(Data));//
+		else
+			CanTpSendData(CAN_handlefun,Data,elcount(Data));//
+		write("Worning tp send data size small than given length");
+	}
+	else
+	{
+		if(Mode==0)
+			CanTpSendData(CAN_connHandle,Data,length);//
+		else
+			CanTpSendData(CAN_handlefun,Data,length);//
+	}
+	return 1;
+}
+
+void CanTp_ReceptionInd( long InputHandle, byte data[])
+{
+  char buffer[100];
+  if(@Diagnostic::Queue_EnableFlag==1)
+  {
+    @Diagnostic::Queue_ResExist=1;
+    if(data[0]==0x7F&&data[2]==0x78)
+    {
+      @Diagnostic::Queue_NRC78Flag=1;
+      NRC78Num++;
+      TP_T1 = timeNowFloat()/100000;
+      TP_T2 = timeNowFloat()/100000;
+      if(NRC78Num!=1)
+      {
+        TP_T3 = timeNowFloat()/100000;
+        if((TP_T3-TP_T2)>8)
+        {
+          snprintf(buffer,elcount(buffer),"NRC78 Check Timeout");
+          sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+          NRC78Num=0;
+          @Diagnostic::Queue_NRC78CheckResult=1;
+          @Diagnostic::Queue_NRC78Flag=0;
+        }
+        else if((TP_T3-TP_T2)>5)
+        {
+          snprintf(buffer,elcount(buffer),"NRC78 Timeout");
+          sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+        }
+        else
+        {
+          TP_T2 = timeNowFloat()/100000;
+          TP_T4 = timeNowFloat()/100000;
+          if((TP_T4-TP_T1)>60)
+          {
+            snprintf(buffer,elcount(buffer),"P4 TimeOut");
+            sysSetVariableString( sysvar::Diagnostic::ErrorMessage,buffer);
+            NRC78Num=0;
+            @Diagnostic::Queue_NRC78CheckResult=0;
+            @Diagnostic::Queue_NRC78Flag=0;
+          }
+        }
+      }
+    }
+    else
+    {
+      if(@Diagnostic::Queue_NRC78Flag==1)
+      {
+        @Diagnostic::Queue_NRC78Flag=0;
+        @Diagnostic::Queue_NRC78CheckResult=2;
+        NRC78Num=0;
+      }
+      
+    	gTpRxLength=elcount(data);
+      sysSetVariableData(sysvar::Diagnostic::Receive_Data,data,gTpRxLength);
+      @Diagnostic::Receive_DataLength=gTpRxLength;
+      @Diagnostic::Queue_DRQ_R=1;
+//      write("111111111111111");
+    }
+  }
+  else
+  {
+  	gTpRxLength=elcount(data);
+    sysSetVariableData(sysvar::Diagnostic::Receive_Data,data,gTpRxLength);
+    @Diagnostic::Receive_DataLength=gTpRxLength;
+  }
+  
+	if(InputHandle!=CAN_handlefun)
+	{
+      @Diagnostic::Receive_ConAll=1;
+//  		write( "TP:Connection %d Received %d byte ..." , InputHandle,elcount(data));
+	}
+}
+
+
+void CanTp_SendCon( long connHandle, dword count)
+{
+//////  int i=0;
+//////  long Requestlength1,Requestlength2;
+//////  byte tempData[65535];
+//////  
+//////	write( "TP:Connection %d Send data successfully",connHandle);
+//////	testSupplyTextEvent("CANTPSendDataSuccessfully");
+//////  @Diagnostic::Send_Con=1;
+//////  
+//////  if(@Diagnostic::Queue_EnableFlag==1)
+//////  {
+//////    @Diagnostic::Queue_DRQ_S++;
+//////    switch(@Diagnostic::Queue_DRQ_S)
+//////    {
+//////      case 1:
+//////        Requestlength1=elcount(sysvar::Diagnostic::Send_Data);
+//////        sysGetVariableData(sysvar::Diagnostic::Send_Data,tempData,Requestlength1);
+//////        syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer0,tempData,Requestlength1);
+//////        break;
+//////      case 2:
+//////        if(@Diagnostic::Queue_FirstCycleFlag==1)
+//////        {
+//////          @Diagnostic::Queue_FirstCycleFlag=0;
+//////        }
+//////        else
+//////        {
+//////          sysGetVariableData(sysvar::Diagnostic::Queue_SendBuffer1,tempData,Requestlength2);
+//////          syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer0,tempData,Requestlength2);
+//////        }
+//////        Requestlength2=elcount(sysvar::Diagnostic::Send_Data);
+//////        sysGetVariableData(sysvar::Diagnostic::Send_Data,tempData,Requestlength2);
+//////        syssetVariableData(sysvar::Diagnostic::Queue_SendBuffer1,tempData,Requestlength2);
+//////        break;
+//////    }
+//////  }
+}
+
+//enum ResponseState CAN_ECU_Response(int P2,int CheckService)
+//{
+//	if(P2 != gUDS_P2ClientDelay)
+//	{
+//		gNRC78Flag = 0;
+//	}
+//  if(P2 != gUDS_P2ClientDelay)
+//  {
+//  	if(testWaitForTextEvent("CANTPreciveFirstData",gTPWaitTimeForP2)==0)
+//  		return TIMEOUT;
+//    TP_T2 = timeNowFloat()/10000;
+//    TesTime = (TP_T2-TP_T1)*100;
+//    if(TesTime>P2)
+//    {
+//      testStepFail("TP","Tester P2Client timeout!");
+//    }
+//  }
+//  else
+//  {
+//    if(testWaitForTextEvent("CANTPreciveFirstData",gUDS_P2ClientDelay)==0)
+//  		return TIMEOUT;
+//  }
+//	if(testWaitForTextEvent("CANTPreciveData",gUDS_P6Client)==0)
+//	{
+//		testStep("TP","Don't receive complete data");
+//		return TIMEOUT;
+//	}
+//
+//	if(gTpRxData[0]==0x7f)
+//	{
+//		switch(gTpRxData[2])
+//		{
+//		case 0x78:
+//      if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+//      {
+//        testStepFail("UDS","ECU gives unexpected service for NRC78");
+//      }
+//			gNRC78Flag = 1;
+//			return CAN_ECU_Response(gUDS_P2ClientDelay,CheckService);
+//		case 0x22:
+//			break;
+//		default:
+//			break;
+//		}
+//		return NEG;
+//	}
+//	else
+//		return POS;
+//}
+//
+//enum ResponseState CAN_ECU_Response(int P2,int P6,int CheckService)
+//{
+//	if(P2 != gUDS_P2ClientDelay)
+//	{
+//		gNRC78Flag = 0;
+//	}
+//  if(P2 != gUDS_P2ClientDelay)
+//  {
+//  	if(testWaitForTextEvent("CANTPreciveFirstData",gTPWaitTimeForP2)==0)
+//  		return TIMEOUT;
+//    TP_T2 = timeNowFloat()/10000;
+//    TesTime = (TP_T2-TP_T1)*100;
+//    if(TesTime>P2)
+//    {
+//      testStepFail("TP","Tester P2Client timeout!");
+//    }
+//  }
+//  else
+//  {
+//    if(testWaitForTextEvent("CANTPreciveFirstData",gUDS_P2ClientDelay)==0)
+//  		return TIMEOUT;
+//  }
+//	if(testWaitForTextEvent("CANTPreciveData",gUDS_P6Client)==0)
+//	{
+//		testStep("TP","CAN_TP:Don't receive complete data");
+//		return TIMEOUT;
+//	}
+//
+//	if(gTpRxData[0]==0x7f)
+//	{
+//		switch(gTpRxData[2])
+//		{
+//		case 0x78:
+//       if((CheckService != gTpRxData[1])&&(CheckService != 0x00))
+//      {
+//        testStepFail("UDS","ECU gives unexpected service for NRC78");
+//      }
+//			gNRC78Flag = 1;
+//			return CAN_ECU_Response(gUDS_P2ClientDelay,CheckService);
+//		default:
+//			break;
+//		}
+//		return NEG;
+//	}
+//	else
+//		return POS;
+//}
+
+//void CAN_TP_TesterPresentSet(enum TP_Switch PresentSwitch)
+//{
+//	if(PresentSwitch == TP_ON)
+//	{
+//		setTimerCyclic(CAN_TP_TesterPresentTimer,gUDS_S3Client);
+//	}
+//	else
+//	{
+//		cancelTimer(CAN_TP_TesterPresentTimer);
+//	}
+//}
+on sysvar_update Diagnostic::TP_TesterPresentSet
+{
+  byte i;
+  
+  if(@Diagnostic::CAN_FDFlag==1)
+  {
+    if(@this==1)
+  	{
+  		setTimerCyclic(CANFD_TP_TesterPresentTimer,gUDS_S3Client);
+
+  	}
+  	else if(@this==0)
+  	{
+  		cancelTimer(CANFD_TP_TesterPresentTimer);
+  	}  
+  }
+  else 
+  {
+    if(@this==1)
+  	{
+  		setTimerCyclic(CAN_TP_TesterPresentTimer,gUDS_S3Client);
+  	}
+  	else if(@this==0)
+  	{
+  		cancelTimer(CAN_TP_TesterPresentTimer);
+  	} 
+  }
+}
+/// <TPparameterInit>
+on sysvar_update Diagnostic::CAN_TPparameterInit
+{
+  byte i=0;
+  
+//  byte data1[3]={0x02,0x10,0x03};
+  CAN_TP_AS = @Diagnostic::CAN_TP_AS;
+	CAN_TP_AR = @Diagnostic::CAN_TP_AR;
+	CAN_TP_BS = @Diagnostic::CAN_TP_BS;
+	CAN_TP_BR = @Diagnostic::CAN_TP_BR;
+	CAN_TP_CS = @Diagnostic::CAN_TP_CS;
+	CAN_TP_CR = @Diagnostic::CAN_TP_CR;
+	CAN_TP_BlockSize = @Diagnostic::CAN_BlockSize;
+	CAN_TP_STmin = @Diagnostic::CAN_STmin;
+  
+  gCAN_RequestID=@Diagnostic::CAN_RequestID;
+  gCAN_ResponseID=@Diagnostic::CAN_ResponseID;
+  gCAN_FuncRequestID=@Diagnostic::CAN_FunctionalID;
+  gUDS_S3Client=@Diagnostic::S3Client;
+  BRSbitSwitch=@Diagnostic::CAN_FDbitRateSwitch;
+  gPaddingValue=@Diagnostic::CAN_Padding;
+  
+  CAN_TP_CreatConnection(gCANHandle1,gCANFuncHandle1,gCAN_RequestID,gCAN_ResponseID,gCAN_FuncRequestID);
+  CAN_TP_TesterPresentFrame.id=gCAN_FuncRequestID;
+  CANFD_TP_TesterPresentFrame0.id=gCAN_FuncRequestID;
+  CANFD_TP_TesterPresentFrame1.id=gCAN_FuncRequestID;
+  for(i=3;i<8;i++)
+  {
+    CAN_TP_TesterPresentFrame.byte(i)=gPaddingValue;
+    CANFD_TP_TesterPresentFrame0.byte(i)=gPaddingValue;
+    CANFD_TP_TesterPresentFrame1.byte(i)=gPaddingValue;
+  }
+}
+on sysvar_update Diagnostic::Send_Flag
+{
+  byte tempdata[65535],ResponseData[65535];
+  byte tempAddressmode;
+  long Requestlength,Responselength;
+  
+  if(@this==1)
+  { 
+    tempAddressmode=@Diagnostic::AddressingMode;
+    Requestlength=elcount(sysvar::Diagnostic::Send_Data);
+    sysGetVariableData(sysvar::Diagnostic::Send_Data,tempdata,Requestlength);
+    
+    gCount_Of_SN_0 = 0;
+    if(@Diagnostic::CAN_FDFlag == 0) // CAN
+    {
+      if(Requestlength > (gTP_TX_DL_CAN - 1)) // 多帧处理
+      {
+        long temp1,temp2;
+        gFlag_MultiFrame = 1;
+        
+        temp1 = (Requestlength - (gTP_TX_DL_CAN - 2)) % (gTP_TX_DL_CAN - 1);
+        if(temp1 == 0) { temp2 = (Requestlength - (gTP_TX_DL_CAN - 2))/(gTP_TX_DL_CAN - 1); }
+        else           { temp2 = (Requestlength - (gTP_TX_DL_CAN - 2))/(gTP_TX_DL_CAN - 1) + 1; }
+        gIndex_Of_SN   = temp2 % 16;
+        gIndex_Of_SN_0 = temp2 / 16;
+      }
+      else { gFlag_MultiFrame = 0; }
+    }
+    else // CANFD
+    {
+      long temp1,temp2;
+      
+      if(Requestlength <= 4095) // CANFD Mode1
+      {
+        if(Requestlength > (gTP_TX_DL_CANFD - 2)) // 多帧处理
+        {
+          gFlag_MultiFrame = 1;
+          
+          temp1 = (Requestlength - (gTP_TX_DL_CANFD - 2)) % (gTP_TX_DL_CANFD - 1);
+          if(temp1 == 0) { temp2 = (Requestlength - (gTP_TX_DL_CANFD - 2))/(gTP_TX_DL_CANFD - 1); }
+          else           { temp2 = (Requestlength - (gTP_TX_DL_CANFD - 2))/(gTP_TX_DL_CANFD - 1) + 1; }
+          gIndex_Of_SN   = temp2 % 16;
+          gIndex_Of_SN_0 = temp2 / 16;
+        }
+        else { gFlag_MultiFrame = 0; }
+      }
+      else                     //  CANFD Mode2
+      {
+        gFlag_MultiFrame = 1;
+        
+        temp1 = (Requestlength - (gTP_TX_DL_CANFD - 6)) % (gTP_TX_DL_CANFD - 1);
+        if(temp1 == 0) { temp2 = (Requestlength - (gTP_TX_DL_CANFD - 6))/(gTP_TX_DL_CANFD - 1); }
+        else           { temp2 = (Requestlength - (gTP_TX_DL_CANFD - 6))/(gTP_TX_DL_CANFD - 1) + 1; }
+        gIndex_Of_SN   = temp2 % 16;
+        gIndex_Of_SN_0 = temp2 / 16;
+      }
+    }
+    
+    if(tempAddressmode==0)
+      CAN_TP_Send(tempdata,Requestlength,PHYSICAL);
+    else if(tempAddressmode==1)
+      CAN_TP_Send(tempdata,Requestlength,FUNCTIONAL);
+  }
+}
+on sysvar_update Diagnostic::CAN_SendSmallBufferDataLen
+{
+  byte tempdata[65535],ResponseData[65535];
+  byte tempAddressmode;
+  long Requestlength,Responselength;
+  
+  tempAddressmode=@Diagnostic::AddressingMode;
+  Requestlength=elcount(sysvar::Diagnostic::Send_Data);
+  sysGetVariableData(sysvar::Diagnostic::Send_Data,tempdata,Requestlength);
+  
+    if(tempAddressmode==0)
+      CanTpSmallBufferSend(CAN_connHandle,Requestlength,tempdata,@this);
+    else if(tempAddressmode==1)
+      CanTpSmallBufferSend(CAN_handlefun,Requestlength,tempdata,@this);
+  
+}
+
+on sysvar_update Diagnostic::ReleaseConnection
+{
+  CAN_TP_Release();
+}
+
+void MainTest()
+{
+  while(1)
+  {
+    testWaitForTimeout(10000);
+  }
+}

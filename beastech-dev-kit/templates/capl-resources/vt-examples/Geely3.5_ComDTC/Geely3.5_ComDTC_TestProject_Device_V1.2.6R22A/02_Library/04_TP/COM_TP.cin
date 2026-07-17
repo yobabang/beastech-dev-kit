@@ -1,0 +1,307 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: COM_TP.cin
+|  Comment:   Network layer interface of the UDS_Service.cin
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+includes
+{
+
+  #include "canTP\CAN_TP_V1.cin"
+  #include "doipTP\DoIP_TP.cin"
+  #include "linTP\LIN_TP_V1.cin"
+  #include "ipTP\IP_TP_V1.cin"
+  #include "FrTP\Fr_TP.cin"
+  #include "canfdTP\CANFD_TP_V1.cin"
+}
+
+variables
+{
+  int    gBusFlag = 0;//CAN:1 CANFD:2 LIN:3 FlexRay:4 Ethernet:5
+  int    gNRC78Flag = 0;
+  enum   ResponseState {Timeout,Pos,Neg};
+  enum   TP_Switch {TP_On = 1,TP_Off = 0};
+  enum   Bus_Type {TP_CAN = 1,TP_CANFD = 2,TP_LIN = 3,TP_FlexRay = 4,TP_Ethernet = 5,TP_DoIP = 6};
+  enum   AddressMode {Physical = 0,Functional = 1};
+  byte   TpRxData[65535];
+  dword  TpRxLength;
+  char TpBusName[32];
+}
+
+/*
+1.基本函数包含以下内容
+① int TP_Send(byte Data[],int Mode)
+  重载1：int TP_Send(byte Data[],int length,int Mode)
+② void TP_Init()
+③ void TP_Release()
+④ void TP_TesterPresentSet()
+⑤ void TP_BusContextSet(char BusName[])
+⑥ void TP_BusSet(enum Bus_Type Type)
+2.各总线参数配置函数在各自总线cin文件内添加并将函数接口信息添加到说明书中
+3.函数命名规则：
+① 各总线内函数使用总线+TP+函数名进行命名，例如：CAN_TP_Send()
+② 各总线内打印测试步骤使用总线+TP进行命名，例如：testStep("CAN_TP","Err:Don't receive complete data");
+③ 各总线内打印至Write窗口使用总线+TP进行命名，例如：write( "CAN_TP:Received %d byte  %x ..." , elcount(data), data[0]);
+
+
+*/
+/*
+1.TP_Send函数的寻址方式参数改为枚举类型：enum   AddressMode
+*/
+
+void TP_Init()
+{
+  strncpy(TpBusName,TpBusName_Temp,32);
+  
+  if(strncmp(TpBusType_Temp, "CAN", 20) == 0)
+  {
+    CAN_TP_Init();
+    TP_BusSet(TP_CAN);
+    TP_BusContextSet(TpBusName);
+    CAN_TP_CreatConnection(CAN_TP_PhyRequestID,CAN_TP_ResponseID,CAN_TP_FuncRequestID,TpBusName);
+  }
+  if(strncmp(TpBusType_Temp, "CANFD", 20) == 0)
+  {
+    CANFD_TP_Init();
+    TP_BusSet(TP_CANFD);
+    TP_BusContextSet(TpBusName);
+    CANFD_TP_CreatConnection(CANFD_TP_PhyRequestID,CANFD_TP_ResponseID,CANFD_TP_FuncRequestID,TpBusName);
+  }
+  if(strncmp(TpBusType_Temp, "FR", 20) == 0)
+  {
+    FRconfig();
+    TP_BusSet(TP_FlexRay);
+    TP_BusContextSet(TpBusName);
+    FR_Tp_ConfigAPP_Func(FunAddress,LocalAddress);
+  }
+  if(strncmp(TpBusType_Temp, "IP_ECU", 20) == 0)
+  {
+    if(ECUAddress_Temp == 0x1201)
+    {
+      FRconfig();
+      resetFlexRayCC(1);
+    }
+    if(ECUAddress_Temp == 0x1301)//FX11 FT ADCU
+    {
+      FRconfig();
+      resetFlexRayCC(1);
+    }
+    
+    TP_BusSet(TP_Ethernet);
+    TP_BusContextSet(TpBusName);
+    ETH_TP_SetTransportParameters(ECUAddress_Temp,LocalAddress,FunAddress,"198.18.44.1","255.255.0.0");
+    testWaitForTimeout(10000);
+  }
+  if(strncmp(TpBusType_Temp, "IP_EdgeNode", 20) == 0)
+  {
+    FRconfig();
+    resetFlexRayCC(1);
+    TP_BusSet(TP_DoIP);
+    TP_BusContextSet(TpBusName);
+  }
+}
+
+void TP_Release()
+{
+  CAN_TP_Release();
+  testWaitForTimeout(5);
+  CANFD_TP_Release();
+  testWaitForTimeout(5);
+  LIN_TP_Release();
+  testWaitForTimeout(5);
+  ETH_TP_Release();
+  testWaitForTimeout(5);
+
+}
+
+void TP_BusSet(enum Bus_Type Type)
+{
+  
+  switch (Type)
+  {
+    case TP_CAN:
+      gBusFlag = 1;
+      break;
+    case TP_CANFD:
+      gBusFlag = 2;
+      break;
+    case TP_LIN:
+      gBusFlag = 3;
+      break;
+    case TP_FlexRay:
+      gBusFlag = 4;
+      break;
+    case TP_Ethernet:
+      gBusFlag = 5;
+      break;
+    case TP_DoIP:
+      gBusFlag = 6;
+      break;
+  }
+  //write("Bus set to %s",BusType);
+}
+
+void TP_BusContextSet(char BusName[])
+{
+  setBusContext(getBusNameContext(BusName));
+}
+
+void TP_Send(byte Data[],enum AddressMode Mode)
+{
+  switch (gBusFlag)
+  {
+    case 1:
+      CAN_TP_Send(Data,Mode);
+      break;
+    case 2:
+      CANFD_TP_Send(Data,Mode);
+      break;
+    case 3:
+      LIN_TP_Send(Data,Mode);
+      break;
+    case 4:
+      FR_TP_Send(Data,Mode);
+      break;
+    case 5:
+      ETH_TP_Send(Data,Mode);
+      break;
+    case 6:
+      DoIP_TP_Send(Data,Mode);
+      break;
+    default:
+      break;      
+  }
+}
+
+void TP_Send(byte Data[],int length,enum AddressMode Mode)
+{
+  switch (gBusFlag)
+  {
+    case 1:
+      CAN_TP_Send(Data,length,Mode);
+      break;
+    case 2:
+      CANFD_TP_Send(Data,length,Mode);
+      break;
+    case 3:
+      LIN_TP_Send(Data,length,Mode);
+      break;
+    case 4:
+      FR_TP_Send(Data,length,Mode);
+      break;
+    case 5:
+      ETH_TP_Send(Data,length,Mode);
+      break;
+    case 6:
+      DoIP_TP_Send(Data,length,Mode);
+      break;
+    default:
+      break;
+  }
+}
+
+int TP_GetReceivedData(byte InputData[])
+{
+  int i;
+  
+      if(TpRxLength > elCount(InputData))
+      {
+        testStepWarning("TP_Err","Input array too small to get all received data");
+        for(i=0;i<elCount(InputData);i++)
+        {
+          InputData[i]=TpRxData[i];
+        }
+      }
+      else
+      {
+        for(i=0;TpRxLength;i++)
+        {
+          InputData[i]=TpRxData[i];
+        }
+      }
+      
+      return TpRxLength;
+}
+
+enum ResponseState ECU_Response(int P6)
+{
+  enum ResponseState TempResult;
+  
+  switch (gBusFlag)
+  {
+    case 1:
+      TempResult = CAN_ECU_Response(P6);
+      break;
+    case 2:
+      TempResult = CANFD_ECU_Response(P6);
+      break;
+    case 3:
+      TempResult = LIN_ECU_Response(P6);
+      break;
+    case 4:
+      TempResult = FR_ECU_Response(P6);//
+      break;
+    case 5:
+      TempResult = ETH_ECU_Response(P6);
+      break;
+    case 6:
+      TempResult = DoIP_ECU_Response(P6);
+      break;
+    default:
+      break;      
+  }
+  
+  return TempResult;
+}
+
+enum ResponseState ECU_Response(int P2,int P6)
+{
+  enum ResponseState TempResult;
+  
+  switch (gBusFlag)
+  {
+    case 1:
+      TempResult = CAN_ECU_Response(P2,P6);
+      break;
+    case 2:
+      TempResult = CANFD_ECU_Response(P2,P6);
+      break;
+    case 3:
+      TempResult = LIN_ECU_Response(P2,P6);
+      break;
+    case 4:
+      TempResult = FR_ECU_Response(P6);//
+      break;
+    case 5:
+      TempResult = ETH_ECU_Response(P6);
+      break;
+    case 6:
+      TempResult = DoIP_ECU_Response(P6);
+      break;
+    default:
+      break;      
+  }
+  
+  return TempResult;
+}

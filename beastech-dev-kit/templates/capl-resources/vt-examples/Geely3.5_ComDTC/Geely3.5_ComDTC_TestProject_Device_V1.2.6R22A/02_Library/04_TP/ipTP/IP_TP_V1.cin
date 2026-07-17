@@ -1,0 +1,541 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: IP_TP.cin
+|  Comment:   Ethernet network layer functions of ISO13400-2:2013
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+| SDY              SunDayong         Polelink Information Technology Co., Ltd.
+| WRN              WuRuonan          Polelink Information Technology Co., Ltd.
+| ZH               ZhangHeng         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20190621     1.0  LJY               Creation
+|1.Create first edition;
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2019 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+includes
+{
+  #include "IPAddress.cin"
+}
+variables
+{
+  dword   ETH_TesterLogicAddress ;
+  dword   ETH_ECULogicAddress ;
+  dword   ETH_FunctionalLogicAddress;
+  dword   ETH_ipv4Address;
+  dword   ETH_netmask;
+  
+  float   ETH_t1,ETH_t2;
+  
+  byte    TpTxData[65536];
+  dword   TpTxLength;
+  //int     i;
+  dword   gListenSocket;
+  dword   gConnectionSocket;
+  char    gRxBuffer[65536];
+
+  char    gIpLastErrStr[1024]  = "";//?
+//  char        gTcpRxBuffer[8192];    
+  byte    gTcpRxBuffer[8192];
+  int     gIpLastErr           = 0;
+  //int     Flag_NRC78;
+  BYTE    emptyMacAddress[6] = { 0x00,0x00,0x00,0x00,0x00,0x00};
+  BYTE    rx_data[65535];
+  LONG    rx_length;
+  msTimer ETH_T1;
+  const long  WSA_IO_PENDING =  997;
+  
+}
+
+on preStart
+{
+  Server_Listen();
+  EthReceiveRawPacket( 0x7, emptyMacAddress, emptyMacAddress, 0x0000, "OnEthRawPacket" );
+}
+
+on timer ETH_T1
+{
+  
+}
+
+void ETH_TP_Init()
+{
+
+}
+
+void ETH_TP_Release()
+{
+  
+}
+
+//void ETH_TP_SetParameters(dword TesterAddress,dword ECUAddress,char IPv4Address[],char ETHNetMask[])
+//{
+//  dword result;
+//  dword interfaceIndex;
+//  dword ipv4Address;
+//  dword netmask;
+//  
+//  
+//  TesterLogicAddress=0x0E80;
+//  RawECULogicAddress=ECULogicAddress;
+//  interfaceIndex = 1;
+//  ipv4Address = ipGetAddressAsNumber("198.18.32.1");
+//  netmask = ipGetAddressAsNumber("255.255.0.0");
+//  result= ipAddAdapterAddress(interfaceIndex, ipv4Address, netmask);
+//  if( result != 0 )
+//  {
+//    write( "IpAddAdapterAddress failed, error code %d, last error %d", result, IpGetLastError());
+//  }
+//}
+
+void ETH_TP_SetTransportParameters(dword ECULogicAddress,dword TesterLogicAddress,dword FunctionalLogicAddress,char ipv4Address[],char netmask[])
+{
+  dword result;
+  dword interfaceIndex;
+  
+  ETH_TesterLogicAddress=TesterLogicAddress;
+  //ETH_RawECULogicAddress=ECULogicAddress;
+  ETH_ECULogicAddress = ECULogicAddress;
+  ETH_FunctionalLogicAddress = FunctionalLogicAddress;
+  ETH_ipv4Address = ipGetAddressAsNumber(ipv4Address);
+  ETH_netmask = ipGetAddressAsNumber(netmask);
+  
+  interfaceIndex = 1;
+  result= ipAddAdapterAddress(interfaceIndex, ETH_ipv4Address, ETH_netmask);
+  if( result != 0 )
+  {
+    write( "IpAddAdapterAddress failed, error code %d, last error %d", result, IpGetLastError());
+  }
+}
+
+void Server_Listen()
+{
+  write("listening ...");
+  gListenSocket = TcpOpen( 0, 13400 );//建立一个TCP Socket
+//  if(gListenSocket!=~0)
+//  {
+//    write("built TCP socket success ");
+//  }
+//  else
+//    write()
+    // Begin listening on TCP port.
+  TcpListen(gListenSocket);// listen for incoming connection requests
+  if (IpGetLastError() != 0)//判断监听TCP Socket是否成功
+  {
+    // if UdpSocket::Open fails, we print a message to the write window
+    write( "ETHTP_Err:<%BASE_FILE_NAME%> TcpSocket::Open failed with result %d", IpGetLastError() );
+  }
+  else
+    write("ETHTP:listen success,timeNow=%.6f",timeNow()/100000.0);
+}
+
+
+//
+// Callback OnTcpListen is called on incomming connect request.
+//
+void OnTcpListen( dword socket, long result)
+{
+  int result111;
+  dword IHUHandle_Temp;
+  dword IHUHandle_DigIP;
+  IHUHandle_Temp=0;
+  IHUHandle_DigIP=0;
+  write("OnTcpListen:listen success, timeNow=%.6f",timeNow()/100000.0);
+  // Accept connection request and setup gConnectionSocket
+  
+  if((strstr(NodeName,"ADCU")>=0) && (ECUAddress_Temp == 0x1301))
+    ConnectionSocketGet_ADCU(socket);
+  else if((strstr(NodeName,"ADMC")>=0) && (ECUAddress_Temp == 0x1301))
+    ConnectionSocketGet_ADMC(socket);
+  else if((strstr(NodeName,"ADSC")>=0) && (ECUAddress_Temp == 0x1302))
+    ConnectionSocketGet_ADSC(socket);
+  else
+    gConnectionSocket = TcpAccept(socket);
+  
+  // to recieve data from the socket, we have to call TCPReceive.
+//      TCPReceive(gConnectionSocket, gRxBuffer, elcount(gRxBuffer) );
+
+  if(gConnectionSocket!=~0)
+  {
+    write("ETHTP:TCPaccept success ,gConnectionSocket=%d",gConnectionSocket);
+//          TCPReceive(gConnectionSocket, gRxBuffer, elcount(gRxBuffer) );
+    result=TCPReceive(gConnectionSocket, gTcpRxBuffer, elcount(gTcpRxBuffer) );//20190107
+    write("OnTcpListen result=%d",result);
+    
+    result111=ipGetLastSocketError(gConnectionSocket) ;
+    write("OnTcpListen result111=%d",result111);
+  }
+  else
+  {
+   write("ETHTP_Err:TCPaccept error");
+  }
+  setTimerCyclic(TesterPresentKeep,4000);
+}
+
+// error
+void OnTcpClose( dword socket, long result)
+{
+  if (result == 0)
+  {
+//     Client has close the socket, so we can relase our gConnectionSocket object.
+    tcpClose(gConnectionSocket);
+  }
+  cancelTimer(TesterPresentKeep);
+}
+
+void OnTcpSend( dword socket, long result, char buffer[], dword size)
+{
+//  if (socket == gConnectionSocket)
+//  {
+//    write("hahaaaa");
+//  }
+//  write("hahaaaa");
+}
+
+void OnTcpReceive( dword socket, long result, dword address, dword port, char buffer[], dword size)
+{
+  int TCPReceiveErrorCode;
+  int i;
+  char addressString[64] = "";
+  char errorText[200]="";
+
+//  if ( gConnectionSocket != socket)
+//  {
+//    writelineex(0, 2, "ETHTP_Err:OnTcpReceive called for unknown socket 0x%X", socket);
+//
+//    return;
+//  }
+//
+//  if (0 != result)
+//  {
+//    IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+//
+//    writelineex( 0, 2, "ETHTP_Err:OnTcpReceive error (%d): %s", IpGetLastSocketError( socket), gIpLastErrStr);
+//
+//    return;
+//  }
+// 
+  //TcpRecv( socket);
+  
+  result = TcpReceive( socket, gTcpRxBuffer, elcount(gTcpRxBuffer));
+  if(result==0)
+  {
+    write("TcpReceive success.");
+  }
+  else if(result==87)
+  {
+    write("WSA_INVALID_PARAMETER (87): The specified socket was invalid.");
+  }
+  else if(result==-1)
+  {
+    TCPReceiveErrorCode=ipGetLastSocketError(socket) ;
+    write("ReceiveErrorCode=%d",TCPReceiveErrorCode);
+    if(TCPReceiveErrorCode!= 997)
+    {
+      IpGetLastSocketErrorAsString( socket, errorText, elcount(errorText) );
+      write( "TcpSocket::Receive failed, %s (Result %d)", errorText, ipGetLastSocketError(socket) );
+    }
+  }
+  TpRxLength=(gTcpRxBuffer[4]<<24)|(gTcpRxBuffer[5]<<16)|(gTcpRxBuffer[6]<<8)|(gTcpRxBuffer[7]);
+  TpRxLength=TpRxLength-4;
+//  write("Tester receive TCP Data gTcpRxBuffer[0]=%x gTcpRxBuffer[1]=%x gTcpRxBuffer[2]=%x gTcpRxBuffer[3]=%x", gTcpRxBuffer[0],gTcpRxBuffer[1],gTcpRxBuffer[2],gTcpRxBuffer[3]);
+//  write("Tester receive TCP Data: 0x%x 0x%x 0x%x 0x%x ", gTcpRxBuffer[12],gTcpRxBuffer[13],gTcpRxBuffer[14],gTcpRxBuffer[15]);
+//  write("TpRxLength=%d ",TpRxLength);
+  if((gTcpRxBuffer[0]==0x02)&&(gTcpRxBuffer[1]==0xFD)&&(gTcpRxBuffer[2]==0x80)&&(gTcpRxBuffer[3]==0x01))
+  {
+    for(i=0;i<=TpRxLength;i++)
+    {
+      TpRxData[i]=gTcpRxBuffer[i+12];
+    }
+    setTimer(ETH_T1,2);
+    TestSupplyTextEvent("ETHTPreciveData");
+    write( "ETHTP:Received TpRxLength=%d byte : 0x%x 0x%x 0x%x 0x%x  ..." , TpRxLength, TpRxData[0], TpRxData[1], TpRxData[2], TpRxData[3]);
+  }
+}
+
+
+long TcpRecv( dword socket)
+{
+  int result = 0;
+  int i;
+
+  result = TcpReceive( socket, gTcpRxBuffer, elcount(gTcpRxBuffer));
+
+  if ( 0 != result)
+  {
+    gIpLastErr = IpGetLastSocketError( socket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( socket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "ETHTP_Err:TcpReceive error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+//  write("Tester receive TCP Data: 0x%x 0x%x 0x%x 0x%x ", gTcpRxBuffer[4],gTcpRxBuffer[5],gTcpRxBuffer[6],gTcpRxBuffer[7]);
+  TpRxLength=(gTcpRxBuffer[4]<<24)|(gTcpRxBuffer[5]<<16)|(gTcpRxBuffer[6]<<8)|(gTcpRxBuffer[7]);
+  TpRxLength=TpRxLength-4;
+//  write("Tester receive TCP Data gTcpRxBuffer[0]=%x gTcpRxBuffer[1]=%x gTcpRxBuffer[2]=%x gTcpRxBuffer[3]=%x", gTcpRxBuffer[0],gTcpRxBuffer[1],gTcpRxBuffer[2],gTcpRxBuffer[3]);
+//  write("Tester receive TCP Data: 0x%x 0x%x 0x%x 0x%x ", gTcpRxBuffer[12],gTcpRxBuffer[13],gTcpRxBuffer[14],gTcpRxBuffer[15]);
+//  write("TpRxLength=%d ",TpRxLength);
+  if((gTcpRxBuffer[0]==0x02)&&(gTcpRxBuffer[1]==0xFD)&&(gTcpRxBuffer[2]==0x80)&&(gTcpRxBuffer[3]==0x01))
+  {
+    for(i=0;i<=TpRxLength;i++)
+    {
+      TpRxData[i]=gTcpRxBuffer[i+12];
+    }
+    setTimer(ETH_T1,2);
+    TestSupplyTextEvent("ETHTPreciveData");
+    write( "ETHTP:Received TpRxLength=%d byte : 0x%x 0x%x 0x%x 0x%x  ..." , TpRxLength, TpRxData[0], TpRxData[1], TpRxData[2], TpRxData[3]);
+  }
+  else
+  {
+    
+  }
+  return result;  
+}
+
+void SendTcpData(byte buffer[], long size,dword vehicleAddress, dword testerAddress)
+{
+  byte TCPData[65536];
+  dword i;
+  
+//  for(i=0;i<elcount(TCPData);i++)
+//    TCPData[i]=0;
+  
+  TCPData[0]= 0x02;
+  TCPData[1]= 0xFD;
+  TCPData[2]= 0x80;
+  TCPData[3]= 0x01;
+  TCPData[4]= size+4>>24;
+  TCPData[5]= size+4>>16;
+  TCPData[6]= size+4>>8;
+  TCPData[7]= size+4&0xFF;
+  TCPData[8]= testerAddress>>8;
+  TCPData[9]= testerAddress&0xFF;
+  TCPData[10]= vehicleAddress>>8;
+  TCPData[11]= vehicleAddress&0xFF;
+  TpTxLength=size+12;
+//  write("TCPData[0]=0x%lx,TCPData[1]=0x%lx,TCPData[2]=0x%lx,TCPData[3]=0x%lx,elcount(TCPData)=%d ",TCPData[0],TCPData[1],TCPData[2],TCPData[3],elcount(TCPData));
+
+  write("ETHTP:TpTxLength=%d ",TpTxLength);
+  for(i=0;i<size;i++)
+  {
+    TCPData[i+12]=buffer[i];
+  }
+  write("ETHTP:TCPSendData:0x%lx,0x%lx,0x%lx,0x%lx,  elcount(TCPData)=%d ",TCPData[12],TCPData[13],TCPData[14],TCPData[15],elcount(TCPData));
+  
+  if (0 != TCPSend(gConnectionSocket, TCPData, TpTxLength))
+  {
+    gIpLastErr = IpGetLastSocketError( gConnectionSocket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+  else
+  {
+    writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");
+  }
+ 
+}
+
+void SendTcpDatasmall2(byte buffer[], long size,dword vehicleAddress, dword testerAddress)
+{
+  byte TCPData[65536];
+  dword i;
+  
+//  for(i=0;i<elcount(TCPData);i++)
+//    TCPData[i]=0;
+  
+  TCPData[0]= 0x02;
+  TCPData[1]= 0xFD;
+  TCPData[2]= 0x80;
+  TCPData[3]= 0x01;
+  TCPData[4]= (size+2)>>24;
+  TCPData[5]= (size+2)>>16;
+  TCPData[6]= (size+2)>>8;
+  TCPData[7]= (size+2)&0xFF;
+  TCPData[8]= testerAddress>>8;
+  TCPData[9]= testerAddress&0xFF;
+  TCPData[10]= vehicleAddress>>8;
+  TCPData[11]= vehicleAddress&0xFF;
+  TpTxLength=size+12;
+//  write("TCPData[0]=0x%lx,TCPData[1]=0x%lx,TCPData[2]=0x%lx,TCPData[3]=0x%lx,elcount(TCPData)=%d ",TCPData[0],TCPData[1],TCPData[2],TCPData[3],elcount(TCPData));
+
+  write("ETHTP:TpTxLength=%d ",TpTxLength);
+  for(i=0;i<size;i++)
+  {
+    TCPData[i+12]=buffer[i];
+  }
+  write("ETHTP:TCPSendData:0x%lx,0x%lx,0x%lx,0x%lx,  elcount(TCPData)=%d ",TCPData[12],TCPData[13],TCPData[14],TCPData[15],elcount(TCPData));
+  
+  if (0 != TCPSend(gConnectionSocket, TCPData, TpTxLength))
+  {
+    gIpLastErr = IpGetLastSocketError( gConnectionSocket);
+
+    if ( WSA_IO_PENDING != gIpLastErr)
+    {
+      IpGetLastSocketErrorAsString( gConnectionSocket, gIpLastErrStr, elcount( gIpLastErrStr));
+
+      writelineex( 0, 2, "ETHTP_Err:Tcp send error (%d): %s", gIpLastErr, gIpLastErrStr);
+    }
+  }
+  else
+  {
+    writelineex( 0, 1, "ETHTP:Tcp data sent successfully!");
+  }
+ 
+}
+
+int ETH_TP_Send(byte Data[],enum AddressMode Mode)
+{
+   int a;
+   long EventHandle1;
+  if(Mode==Physical)
+  {
+//    EventHandle1=TestJoinTextEvent("senddiagmessage");
+//    write("timea=%f",timeNow()/100.0) ; 
+    SendTcpData( Data, elCount(Data), ETH_ECULogicAddress, ETH_TesterLogicAddress);
+//    testWaitForTextEvent("senddiagmessage",500);
+    ETH_t1=timenow()/100.0;
+  }
+    else
+  {  
+//    EventHandle1=TestJoinTextEvent("senddiagmessage");
+//    write("timea=%f",timeNow()/100.0) ; 
+    SendTcpData( Data, elCount(Data), 0x1FFF, ETH_TesterLogicAddress);
+//    testWaitForTextEvent("senddiagmessage",500);
+    ETH_t1=timenow()/100.0;
+  }
+  return 1;
+}
+
+int ETH_TP_Send(byte Data[],long length,enum AddressMode Mode)
+{
+  int a;
+  long EventHandle1;
+    if(length>elcount(Data))
+  {
+    if(Mode==Physical)
+    {
+//      EventHandle1=TestJoinTextEvent("senddiagmessage");
+//      write("timea=%f",timeNow()/100.0) ; 
+      SendTcpData( Data, elCount(Data), ETH_ECULogicAddress, ETH_TesterLogicAddress);
+//      testWaitForTextEvent("senddiagmessage",500);
+      ETH_t1=timenow()/100.0;
+    }
+    else
+    {  
+//      EventHandle1=TestJoinTextEvent("senddiagmessage");
+//      write("timea=%f",timeNow()/100.0) ; 
+      SendTcpData( Data, elCount(Data), 0x1FFF, ETH_TesterLogicAddress);
+//      testWaitForTextEvent("senddiagmessage",500);
+      ETH_t1=timenow()/100.0;
+    }
+    write("ETHTP:Worning tp send data size small than given length");
+  }
+  else
+  {
+    if(Mode==0)
+    {
+//      EventHandle1=TestJoinTextEvent("senddiagmessage");
+//      write("timea=%f",timeNow()/100.0) ; 
+      SendTcpData( Data, length, ETH_ECULogicAddress, ETH_TesterLogicAddress);
+//      testWaitForTextEvent("senddiagmessage",500);
+      ETH_t1=timenow()/100.0;
+    }
+    else
+    {  
+//      EventHandle1=TestJoinTextEvent("senddiagmessage");
+//      write("timea=%f",timeNow()/100.0) ; 
+      SendTcpData( Data, length, 0x1FFF, ETH_TesterLogicAddress);
+//      testWaitForTextEvent("senddiagmessage",500);
+      ETH_t1=timenow()/100.0;
+    }
+  }
+  return 1;;
+}
+
+
+enum ResponseState ETH_ECU_Response(int P2)
+{
+  if(P2<=300)
+    gNRC78Flag=0;
+  if(testWaitForTextEvent("ETHTPreciveData",P2)==1)
+  {
+    
+    if(TpRxData[0]==0x7f)
+    {
+      switch(TpRxData[2])
+      {
+        case 0x78:
+        {
+        gNRC78Flag=1;
+        return ETH_ECU_Response(UDS_P2ClientDelay);
+        }
+        default :
+      //  NRC_Info(TpRxData[2]);
+          break;
+      }
+      ETH_t2=timenow()/100.0;
+      return Neg;
+    }
+    else
+      ETH_t2=timenow()/100.0;
+      return Pos;
+  }
+  else
+  {
+//    write("t1:%f",timeNow()/100.0);
+    return Timeout;
+  }
+  
+}
+
+void OnEthRawPacket( LONG channel, LONG dir, LONG packet )
+{
+ 
+//  write("Ethernet Data: 0x%x 0x%x 0x%x 0x%x ", rx_data[54],rx_data[55],rx_data[56],rx_data[57]);
+  // get the payload of the packet
+  
+  rx_length = EthGetThisData( 0, elCount(rx_data), rx_data );
+//  write("send:%f",timeNow()/100.0);
+//  write("0x%x;0x%x;0x%x;0x%x;0x%x;0x%x;0x%x;0x%x;0x%x",rx_data[47],rx_data[34],rx_data[35],rx_data[6],rx_data[7],rx_data[8],rx_data[9],rx_data[10],rx_data[11]);
+  if((rx_data[47]==0x18)&&(rx_data[34]==0x34)&&(rx_data[35]==0x58)&&(rx_data[6]==0x02)&&(rx_data[7]==0x0)&&(rx_data[8]==0x0)&&(rx_data[9]==0x0)&&(rx_data[10]==0x10)&&(rx_data[11]==0x01))
+  {
+//    setTimer(T1,2);
+//    write("send:%f",timeNow()/100.0);
+    TestSupplyTextEvent("senddiagmessage");
+    
+  }
+  if((rx_data[54]==0x02)&&(rx_data[55]==0xFD)&&(rx_data[56]==0x80)&&(rx_data[57]==0x01)&&(rx_data[66]==0x62)&&(rx_data[67]==0xF1)&&(rx_data[68]==0x2A))
+  {
+    testwaitfortimeout(1);
+    TestSupplyTextEvent("22F12AresponseRecive"); 
+  }
+  if((rx_data[54]==0x02)&&(rx_data[55]==0xFD)&&(rx_data[56]==0x80)&&(rx_data[57]==0x01)&&(rx_data[66]==0x62)&&(rx_data[67]==0xF1)&&(rx_data[68]==0x21))
+  {
+    testwaitfortimeout(1);
+    TestSupplyTextEvent("22F121responseRecive"); 
+  }
+  if((rx_data[54]==0x02)&&(rx_data[55]==0xFD)&&(rx_data[56]==0x80)&&(rx_data[57]==0x01)&&(rx_data[66]==0x62)&&(rx_data[67]==0xF1)&&(rx_data[68]==0x25))
+  {
+    testwaitfortimeout(1);
+    TestSupplyTextEvent("22F125responseRecive"); 
+  }
+}

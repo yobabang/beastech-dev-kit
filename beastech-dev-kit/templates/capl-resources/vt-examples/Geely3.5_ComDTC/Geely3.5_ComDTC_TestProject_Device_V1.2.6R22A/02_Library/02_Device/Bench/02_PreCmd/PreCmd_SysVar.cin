@@ -1,0 +1,31 @@
+/*@!Encoding:936*/
+includes
+{
+//  #include "PreCmd\Agilennt_PCS_PreCmd.cin"
+//  #include "PreCmd\BOB_PreCmd.cin"
+//  #include "PreCmd\Agilennt_PPS_PreCmd.cin"
+//  #include "PreCmd\IPClient.cin"
+//  #include "PreCmd\Fluke_PMM_PreCmd.cin"
+//  #include "PreCmd\ENV_PreCmd.cin"
+//  #include "PreCmd\PSRB_PreCmd.cin"
+//  #include "PreCmd\DRB_PreCmd.cin"
+  
+  #include "PreCmd\IPClient_SysVar.cin"
+  #include "PreCmd\BOB_PreCmd_SysVar.cin"
+  #include "PreCmd\ENV_PreCmd_SysVar.cin"
+  #include "PreCmd\PSRB_PreCmd_SysVar.cin"
+  #include "PreCmd\DRB_PreCmd_SysVar.cin"
+  #include "PreCmd\Fluke_PMM_PreCmd_SysVar.cin"
+  #include "PreCmd\Agilennt_PCS_PreCmd_SysVar.cin"
+  #include "PreCmd\Agilennt_PPS_PreCmd_SysVar.cin"
+}
+
+variables
+{
+  
+}
+
+on sysvar_update sysvar::PreCmd::PreCmd_Init
+{
+  IPClient_Init();
+}

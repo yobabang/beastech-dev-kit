@@ -1,0 +1,37 @@
+
+/*@!Encoding:936*/
+variables
+{
+
+  struct busFaultDTC
+  {
+    char cluster[100];
+    char busType[100];
+    dword highID;
+    dword busOffDTC;
+    int Volt;//0: no voltage req; 1: 8V; 2:8V+16V
+    int bsfUcfm;
+    int bsfCfm;
+    int TestRslt;//0: NOK; 1:OK
+    dword ElctrFltDTC;
+    int testProd;
+    int SUvalue;
+    int SDvalue;
+    int UnCofrmLmt;
+    int CofrmLmt;
+    int UsgMod;
+  };
+  const int busNum=9;
+  struct busFaultDTC busFltDTCTemp[busNum]={
+  
+	{"ZCU_CANFD2","CANFD",0x700,0xDC7888,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"ZCU_CANFD1","CANFD",0x700,0xDC7788,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"ChassisCANFD2","CANFD",0x700,0xDC1B88,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"ZCUD_CAN1","CAN",0x700,0xDC4088,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"PropulsionCAN","CAN",0x700,0xDC1C88,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"ChassisCAN1","CAN",0x700,0xDC1A88,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"BodyExposedCAN","CAN",0x700,0xDC0188,2,0xD,1,1,0,0,0,0,0,0,0},
+    {"ZCUD_CANFD3","CANFD",0x700,0xDC7988,2,0xD,1,1,0,0,0,0,0,0,0},
+	{"ZCUD_CANFD4","CANFD",0x700,0xDC7A88,2,0xD,1,1,0,0,0,0,0,0,0}
+  };
+}

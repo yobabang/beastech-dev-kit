@@ -1,0 +1,878 @@
+/*@!Encoding:936*/
+includes
+{
+ 
+}
+variables
+{
+  
+  char BOBID[10]="";
+  char cmd[300]="";
+  char cmd2[300]="";
+  char cmd3[300]="";
+  char cmd4[300]="";
+  
+//  dword BOBID;
+  byte BOB_SendData[13] = {0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} ;
+
+  enum OperName 
+  {
+   BN_OPEN,BN_RESET,CAN1_ALL,CAN1_RESET,LIN_ALL,LIN_RESET,COM_ALL,COM_RESET,ALL_RESET,//BN_Open短路，
+   BN0_OPEN,BN1_OPEN,BN2_OPEN,BN3_OPEN,ECU_GND_OPEN,
+   BN0_OPEN_R,BN1_OPEN_R,BN2_OPEN_R,BN3_OPEN_R,ECU_GND_OPEN_R,
+   CAN1H_OPEN,CAN1H_BAT,CAN1H_GND,CAN1H_CAN1L,CAN1L_OPEN,CAN1L_BAT,CAN1L_GND,
+   CAN1H_OPEN_R,CAN1H_BAT_R,CAN1H_GND_R,CAN1H_CAN1L_R,CAN1L_OPEN_R,CAN1L_BAT_R,CAN1L_GND_R,
+   LIN_OPEN,LIN_BAT,LIN_GND,
+   LIN_OPEN_R,LIN_BAT_R,LIN_GND_R,
+   OFFSET_GND_EN,
+   OFFSET_GND_Dis,
+   KL30_KL15_OPEN,
+   KL30_KL15_OPEN_R,
+   CAN1H_CAN1L_OPEN,
+   CAN1H_CAN1L_OPEN_R,
+   CAN2H_CAN2L_OPEN,
+   CAN2H_CAN2L_OPEN_R,
+   CAN2H_OPEN,CAN2H_BAT,CAN2H_GND,CAN2H_CAN2L,CAN2L_OPEN,CAN2L_BAT,CAN2L_GND,
+   CAN2H_OPEN_R,CAN2H_BAT_R,CAN2H_GND_R,CAN2H_CAN2L_R,CAN2L_OPEN_R,CAN2L_BAT_R,CAN2L_GND_R
+  };
+  
+  qword OperCmd[61]=
+  {
+    0x0437370000000000LL,0x0400370000000000LL,0x017F000000000000LL,0x0100000000000000LL,0x0307000000000000LL,0x0300000000000000LL,0x027F000000000000LL,0x0200000000000000LL,0x0500000000000000LL,
+    0x0401010000000000LL,0x0404040000000000LL,0x0402020000000000LL,0x0420200000000000LL,0x0410100000000000LL,
+    0x0400010000000000LL,0x0400040000000000LL,0x0400020000000000LL,0x0400200000000000LL,0x0400100000000000LL,
+    0x0101000000000000LL,0x0104000000000000LL,0x0110000000000000LL,0x0140000000000000LL,0x0102000000000000LL,0x0108000000000000LL,0x0120000000000000LL,
+    0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,0x0100000000000000LL,
+    0x0301000000000000LL,0x0302000000000000LL,0x0304000000000000LL,
+    0x0300000000000000LL,0x0300000000000000LL,0x0300000000000000LL,
+    0x0408080000000000LL,
+    0x0400080000000000LL,
+    0x0405050000000000LL,
+    0x0400050000000000LL,
+    0x0103000000000000LL,
+    0x0100000000000000LL,
+    0x0203000000000000LL,
+    0x0200000000000000LL,
+    0x0201000000000000LL,0x0204000000000000LL,0x0210000000000000LL,0x0240000000000000LL,0x0202000000000000LL,0x0208000000000000LL,0x0220000000000000LL,
+    0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL,0x0200000000000000LL
+  };
+}
+
+
+
+//void ALL_BOB_Reset()
+//{
+//  byte BOB_SendData[13] = {0x08,0x00,0x00,0x07,0xfe,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+//  SendTcpData_BYTE(BOB_SendData,TEH_CAN0_Socket);
+//}
+
+void ALL_BOB_Reset()
+{
+  byte BOB_SendData[13] = {0x08,0x00,0x00,0x07,0xfe,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  @sysvar::PreCmd::BOB_PreCmd::ALL_BOB_Reset=1;
+  testWaitForTimeout(200);
+  @sysvar::PreCmd::BOB_PreCmd::ALL_BOB_Reset=1;
+}
+
+
+void BackBoneOpen(char NetWork[],enum OperName opername)
+{
+  char cmd[300];
+  char BOB_ID[10]="";
+  char BOBID1[20]="";
+  dword BOBID;
+  long BOB_ID1;
+  long BOB_ID2;
+  long BOB_ID3;
+  long BOB_ID4;
+  
+  if(strncmp(NetWork,"PropulsionCAN",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"040F",10);
+  }
+  if(strncmp(NetWork,"BodyCAN",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"030B",10);
+  }
+  if(strncmp(NetWork,"PassiveSafetyCAN",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"0507",10);
+  }
+  if(strncmp(NetWork,"ChassisCAN2",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"051A",10);
+  }
+  if(strncmp(NetWork,"ChassisCAN1",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"0514",10);
+  }
+  if(strncmp(NetWork,"BodyExposedCAN",strlen(NetWork))==0)
+  {
+    strncpy(BOB_ID,"0523",10);
+  }
+  
+  if(strlen(BOB_ID)>0)
+    write("Set bob id to %s",BOB_ID);
+  else
+    testStepFail("Result","Fail-->Set BOB ID failed, please check Network name and ECUName!");
+  snprintf(BOBID1,elcount(BOBID1),"0x%s",BOB_ID);
+  BOBID=atol(BOBID1);
+  write("BOB_ID:%s",BOBID1);
+  write("BOBID:%d",BOBID);
+//  BOB_ID1 = BOBID/1000;
+//  
+//  BOB_ID2 = (BOBID%1000)/100; 
+//  BOB_ID3 = (BOBID%100)/10;  
+//  BOB_ID4 = BOBID%10;  
+//  BOBID =  BOB_ID1*16*16*16+BOB_ID2*16*16+BOB_ID3*16+BOB_ID4;
+  BOB_SendData[3] =(byte)(BOBID>>8);
+  BOB_SendData[4] =(byte)BOBID;
+  BOB_SendData[5] = (byte)(OperCmd[opername]>>56);
+  BOB_SendData[6] = (byte)(OperCmd[opername]>>48);
+  BOB_SendData[7] = (byte)(OperCmd[opername]>>40);
+  
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[0]=BOB_SendData[0];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[1]=BOB_SendData[1];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[2]=BOB_SendData[2];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[3]=BOB_SendData[3];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[4]=BOB_SendData[4];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[5]=BOB_SendData[5];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[6]=BOB_SendData[6];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[7]=BOB_SendData[7];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[8]=BOB_SendData[8];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[9]=BOB_SendData[9];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[10]=BOB_SendData[10];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[11]=BOB_SendData[11];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[12]=BOB_SendData[12];
+  @sysvar::PreCmd::BOB_PreCmd::BOBControl=1;
+  testWaitForTimeout(200);
+  @sysvar::PreCmd::BOB_PreCmd::BOBControl=1;
+}
+void BOBControl(char NetWork[],char ECUName[],enum OperName opername)
+{
+  char cmd[300];
+  char BOB_ID[10]="";
+  dword BOBID;
+  long BOB_ID1;
+  long BOB_ID2;
+  long BOB_ID3;
+  long BOB_ID4;
+ 
+      
+ 
+     
+  //CAN1-Body CAN（车身）
+  if(strncmp(NetWork,"BodyCAN",strlen(NetWork))==0)
+  {
+    BOBID=BodyCANsetBOBId(ECUName);
+  }
+  
+  //CAN2-Propulsion CAN(动力)
+  if(strncmp(NetWork,"PropulsionCAN",strlen(NetWork))==0)
+  {
+    BOBID=PropulsionCANsetBOBId(ECUName);
+  }
+  
+  
+  //CAN3-Passive Safety CAN(被动安全)
+  if(strncmp(NetWork,"PassiveSafetyCAN",strlen(NetWork))==0)
+  {
+    BOBID=PassiveSafetyCANsetBOBId(ECUName);
+//    strncpy(BOB_ID,PassiveSafetyCANsetBOBId(ECUName),elCount(PassiveSafetyCANsetBOBId(ECUName)));
+  }
+ 
+  //CAN4-Connectivity CAN
+  if(strncmp(NetWork,"ConnectivityCAN",strlen(NetWork))==0)
+  {
+    BOBID=ConnectivityCANsetBOBId(ECUName);
+  }
+  
+
+  //CAN5-Chassis CAN2
+  if(strncmp(NetWork,"ChassisCAN2",strlen(NetWork))==0)
+  {
+    BOBID=ChassisCAN2setBOBId(ECUName);
+  }
+  
+  //CAN6-Chassis CAN1
+  if(strncmp(NetWork,"ChassisCAN1",strlen(NetWork))==0)
+  {
+    BOBID=ChassisCAN1setBOBId(ECUName);
+  }
+  
+  //CAN7-BodyExposed CAN
+  if(strncmp(NetWork,"BodyExposedCAN",strlen(NetWork))==0)
+  {
+    BOBID=BodyExposedCANsetBOBId(ECUName);
+  }
+  
+  //CAN8  CANFD1
+  if(strncmp(NetWork,"SafetyCANFD1",strlen(NetWork))==0)
+  {
+    BOBID=SafetyCANFD1setBOBId(ECUName);
+  }
+  
+  //CAN9  CANFD2
+  if(strncmp(NetWork,"SafetyCANFD2",strlen(NetWork))==0)
+  {
+    BOBID=SafetyCANFD2setBOBId(ECUName);
+  }
+  
+  //CAN10  CANFD3
+  if(strncmp(NetWork,"SafetyCANFD3",strlen(NetWork))==0)
+  {
+    BOBID=SafetyCANFD3setBOBId(ECUName);
+  }
+  
+  //CAN11  CANFD4
+  if(strncmp(NetWork,"SafetyCANFD4",strlen(NetWork))==0)
+  {
+    BOBID=SafetyCANFD4setBOBId(ECUName);
+  }
+  
+  //CAN12  AD RedundancyCAN
+  if(strncmp(NetWork,"ADRedundancyCAN",strlen(NetWork))==0)
+  {
+    
+    BOBID=ADRedundancyCANsetBOBId(ECUName);
+  }
+  
+  
+  
+    //CAN13-Diagnostic CAN
+  if(strncmp(NetWork,"DiagnosticsCan",strlen(NetWork))==0)
+  {
+    BOBID=DiagnosticsCANsetBOBId(ECUName);
+  }
+  
+  
+     //CAN14-IHU Private CAN
+  if(strncmp(NetWork,"PrivateInfoCAN",strlen(NetWork))==0)
+  {
+    BOBID=PrivateInfoCANsetBOBId(ECUName);
+  }
+ 
+  
+  //CAN15-FLC Private CAN
+  if(strncmp(NetWork,"FLC_Flexray",strlen(NetWork))==0)
+  {
+    BOBID=FLC_PrivateCANsetBOBId(ECUName);
+  }
+ 
+  
+  //CAN16-SODL_SOLR CANFD
+  
+  
+  /***********Recognize BOB's CAN1 and CAN2************/
+  if((strncmp(NetWork,"PropulsionCAN",strlen(NetWork))==0 && strncmp(ECUName,"ECM",strlen(ECUName))==0)||
+    (strncmp(NetWork,"ConnectivityCAN",strlen(NetWork))==0 && strncmp(ECUName,"VGM",strlen(ECUName))==0)||
+    (strncmp(NetWork,"PassiveSafetyCAN",strlen(NetWork))==0 && strncmp(ECUName,"SRS",strlen(ECUName))==0)||
+    (strncmp(NetWork,"ChassisCAN1",strlen(NetWork))==0 && ((strncmp(ECUName,"ECM",strlen(ECUName))==0)||(strncmp(ECUName,"VDDM",strlen(ECUName))==0)||(strncmp(ECUName,"ASDM",strlen(ECUName))==0)))||
+    (strncmp(NetWork,"BodyExposedCAN",strlen(NetWork))==0 && strncmp(ECUName,"CEM",strlen(ECUName))==0)||
+    (strncmp(NetWork,"SafetyCANFD2",strlen(NetWork))==0 && strncmp(ECUName,"ASDM",strlen(ECUName))==0)||
+    (strncmp(NetWork,"SafetyCANFD4",strlen(NetWork))==0 && ((strncmp(ECUName,"ASDM",strlen(ECUName))==0)||(strncmp(ECUName,"PAS",strlen(ECUName))==0)))||
+    (strncmp(NetWork,"ADRedundancyCAN",strlen(NetWork))==0 && ((strncmp(ECUName,"BBM",strlen(ECUName))==0)||(strncmp(ECUName,"FLC",strlen(ECUName))==0))))
+  {
+    switch(opername)
+    {
+      case CAN1H_OPEN:
+        opername=CAN2H_OPEN;
+        break;
+      case CAN1H_OPEN_R:
+        opername=CAN2H_OPEN_R;
+        break;
+      case CAN1H_BAT:
+        opername=CAN2H_BAT;
+        break;
+      case CAN1H_BAT_R:
+        opername=CAN2H_BAT_R;
+        break;
+      case CAN1H_GND:
+        opername=CAN2H_GND;
+        break;
+      case CAN1H_GND_R:
+        opername=CAN2H_GND_R;
+        break;
+      case CAN1H_CAN1L:
+        opername=CAN2H_CAN2L;
+        break;
+      case CAN1H_CAN1L_R:
+        opername=CAN2H_CAN2L_R;
+        break;  
+      case CAN1L_OPEN:
+        opername=CAN2L_OPEN;
+        break;
+      case CAN1L_OPEN_R:
+        opername=CAN2L_OPEN_R;
+        break;  
+      case CAN1L_BAT:
+        opername=CAN2L_BAT;
+        break;
+      case CAN1L_BAT_R:
+        opername=CAN2L_BAT_R;
+        break;
+      case CAN1L_GND:
+        opername=CAN2L_GND;
+        break;
+      case CAN1L_GND_R:
+        opername=CAN2L_GND_R;
+        break;
+      case CAN1H_CAN1L_OPEN:
+        opername=CAN2H_CAN2L_OPEN;
+        break; 
+      case CAN1H_CAN1L_OPEN_R:
+        opername=CAN2H_CAN2L_OPEN_R;
+        break;  
+    }
+  }
+  
+  if((strncmp(ECUName,"ECM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=PropulsionCANsetBOBId("ECM");
+  }
+  if((strncmp(ECUName,"ASDM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("ASDM");
+  }
+  if((strncmp(ECUName,"MVEM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=PropulsionCANsetBOBId("MVEM");
+  }
+  if((strncmp(ECUName,"PSCM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=ChassisCAN1setBOBId("PSCM");
+  }
+  if((strncmp(ECUName,"TCM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=PropulsionCANsetBOBId("TCM");
+  }
+  if((strncmp(ECUName,"VGM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("VGM");
+  }
+  if((strncmp(ECUName,"SRS",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("SRS");
+  }
+  if((strncmp(ECUName,"BBM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("BBM");
+  }
+  if((strncmp(ECUName,"IHU",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("IHU");
+  }
+  if((strncmp(ECUName,"CEM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("CEM");
+  }
+  if((strncmp(ECUName,"FLC",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FLC_FlexraysetBOBId("FLC");
+  }
+  if((strncmp(ECUName,"VDDM",strlen(ECUName))==0)&&(opername==KL30_KL15_OPEN || opername==KL30_KL15_OPEN_R || opername==OFFSET_GND_EN || opername==OFFSET_GND_Dis||opername==ECU_GND_OPEN||opername==ECU_GND_OPEN_R))
+  {
+    BOBID=FlexRaysetBOBId("VDDM");
+  }
+   //LIN
+  if(strncmp(NetWork,"LIN",strlen(NetWork))==0)
+  {
+    BOBID=LINsetBOBId(ECUName);
+  }
+  
+  
+  if(BOBID>0)
+    write("Set bob id to 0x%x",BOBID);
+  else
+    testStepFail("Result","Fail-->Set BOB ID failed, please check Network name and ECUName!");
+  
+  BOB_SendData[3] =(byte)(BOBID>>8);
+  BOB_SendData[4] =(byte)BOBID;
+  BOB_SendData[5] = (byte)(OperCmd[opername]>>56);
+  BOB_SendData[6] = (byte)(OperCmd[opername]>>48);
+  BOB_SendData[7] = (byte)(OperCmd[opername]>>40);
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[0]=BOB_SendData[0];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[1]=BOB_SendData[1];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[2]=BOB_SendData[2];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[3]=BOB_SendData[3];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[4]=BOB_SendData[4];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[5]=BOB_SendData[5];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[6]=BOB_SendData[6];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[7]=BOB_SendData[7];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[8]=BOB_SendData[8];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[9]=BOB_SendData[9];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[10]=BOB_SendData[10];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[11]=BOB_SendData[11];
+  @sysvarMember::PreCmd::BOB_PreCmd::BOB_SendData[12]=BOB_SendData[12];
+  @sysvar::PreCmd::BOB_PreCmd::BOBControl=1;
+  testWaitForTimeout(200);
+  @sysvar::PreCmd::BOB_PreCmd::BOBControl=1;
+}
+
+dword PropulsionCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020D",10);
+  if(strncmp(ECUName,"VDDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0211",10);
+  if(strncmp(ECUName,"VGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020B",10);
+  if(strncmp(ECUName,"CAN2_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0207",10);
+  if(strncmp(ECUName,"ECM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0201",10);
+  if(strncmp(ECUName,"MVEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050B",10);
+  if(strncmp(ECUName,"CAN2_RESERVED2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0412",10);
+  if(strncmp(ECUName,"CAN2_RESERVED3",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0411",10);
+  if(strncmp(ECUName,"CAN2_RESERVED4",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0410",10);
+  if(strncmp(ECUName,"TACM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040F",10);
+  if(strncmp(ECUName,"CAN2_RESERVED5",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040E",10);
+  if(strncmp(ECUName,"DEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040D",10);
+  if(strncmp(ECUName,"EGSM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040C",10);
+  if(strncmp(ECUName,"MVCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040B",10);
+  if(strncmp(ECUName,"MVBM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"040A",10);
+  if(strncmp(ECUName,"ISGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0409",10);
+  if(strncmp(ECUName,"MGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0408",10);
+  if(strncmp(ECUName,"CDD",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0407",10);
+  if(strncmp(ECUName,"IGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0406",10);
+  if(strncmp(ECUName,"OBC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0405",10);
+  if(strncmp(ECUName,"ESM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0404",10);
+  if(strncmp(ECUName,"IEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0403",10);
+  if(strncmp(ECUName,"WPT",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0402",10);
+  if(strncmp(ECUName,"BECM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0401",10);
+  If(strncmp(ECUName,"TCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0515",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+  
+}
+
+
+dword ChassisCAN1setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  //CAN6 Chassis CAN1
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0217",10);
+  if(strncmp(ECUName,"VDDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0212",10);
+  if(strncmp(ECUName,"ECM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0203",10);
+  if(strncmp(ECUName,"PAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0206",10);
+  if(strncmp(ECUName,"TCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0514",10);
+  if(strncmp(ECUName,"PSCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0513",10);
+  if(strncmp(ECUName,"HVSV",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050E",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050D",10);
+  if(strncmp(ECUName,"MVEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050C",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1); 
+  return BOBID;
+
+}
+
+dword ChassisCAN2setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  //CAN5 Chassis CAN2
+  if(strncmp(ECUName,"BBM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020F",10);
+  if(strncmp(ECUName,"ECM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0203",10);
+  if(strncmp(ECUName,"VDDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0212",10);
+  if(strncmp(ECUName,"CAN5_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051A",10);
+  if(strncmp(ECUName,"SUM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0519",10);
+  if(strncmp(ECUName,"SCL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0518",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+
+}
+
+
+long  BodyCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[15]="";
+  long BOBID;
+  if(strncmp(ECUName,"CAN1_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0311",10);
+  if(strncmp(ECUName,"CAN1_RESERVED2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0310",10);
+  if(strncmp(ECUName,"SMP",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030F",10);
+  if(strncmp(ECUName,"SMD",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030E",10);
+  if(strncmp(ECUName,"CAN1_RESERVED3",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030D",10);
+  if(strncmp(ECUName,"CAN1_RESERVED4",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030C",10);
+  if(strncmp(ECUName,"RRDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030B",10);
+  if(strncmp(ECUName,"RLDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"030A",10);
+  if(strncmp(ECUName,"ILCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0309",10);
+  if(strncmp(ECUName,"TRM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0308",10);
+  if(strncmp(ECUName,"SMB",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0307",10);
+  if(strncmp(ECUName,"POT",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0306",10);
+  if(strncmp(ECUName,"PPOD",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0305",10);
+  if(strncmp(ECUName,"DRM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0304",10);
+  if(strncmp(ECUName,"PDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0303",10);
+  if(strncmp(ECUName,"DDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0302",10);
+  if(strncmp(ECUName,"CCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0301",10);
+  if(strncmp(ECUName,"CEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0216",10);
+  if(strncmp(ECUName,"CAN1_RESERVED5",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0207",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+
+}
+
+dword  PassiveSafetyCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0217",10);
+  if(strncmp(ECUName,"ECM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0202",10);
+  if(strncmp(ECUName,"DVR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0205",10);
+  if(strncmp(ECUName,"BSRM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0208",10);
+  if(strncmp(ECUName,"DMM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0209",10);
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020D",10);
+  if(strncmp(ECUName,"CAN3_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0507",10);
+  if(strncmp(ECUName,"RMD",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0506",10);
+  if(strncmp(ECUName,"CAN3_RESERVED2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0505",10);
+  if(strncmp(ECUName,"CAN3_RESERVED3",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0504",10);
+  if(strncmp(ECUName,"CAN3_RESERVED4",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0503",10);
+  if(strncmp(ECUName,"RML",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0502",10);
+  if(strncmp(ECUName,"RMR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0501",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword ConnectivityCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"BSRM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0208",10);
+  if(strncmp(ECUName,"BNCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051C",10);
+  if(strncmp(ECUName,"TCAM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020A",10);
+  if(strncmp(ECUName,"VGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020B",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword  BodyExposedCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"CAN7_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0204",10);
+  if(strncmp(ECUName,"CEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0216",10);
+  if(strncmp(ECUName,"CAN7_RESERVED2",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0524",10);
+  if(strncmp(ECUName,"HCMR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0523",10);
+  if(strncmp(ECUName,"HCML",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0522",10);
+  if(strncmp(ECUName,"RCMR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0521",10);
+  if(strncmp(ECUName,"RCML",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051F",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword ADRedundancyCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+
+  if(strncmp(ECUName,"FLC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0215",10);
+  if(strncmp(ECUName,"PSCM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0512",10);
+  if(strncmp(ECUName,"BBM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020F",10);
+  if(strncmp(ECUName,"CAN12_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0511",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword DiagnosticsCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"VGM",strlen(ECUName))==0)
+  strncpy(BOB_ID,"020C",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword SafetyCANFD1setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"FSRR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0508",10);
+  if(strncmp(ECUName,"FSRL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0509",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0218",10);
+  if(strncmp(ECUName,"CAN8_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0204",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword SafetyCANFD2setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"FLR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050F",10);
+  if(strncmp(ECUName,"FLC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0215",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0218",10);
+  if(strncmp(ECUName,"CAN9_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0510",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword SafetyCANFD3setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"SODL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0516",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0219",10);
+  if(strncmp(ECUName,"CAN10_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"051D",10);
+  if(strncmp(ECUName,"SODR",strlen(ECUName))==0)
+      strncpy(BOB_ID,"0517",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword SafetyCANFD4setBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"PAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0206",10);
+//    strncpy(BOB_ID,"0408",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0219",10);
+//    strncpy(BOB_ID,"0211",10);
+  if(strncmp(ECUName,"CAN11_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"050A",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword FLC_FlexraysetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"FLC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0104",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0106",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword FlexRaysetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"SRS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0108",10);
+  if(strncmp(ECUName,"VDDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0109",10);
+  if(strncmp(ECUName,"CEM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"010A",10);
+  if(strncmp(ECUName,"FR1_RESERVED1",strlen(ECUName))==0)
+    strncpy(BOB_ID,"010B",10);
+  if(strncmp(ECUName,"BBM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0107",10);
+  if(strncmp(ECUName,"ASDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0105",10);
+  if(strncmp(ECUName,"DIM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0101",10);
+  if(strncmp(ECUName,"VGM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0102",10);
+  if(strncmp(ECUName,"IHU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0103",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword PrivateDHUCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword PrivateInfoCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"IHU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0210",10);
+  if(strncmp(ECUName,"AUD",strlen(ECUName))==0)
+    strncpy(BOB_ID,"020E",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword FLC_PrivateCANsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"IMU",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0213",10);
+  if(strncmp(ECUName,"FLC",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0214",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}
+
+dword LINsetBOBId(char ECUName[])
+{
+  char BOB_ID[10]="";
+  char BOB_ID1[10]="";
+  dword BOBID;
+  if(strncmp(ECUName,"DDS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0606",10);
+  if(strncmp(ECUName,"DDM",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0607",10);
+  if(strncmp(ECUName,"AWM_CEM_LIN6",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0603",10);
+  if(strncmp(ECUName,"EPBI",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0604",10);
+  if(strncmp(ECUName,"EPS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0605",10);
+  if(strncmp(ECUName,"LCDAL",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0606",10);
+  if(strncmp(ECUName,"LCDAR",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0607",10);
+  if(strncmp(ECUName,"XXX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0608",10);
+  if(strncmp(ECUName,"XXX",strlen(ECUName))==0)
+    strncpy(BOB_ID,"0609",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060A",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+   strncpy(BOB_ID,"060B",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060C",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060D",10);
+  if(strncmp(ECUName,"SAS",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060E",10);
+  if(strncmp(ECUName,"CEM_CEM_LIN6s",strlen(ECUName))==0)
+    strncpy(BOB_ID,"060F",10);
+  snprintf(BOB_ID1,elCount(BOB_ID1),"0x%s",BOB_ID);
+  BOBID=atol(BOB_ID1);
+  return BOBID;
+}

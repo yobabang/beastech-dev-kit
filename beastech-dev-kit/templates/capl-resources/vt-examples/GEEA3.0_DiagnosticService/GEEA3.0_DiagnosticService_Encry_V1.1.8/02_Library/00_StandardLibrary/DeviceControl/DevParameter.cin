@@ -1,0 +1,171 @@
+/*@!Encoding:936*/
+variables
+{
+  char IPC_IP[100] = "192.168.7.1";
+  char PPS_IP[100] = "192.168.7.140";
+  char Shift_PPS_IP[100] = "192.168.7.140";
+  char PMM_IP[100] = "192.168.7.180";
+  char PCS_IP[100] = "192.168.7.125";
+  char ETH_CAN_IP[100] = "192.168.7.160";
+
+  
+  dword PPS_Port = 5025;
+  dword Shift_PPS_Port = 5025;
+  dword PMM_Port = 8846;
+  dword PCS_Port = 5025;
+  dword ETH_CAN0_Port = 40002;
+  dword ETH_CAN1_Port = 40001;
+  
+  /*******************DRB Config**********************/
+  
+  struct DEV_DRB
+  {
+    word id;
+    char channel[8][10];
+  };
+  
+  const int DRB_NUM = 4;//DRB个数
+  struct DEV_DRB DRB_List[DRB_NUM]={
+    {
+      0x0100,//DRB1, 如果8个通道没有全部使用，那只需要填写使用的
+      {
+        "CAN1",
+        "CAN2",
+        "CAN3",
+        "CAN4",
+        "CAN5",
+        "CAN6",
+        "CAN7",
+        "CAN8"
+      }
+    },
+    {
+      0x0101,//DRB2
+      {
+        "CAN9",
+        "CAN10",
+        "CAN11",
+        "CAN12",
+        "CAN13",
+        "CAN14",
+        "CAN15",
+        "CAN16"
+      }
+    },
+    {
+      0x0102,//DRB3
+      {
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      }
+    },
+    {
+      0x0103,//DRB4
+      {
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      }
+    }
+  };
+/* [WG_2024.03.01]*/
+  struct BOBList//
+  {
+    char ECUName[20];
+    char ECUNetwork[20];
+    int BOBPIN;
+    dword BOBID;
+  }; 
+  const int NumOfUsedBOBChnl=98;
+  struct BOBList Bench[NumOfUsedBOBChnl]=
+  {
+    {"AUD","PrivateInfoCAN",2,0x204},
+    {"SAS","ChassisCAN1",2,0x205},
+    {"BCM4","ChassisCANFD2",2,0x206},
+    {"BCM4","ZCU_CANFD1",2,0x101},
+    {"BCM4","ChassisCAN1",4,0x101},
+    {"ZCUD","ZCU_CANFD1",2,0x207},
+    {"ZCUD","ZCU_CANFD2",4,0x207},
+    {"ZCUD","CEM_LIN0",1,0x207},
+    {"ZCUD","ChassisCANFD2",2,0x208},
+    {"ZCUD","ZCUD_CAN1",4,0x208},
+    {"ZCUD","CEM_LIN3",1,0x208},
+    {"ZCUD","ChassisCAN1",2,0x209},
+    {"ZCUD","PropulsionCAN",4,0x209},
+    {"ZCUD","CEM_LIN1",1,0x209},
+    {"ZCUD","CEM_LIN4",1,0x20A},
+    {"ZCUD","ZCUD_LIN1",2,0x20A},
+    {"PDCM1","PrivateInfoCAN",2,0x20B},
+    {"TCAM4","ConnectivityCAN",2,0x20C},
+    {"TCAM4","BNCMPrivateCAN",4,0x20C},
+    {"TCAM4","CEM_LIN0",1,0x20C},
+    {"WPC3","BNCMPrivateCAN",2,0x102},
+    {"BECM6","PropulsionCAN",2,0x108},
+    {"BECM6","PrivateXCUCAN",4,0x108},
+    {"CDD","PropulsionCAN",2,0x20D},
+    {"EGSM","PropulsionCAN",2,0x20E},
+    {"TMCU","PropulsionCAN",2,0x107},
+    {"POT","ZCUD_CAN1",2,0x20F},
+    {"SODL5","SafetyCANFD3",2,0x210},
+    {"SODR5","SafetyCANFD3",2,0x103},
+    {"LVBM","PrivateXCUCAN",2,0x109},
+    {"PUMP","PrivateXCUCAN",2,0x211},
+    {"ASDM4","ChassisCAN1",2,0x212},
+    {"ASDM4","ZCU_CANFD1",2,0x213},
+    {"ASDM4","SafetyCANFD3",4,0x213},
+    {"DHU","ZCU_CANFD1",2,0x214},
+    {"DHU","ZCU_CANFD2",4,0x214},
+    {"DHU","IHU_LIN2",1,0x214},
+    {"DHU","ChassisCAN1",2,0x215},
+    {"DHU","PropulsionCAN",4,0x215},
+    {"DHU","DHU_LIN3",1,0x215},
+    {"DHU","PrivateInfoCAN",2,0x104},
+    {"DHU","ConnectivityCAN",4,0x104},
+    {"PSCM1a","ChassisCAN1",2,0x10A},
+    {"SRS3","ZCUD_CAN1",2,0x216},
+    {"XCU","ECM_LIN4",1,0x217},
+    {"XCU","ChassisCANFD2",2,0x218},
+    {"XCU","PrivateXCUCAN",4,0x218},
+    {"XCU","ECM_LIN3",1,0x218},
+    {"XCU","ChassisCAN1",2,0x219},
+    {"XCU","PropulsionCAN",4,0x219},
+    {"XCU","ECM_LIN1",1,0x219},
+    {"ZCUP","CEM_LIN8",1,0x106},
+    {"ZCUP","ZCU_CANFD1",2,0x105},
+    {"ZCUP","ZCU_CANFD2",4,0x105},
+    {"ZCUP","CEM_LIN5",1,0x105},
+    {"ALM_F","CEM_LIN8",2,0x30B},
+    {"ALM_B","CEM_LIN8",2,0x30C},
+    {"ALM_L","CEM_LIN5",2,0x30D},
+    {"ALM_R","CEM_LIN5",2,0x30E},
+    {"ACCM","ECM_LIN1",2,0x310},
+    {"HVCH","ECM_LIN1",2,0x311},
+    {"CCVM","ECM_LIN1",2,0x401},
+    {"HCTV","ECM_LIN1",2,0x402},
+    {"BCPF","ECM_LIN3",2,0x403},
+    {"HCWP","ECM_LIN3",2,0x404},
+    {"BEXV","ECM_LIN3",2,0x405},
+    {"EEXV","ECM_LIN3",2,0x406},
+    {"EXV","ECM_LIN3",2,0x407},
+    {"CCV","ECM_LIN3",2,0x408},
+    {"EDCP2","ECM_LIN4",2,0x409},
+    {"AGM","ECM_LIN4",2,0x40A},
+    {"DDS","ZCUD_ LIN1",2,0x40B},
+    {"CCSM","IHU_LIN2",2,0x40C},
+    {"CDRM","IHU_LIN2",2,0x40D},
+    {"SWSM4","DHU_LIN3",2,0x40E},
+    {"RLSM","CEM_LIN1",2,0x40F},
+    {"SRM","CEM_LIN3",2,0x410},
+    {"OHC","CEM_LIN3",2,0x411},
+    {"SWM2","CEM_LIN4",2,0x412}
+  };
+}

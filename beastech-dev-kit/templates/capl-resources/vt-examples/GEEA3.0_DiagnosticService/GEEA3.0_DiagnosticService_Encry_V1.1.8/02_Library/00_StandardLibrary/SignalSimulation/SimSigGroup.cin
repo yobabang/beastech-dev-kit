@@ -1,0 +1,773 @@
+/*@!Encoding:936*/
+includes
+{
+  #include "..\..\..\03_Script\ParameterOfSigGroups.cin"
+}
+  
+variables
+{
+  /**************** UDP ******************/
+  ethernetPacket gE2EETHMsg;
+  qword gTimeCntETH;
+  byte gAssignDataETH[1500];
+  int gSignalETH[1500*8];
+  
+  /*---------------simluate lost messages related Var-------------------*/
+  msTimer t_TimeCnt;
+  qword gTimeCnt;
+  message * gE2EMsg; 
+  linFrame * gE2ELINMsg;
+  
+  /*-----------Var of assian signal value-----------------*/
+  byte gAssignData[64];
+  int gSignal[64*8];
+  byte gAssignDataFR[64];
+  int gSignalFR[64*8];  
+  byte gAssignDataLIN[64];
+  int gSignalLIN[64*8];
+  
+  byte Assignment_data[64];
+  
+  int LINID;
+  linFrame * NullLINFrame;
+}
+
+on linFrame *
+{
+  
+}
+
+//将信号值map到数组中
+void setCANSignal(message *msg,int sigpos,int siglen,dword sigval)
+{
+    int i, bytepos,bitpos;
+    byte bitvalue;
+    //初始化 第一个 位所在的字节和bit
+    bytepos = sigpos / 8;
+    bitpos = sigpos % 8;
+
+    for( i=0;i<siglen;i++)
+    {
+        bitvalue=((sigval >> (siglen-i-1)))&0x01;//从最高位开始 取得每一个位的值
+        msg.byte(bytepos) |= (bitvalue<<bitpos);//将这一位的值放到数组的指定位置
+
+        //#取得下一个位 和字节的位置
+        if (bitpos ==0)
+        {
+            bytepos+=1;
+            bitpos=7;
+        }
+        else
+        {
+            bitpos-=1;
+        }
+    }
+}
+on timer t_TimeCnt
+{
+  int frIndex,sigGpIndex;
+  int i,j,k,n;
+  int msgChanl;
+  dword dataID[100];
+  dword CRC;
+  word cntr;
+  int sigLength;
+  int sigLength_d;
+  int sigLength_m;
+  byte Data[100];
+  int dataLen;
+  byte Data_0[30];//[信号组序数]//[信号组数据]
+  int igLength[100];
+  byte dataid_nibble;
+  int igCrcBytePosition[100];
+  int igCntrBytePosition[100];
+  dword igCrcByteValue[100];
+  dword igCntrByteValue[100];
+  int igNumInAFrame;
+  int Index_LIN_ID;
+  
+  for(frIndex=0;frIndex<E2E_FRAME_NUM;frIndex++)
+  {
+    if(strncmp(e2eFrameList[frIndex].busType,"LIN",100)==0)
+    {
+      if((gTimeCnt%15==0||e2eFrameList[frIndex].simFrImtFlg)&&(e2eFrameList[frIndex].simFrFlg))
+      {
+        e2eFrameList[frIndex].simFrImtFlg=0;
+        
+        if(Index_LIN_ID == Num_Of_LIN_ID) { Index_LIN_ID = 0; }
+        LINID = LIN_ID_Info[Index_LIN_ID];
+        {
+          int m,n;
+          for(m=0;m<E2E_FRAME_NUM;m++) { if(LINID == e2eFrameList[frIndex].msgId) { break; } }
+          if(m == E2E_FRAME_NUM) //当前ID非需要仿真的报文ID
+          {
+            if(frIndex == E2E_FRAME_NUM - 1)
+            {
+              NullLINFrame.id = LINID;
+              for(n=0;n<8;n++) { NullLINFrame.byte(n) = 0x00; }
+              NullLINFrame.rtr = 0;
+              NullLINFrame.dlc = e2eFrameList[frIndex].msgDataLgth;
+              output(NullLINFrame);
+              linSetRespCounter(NullLINFrame.id,1);
+              NullLINFrame.rtr = 1;
+              output(NullLINFrame);
+            }
+          }
+          else
+          {
+            e2eFrameList[frIndex].simFrImtFlg=0;
+
+            /*-------------configure data------------------*/
+            for(k=0; k<64; k++)   { gAssignDataLIN[k] = 0x0; }
+            for(k=0; k<8*64; k++) { gSignalLIN[k] = 0; }
+            
+            igNumInAFrame=0;
+            for(sigGpIndex=0;sigGpIndex<100;sigGpIndex++)
+            { 
+              if(strncmp(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigGroupName,"",100)==0) { break; }
+              
+              cntr= e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt;
+              igCrcBytePosition[sigGpIndex]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].startBit/8;
+              Data[0] =cntr;////
+              dataLen = 1;
+              for(j = 2; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+              {
+                sigLength =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+                sigLength_d = sigLength / 8;
+                sigLength_m = sigLength % 8;
+                if(sigLength_m > 0)
+                {
+                  sigLength_d = sigLength_d + 1;
+                }
+                for(n = 0; n < sigLength_d; n++)
+                {
+                  Data[dataLen] =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue >> (n*8);
+                  dataLen++;
+                }
+              }
+              dataID[sigGpIndex] =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].dataID;
+              
+              if(dataID[sigGpIndex]>0)
+              {
+                CRC = E2E_Check_ProfileG(dataID[sigGpIndex],Data,dataLen); 
+                igCrcByteValue[sigGpIndex] = CRC;
+                e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].sigValue=CRC;
+                e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[1].sigValue=cntr;
+              }
+              
+              StructAssignValue(frIndex,sigGpIndex);
+              igNumInAFrame++; 
+            }
+            for(k=0; k<64; k++)
+            {
+              gAssignDataLIN[k] = gSignalLIN[k * 8 + 7] * 128 + gSignalLIN[k * 8 + 6] * 64 + gSignalLIN[k * 8 + 5] * 32 + gSignalLIN[k * 8 + 4] * 16 + gSignalLIN[k * 8 + 3] * 8 + gSignalLIN[k * 8 + 2] * 4 + gSignalLIN[k * 8 + 1] * 2 + gSignalLIN[k * 8 + 0] * 1;
+              
+            } 
+            for(k = 0; k <e2eFrameList[frIndex].msgDataLgth; k++) { gE2ELINMsg.byte(k) = gAssignDataLIN[k]; }
+            for(i=0;i<igNumInAFrame;i++)  { gE2ELINMsg.byte(igCrcBytePosition[i])=igCrcByteValue[i]; }
+            
+            gE2ELINMsg.id = e2eFrameList[frIndex].msgId;
+            gE2ELINMsg.rtr = 0;
+            gE2ELINMsg.dlc = e2eFrameList[frIndex].msgDataLgth;
+            write("gE2ELINMsg.dlc = %d;",e2eFrameList[frIndex].msgDataLgth);
+            output(gE2ELINMsg);
+            linSetRespCounter(gE2ELINMsg.id,1);
+            gE2ELINMsg.rtr = 1;
+            output(gE2ELINMsg);
+            frIndex = E2E_FRAME_NUM - 1;
+          }
+        }
+        if(frIndex == E2E_FRAME_NUM - 1) { Index_LIN_ID++; }
+      }
+    }
+    else if(strncmp(e2eFrameList[frIndex].busType,"ETHERNET",100)==0)
+    {
+      continue;
+    }
+    else if((gTimeCnt%e2eFrameList[frIndex].msgCyc==0||e2eFrameList[frIndex].simFrImtFlg)&&(e2eFrameList[frIndex].simFrFlg))
+    {
+      if(CLUSTER_NUM_CAN > 0) { msgChanl = getBusNameContext(e2eFrameList[frIndex].cluster); gE2EMsg.msgChannel = msgChanl; } //切换到需要仿真的网段
+      else                    { gE2EMsg.can=1; }
+      
+      e2eFrameList[frIndex].simFrImtFlg=0;
+      /*-------------configure message------------------*/
+      gE2EMsg.id=e2eFrameList[frIndex].msgId;
+    //  write(" gE2EMsg.id:%d", gE2EMsg.id);
+      gE2EMsg.dlc=SwitchDlc(e2eFrameList[frIndex].msgDataLgth);
+      
+      
+      if(e2eFrameList[frIndex].fdFlg) { gE2EMsg.BRS=1; gE2EMsg.FDF=1; }
+      else                            { gE2EMsg.BRS=0; gE2EMsg.FDF=0; }
+      
+      //write("msgChanl=%d,e2eFrameList[%d].cluster=%s",msgChanl,frIndex,e2eFrameList[frIndex].cluster);
+      
+      /*-------------configure data------------------*/
+      for(k=0;k<e2eFrameList[frIndex].msgDataLgth;k++) { gE2EMsg.byte(k)=0x0; }
+      for(k=0; k<64; k++)                              { gAssignData[k] = 0x0; }
+      for(k=0; k<8*64; k++)                            { gSignal[k] = 0; }
+      
+      igNumInAFrame=0;
+      for(sigGpIndex=0;sigGpIndex<100;sigGpIndex++)
+      { 
+        if(strncmp(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigGroupName,"",100)==0) { break; }
+        
+        cntr= e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt;
+        
+        write("%f DATA-ID=%d cntr=%d",timeNow()/100000.0,e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].dataID,cntr);
+        igCrcBytePosition[sigGpIndex]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].startBit/8;
+        Data[0] =cntr;////
+        dataLen = 1;
+        for(j = 2; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+        {
+          sigLength =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+          sigLength_d = sigLength / 8;
+          sigLength_m = sigLength % 8;
+          if(sigLength_m > 0)
+          {
+            sigLength_d = sigLength_d + 1;
+          }
+          for(n = 0; n < sigLength_d; n++)
+          {
+            Data[dataLen] =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue >> (n*8);
+            dataLen++;
+          }
+        }
+        dataID[sigGpIndex] =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].dataID;
+        
+        if(dataID[sigGpIndex]>0)
+        {
+          CRC = E2E_Check_ProfileG(dataID[sigGpIndex],Data,dataLen); 
+          write("crc=%x",CRC);
+          igCrcByteValue[sigGpIndex] = CRC;
+          e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].sigValue=CRC;
+          e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[1].sigValue=cntr;
+        }
+        
+        StructAssignValue(frIndex,sigGpIndex);
+        igNumInAFrame++; 
+      }
+      
+      for(k=0; k<64; k++)
+      {
+        gAssignData[k] = gSignal[k * 8 + 7] * 128 + gSignal[k * 8 + 6] * 64 + gSignal[k * 8 + 5] * 32 + gSignal[k * 8 + 4] * 16 + gSignal[k * 8 + 3] * 8 + gSignal[k * 8 + 2] * 4 + gSignal[k * 8 + 1] * 2 + gSignal[k * 8 + 0] * 1;
+        
+      } 
+      for(k = 0; k <e2eFrameList[frIndex].msgDataLgth; k++)
+      {
+        gE2EMsg.byte(k) = gAssignData[k];
+      }
+      for(i=0;i<igNumInAFrame;i++)
+      {
+        //write("111111111111111111111111111111  %d   %d   %X   %f ",i,igCrcBytePosition[i],igCrcByteValue[i],timeNow()/100000.0);
+        write("frIndex=%d,%d   ,%d  ,%d  , %x",frIndex,e2eFrameList[frIndex].e2eSigGroupList[i].e2eSignalList[0].startBit,
+        e2eFrameList[frIndex].e2eSigGroupList[i].e2eSignalList[0].sigLength,
+        igCrcByteValue[i]);
+        
+        
+        setCANSignal(gE2EMsg,
+        e2eFrameList[frIndex].e2eSigGroupList[i].e2eSignalList[0].startBit,
+        e2eFrameList[frIndex].e2eSigGroupList[i].e2eSignalList[0].sigLength,
+        igCrcByteValue[i]);
+        //gE2EMsg.byte(igCrcBytePosition[i])=igCrcByteValue[i];
+      }
+      
+      output(gE2EMsg);
+    }
+ }
+  gTimeCnt++;
+  if(gTimeCnt==10000000)
+  {
+    gTimeCnt=0;
+  }
+}
+
+/// <AssignValue>
+void SignalAssignValue(int frIndex,int sigGpIndex)
+{
+  int n, j;
+  int bit_num;
+  
+  int startbit;
+  int length;
+  qword value;
+  int sigGroup_updatebit;
+  
+  sigGroup_updatebit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].uBit+e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].pduStartBit;//  FR add PDU startBit
+  
+  if((strncmp(e2eFrameList[frIndex].busType,"CAN",100)==0)||(strncmp(e2eFrameList[frIndex].busType,"CANFD",100)==0))
+  {
+    gSignal[sigGroup_updatebit]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].ubValue;
+  }
+  if(strncmp(e2eFrameList[frIndex].busType,"LIN",100)==0)
+  {
+    gSignalLIN[sigGroup_updatebit]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].ubValue;
+  }
+  
+  for(j = 0; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+  {
+    //motorolar Encoding
+    startbit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].startBit+e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].pduStartBit;// FR add PDU startBit
+    length =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+    value = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue;
+    
+    bit_num = startbit;
+    if(strncmp(e2eFrameList[frIndex].busType,"FR",100)==0)
+    {
+      gSignalFR[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+    }
+    if((strncmp(e2eFrameList[frIndex].busType,"CAN",100)==0)||(strncmp(e2eFrameList[frIndex].busType,"CANFD",100)==0))
+    {
+      gSignal[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+    }
+    if(strncmp(e2eFrameList[frIndex].busType,"LIN",100)==0)
+    {
+      gSignalLIN[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+    }
+
+    for(n=length-2; n>=0; n--)
+    {
+      if((bit_num%8)==0)
+      {
+         bit_num = bit_num + 16;
+      }
+      bit_num--;   
+      if(strncmp(e2eFrameList[frIndex].busType,"FR",100)==0)
+      {
+        gSignalFR[bit_num]=((value & (0x1 << n)) >> n);
+      }
+      if((strncmp(e2eFrameList[frIndex].busType,"CAN",100)==0)||(strncmp(e2eFrameList[frIndex].busType,"CANFD",100)==0))
+      {
+        gSignal[bit_num]=((value & (0x1 << n)) >> n);
+      }
+      if(strncmp(e2eFrameList[frIndex].busType,"LIN",100)==0)
+      {
+        gSignalLIN[bit_num]=((value & (0x1 << n)) >> n);
+      }
+    }
+  }
+}
+
+/// <AssignValue>
+void SignalAssignValue(int frIndex,int sigGpIndex,int encoding)
+{
+  int n, j;
+  int bit_num;
+  
+  int startbit;
+  int length;
+  qword value;
+  int sigGroup_updatebit;
+  
+  sigGroup_updatebit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].uBit;
+  
+  if((strncmp(e2eFrameList[frIndex].busType,"CAN",100)==0)||(strncmp(e2eFrameList[frIndex].busType,"CANFD",100)==0))
+  {
+    gSignal[sigGroup_updatebit]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].ubValue;
+    for(j = 0; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+    { 
+      startbit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].startBit;//lsb
+      length = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+      value = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue;
+      if(encoding==0)
+      {
+        //motorolar Encoding
+        bit_num = startbit;
+        gSignal[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+        
+        for(n=length-2; n>=0; n--)
+        {
+          if((bit_num%8)==0)
+          {
+             bit_num = bit_num + 16;
+          }
+          bit_num--;   
+          gSignal[bit_num]=((value & (0x1 << n)) >> n);
+        }
+      }
+      else
+      {
+        //Intel Encoding
+        bit_num = startbit;
+        gSignal[bit_num]=value & 0x1; 
+        for(n=1; n<(length); n++)
+        {
+          //第x位赋值
+          bit_num++;      
+          gSignal[bit_num]=((value & (0x1 << n) ) >> n);
+        }
+      }
+    }  
+  }
+  if((strncmp(e2eFrameList[frIndex].busType,"ETHERNET",100)==0))
+  {
+    gSignalETH[sigGroup_updatebit]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].ubValue;
+    for(j = 0; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+    { 
+      startbit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].startBit;//lsb
+      length = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+      value = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue;
+      if(encoding==0)
+      {
+        //motorolar Encoding
+        bit_num = startbit-length+1;
+        gSignalETH[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+        for(n=length-2; n>=0; n--)
+        {
+          if((bit_num%8)==0)
+          {
+             bit_num = bit_num + 16;
+          }
+          bit_num--;   
+          gSignalETH[bit_num]=((value & (0x1 << n)) >> n);
+        }
+      }
+      else
+      {
+        //Intel Encoding
+        bit_num = startbit;
+        gSignalETH[bit_num]=value & 0x1; 
+        for(n=1; n<(length); n++)
+        {
+          //第x位赋值
+          bit_num++;      
+          gSignalETH[bit_num]=((value & (0x1 << n) ) >> n);
+        }
+      }
+    }  
+  }
+  if(strncmp(e2eFrameList[frIndex].busType,"LIN",100)==0)
+  {
+//////    gSignalLIN[sigGroup_updatebit]=e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].ubValue;
+    for(j = 0; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+    { 
+      startbit = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].startBit;//lsb
+      length = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+      value = e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue;
+      //Intel Encoding
+      bit_num = startbit;
+      gSignalLIN[bit_num]=value & 0x1; 
+      for(n=1; n<(length); n++)
+      {
+        //第x位赋值
+        bit_num++;      
+        gSignalLIN[bit_num]=((value & (0x1 << n) ) >> n);
+      }
+      
+//////      //motorolar Encoding
+//////      bit_num = startbit;
+//////      gSignalLIN[bit_num]=((value & (0x1<<(length-1)))>>(length-1)); 
+//////
+//////      for(n=length-2; n>=0; n--)
+//////      {
+//////        if((bit_num%8)==0)
+//////        {
+//////           bit_num = bit_num + 16;
+//////        }
+//////        bit_num--;   
+//////        gSignalLIN[bit_num]=((value & (0x1 << n)) >> n);
+//////      }
+    }  
+  }
+}
+
+/// <AssignValue>
+void StructAssignValue(int frIndex,int sigGpIndex)
+{
+  int cntr;
+  
+  
+  cntr= e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt;
+  e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].sigValue=0x0;//CRC赋初值0
+  e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[1].sigValue=cntr;
+  SignalAssignValue(frIndex,sigGpIndex,0);  
+  //update cntr
+  write("e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].cntErrFlg=%d",e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].cntErrFlg);
+  if(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].cntErrFlg==0)
+  {
+    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt=cntr+1;
+    if(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt== 0xF)
+    {
+      e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt= 0;
+    }
+  }
+}
+
+/// <AssignValue>
+void StructAssignValue_Profile4(int frIndex,int sigGpIndex)
+{
+  int i,j,n,k;
+  dword dataID;
+  dword CRC;
+  dword cntr;
+  int sigLength;
+  int sigLength_d;
+  int sigLength_m;
+  byte Data[100];
+  int dataLen;
+  
+  for(j = 2; j < e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+  {
+//    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue=0x0;
+  }
+  
+  if(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt== 0x100)
+  {
+    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt= 0;
+  }
+  
+  cntr= e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt;
+  e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].sigValue=0x0;//CRC赋初值0
+  e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[1].sigValue=cntr;
+  dataLen = 0;
+  
+  for(j = 2; j <e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].sigNum; j++)
+  {
+    sigLength =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigLength;
+    sigLength_d = sigLength / 8;
+    sigLength_m = sigLength % 8;
+    if(sigLength_m > 0)
+    {
+      sigLength_d = sigLength_d + 1;
+    }
+    
+    for(n = 0; n < sigLength_d; n++)
+    {
+      Data[dataLen] =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[j].sigValue >> (n*8);
+      
+      dataLen++;
+    }
+  }
+  
+  dataID =e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].dataID;
+  
+  if(dataID>0)
+  {
+    CRC = E2E_Check_Profile4(dataID,Data,dataLen,cntr); 
+    if(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].chksErrFlg==1)
+    {
+      CRC=~CRC;
+    }
+    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[0].sigValue=CRC;
+    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].e2eSignalList[1].sigValue=cntr;
+  }
+  
+  SignalAssignValue(frIndex,sigGpIndex,1);
+  
+  //update cntr
+  if(e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].cntErrFlg==0)
+  {
+    e2eFrameList[frIndex].e2eSigGroupList[sigGpIndex].aliveCnt=cntr+1;
+  }
+}
+
+/// <DataProcessing>
+int SwitchDlc(int dataLgth)
+{
+  int dlc;
+  if(dataLgth==12)
+  {
+    dlc = 9;
+  } 
+  else if(dataLgth==16)
+  {
+    dlc = 10;
+  } 
+  else if(dataLgth==20)
+  {
+    dlc = 11;
+  } 
+  else if(dataLgth==24)
+  {
+    dlc = 12;
+  }
+  else if(dataLgth==32)
+  {
+    dlc = 13;
+  }
+    else if(dataLgth==48)
+  {
+    dlc = 14;
+  }
+    else if(dataLgth==64)
+  {
+    dlc = 15;
+  }
+  else
+  {
+    dlc = dataLgth;
+  }
+  return dlc;
+}
+
+/// <E2E_Check>
+byte Crc_CalculateCRC8_Func(byte data[], int dataLen, byte Crc_StartValue8)
+{
+  int i,j;
+  byte polynomial;
+  byte initValue;
+  
+  polynomial = 0x1d;
+  initValue = Crc_StartValue8^0XFF;
+  for(i=0;i<dataLen;i++)
+  {
+    initValue = initValue ^ data[i];
+    for(j=0;j<8;j++)
+    {
+      if(initValue & 0x80)
+      {
+        initValue = ((initValue << 1) & 0xff);
+        initValue = initValue ^ polynomial;
+      }
+      else
+      {
+        initValue = ((initValue << 1) & 0xff);
+      } 
+    }
+  }
+  initValue = initValue ^ 0xFF;
+  return initValue;
+}
+
+/// <E2E_Check>
+byte E2E_Check_ProfileG(word dataID, byte Data[], int DataLen)
+{
+  byte crc1;
+  byte crc2;
+  byte crc3;
+  byte crc;
+  byte dataHigh[1];
+  byte dataLow[1];
+  dataHigh[0] = dataID >> 8;
+  dataLow[0] = dataID & 0xFF;
+  
+  crc1 = Crc_CalculateCRC8_Func(dataLow, 1, 0XFF);
+  crc2 = Crc_CalculateCRC8_Func(dataHigh, 1, crc1);
+  crc3 = Crc_CalculateCRC8_Func(Data, DataLen, crc2);
+  
+  crc=crc3 ^ 0xff;
+  return crc;
+}
+
+/// <E2E_Check>
+byte E2E_Check_Profile11(word dataID, byte Data[], int DataLen)
+{
+  byte crc_startvalue8 = 0xFF;
+  byte initial_value;
+  byte crc,crc1,crc2,crc3;
+  byte dataHigh[1];
+  byte dataLow[1];
+
+  dataHigh[0] = 0x00;
+  dataLow[0] = dataID & 0xFF;
+
+  crc1 = Crc_CalculateCRC8_Func(dataLow, 1, crc_startvalue8);
+  crc2 = Crc_CalculateCRC8_Func(dataHigh, 1, crc1);
+  crc3 = Crc_CalculateCRC8_Func(Data, DataLen, crc2);
+  crc=crc3 ^ 0xFF;
+  //write("crc1=0x%x;crc2=0x%x;crc3=0x%x;crc=0x%x;",crc1,crc2,crc3,crc);
+  return crc;
+}
+
+/// <E2E_Check>
+dword E2E_Check_Profile4(dword dataID, byte Data[], int DataLen,word counter)//全部长度
+{
+  int i;
+  dword crc1,crc2,crc3;
+  dword crc;
+  word E2E_Length;
+  dword dataid[4];
+  byte E2E_header[8];
+  E2E_Length = (word)(DataLen + 12);
+  write("E2E_Length=0x%x",E2E_Length);
+ //计算报头内容
+  E2E_header[0]=E2E_Length>>8;
+  E2E_header[1]=E2E_Length&0xFF;
+  E2E_header[2]=counter>>8;
+  E2E_header[3]=counter&0xFF;
+  E2E_header[4]=(dataID>>24)&0xFF;
+  E2E_header[5]=(dataID>>16)&0xFF;
+  E2E_header[6]=(dataID>>8)&0xFF;
+  E2E_header[7]=dataID&0xFF;
+
+//  for(i=0;i<8;i++)
+//  {
+//    write("E2E_header[%d]=0x%x",i,E2E_header[i]);
+//  }
+  //crc1 = Crc_CalculateCRC32_Func(E2E_header, 8, 0XFFFFFFFF,1);//header
+  #if ((TOOL_MAJOR_VERSION > 12) || (TOOL_MAJOR_VERSION == 12 && TOOL_SERVICE_PACK >= 5))
+  Crc_CalculateCRC32P4(E2E_header, 0x8, 0x0, 0x8, 0XFFFFFFFF, 1, crc1);
+  //crc2 = Crc_CalculateCRC32_Func(Data, DataLen, crc1,0);//data
+  Crc_CalculateCRC32P4(Data, DataLen, 0x0, DataLen, crc1, 0, crc2);
+  #endif
+  
+  return crc2;
+}
+
+/// <TRC>
+void SimTRC()
+{
+  char sigStr[500]="";
+  
+//////  {
+//////    int i;
+//////    for(i=0;i<E2E_FRAME_NUM;i++)
+//////    {
+//////      e2eFrameList[i].simFrFlg = 1; e2eFrameList[i].simFrImtFlg = 1;
+//////    }
+//////  }
+  
+  gTimeCnt=0;
+  setTimerCyclic(t_TimeCnt,1,1);
+  testStep("","");
+  testStep("Info","Simulate TRC SignalGroups %s",sigStr);
+}
+
+/// <TRC>
+void StopTRC()
+{
+  char sigStr[500]="";
+  
+  gTimeCnt=0;
+  cancelTimer(t_TimeCnt);
+  testStep("","");
+  testStep("Info","Stop simulation of TRC SignalGroups %s",sigStr);
+}
+
+void ParameterOfSigGroupsInit()
+{
+  int  i;
+  int  errflag = 0;
+  long returnValue; 
+  char info[200] = "未找到工程中包含以下网段信息，请注意添加：\n\n"; //用于存储错误错误信息
+  
+  if(gTestTypeFlag == 1)
+  {
+    if(CLUSTER_NUM_CAN != 0) //说明需要仿真报文至CAN总线，判断工程中是否能找到相应的网段信息
+    {
+      for(i=0;i<CLUSTER_NUM_CAN;i++)
+      {
+        if(getBusNameContext(gClusterName[i]) == 0) //未找到相关的网段信息
+        {
+          snprintf(info,elcount(info),"%s%s\n",info,gClusterName[i]);
+          errflag = 1;
+        }
+      }
+    }
+    
+    if(errflag == 1) //弹窗提示测试人员添加仿真网段，并确认是否继续执行测试
+    {
+      snprintf(info,elcount(info),"%s\n\n请确认是否继续执行测试！！！\n\nYes: 继续执行测试（可能会导致信号仿真功能失效）\nNo : 停止测试，添加网段信息后重新执行测试",info);
+      returnValue = testWaitForTesterConfirmation(info);
+      if(returnValue == 1)
+      {
+        testStepWarning("",info);
+        testStepWarning("","测试人员确认继续执行测试！！！");
+      }
+      else { testStepWarning("","测试人员确认不继续执行测试，测试终止！！！"); stop(); }
+    }
+  }
+}
+
+
+
+

@@ -1,0 +1,76 @@
+/*@!Encoding:936*/
+includes
+{
+  
+}
+
+variables
+{
+  
+}
+
+on sysvar SimulationSignal::UsageMode_Sim
+{
+  if(@this == 1)
+  {
+    //系统变量为1代表设置UsageMode为Driving
+    ILControlSimulationOn();
+    $VehModMngtGlbSafe1UsgModSts = 0x0D;
+  }
+  else if(@this == 2)
+  {
+    //系统变量为1代表设置UsageMode为Convenience
+    ILControlSimulationOn();
+    $VehModMngtGlbSafe1UsgModSts = 0x02;
+  }
+  else if(@this == 0)
+  {
+    //系统变量为0代表停止仿真该信号
+    ILControlSimulationOff();
+  }
+}
+
+on sysvar SimulationSignal::VehSpd_Sim
+{
+  if(@this == 1)
+  {
+    //系统变量为1代表设置车速大于3Km/h
+    ILControlSimulationOn();
+    $VehSpdLgtA = 5;
+  }
+  else if(@this == 2)
+  {
+    //系统变量为1代表设置车速小于3Km/h
+    ILControlSimulationOn();
+    $VehModMngtGlbSafe1UsgModSts = 0;
+  }
+  else if(@this == 0)
+  {
+    //系统变量为0代表停止仿真该信号
+    ILControlSimulationOff();
+  }
+}
+
+//以下代码为调试时使用
+//on key '1'
+//{
+//  //调试用
+//  ILControlSimulationOn();
+//  $VehModMngtGlbSafe1UsgModSts = 0x0D;
+//  $VehSpdLgtA = 5;
+//}
+//
+//on key '2'
+//{
+//  //调试用
+//  ILControlSimulationOn();
+//  $VehModMngtGlbSafe1UsgModSts = 0x02;
+//  $VehSpdLgtA = 0;
+//}
+//
+//on key '3'
+//{
+//  //调试用
+//  ILControlSimulationOff();
+//}
+

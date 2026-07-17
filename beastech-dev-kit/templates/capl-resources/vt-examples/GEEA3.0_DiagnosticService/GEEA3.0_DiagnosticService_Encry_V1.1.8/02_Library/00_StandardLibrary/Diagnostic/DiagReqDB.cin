@@ -1,0 +1,425 @@
+/*@!Encoding:936*/
+/*----------------------------------------------------------------------------
+|  File Name: DiagReqDB.cin
+|  Comment:   Contain the requirement of the diagnostic test cases
+|-----------------------------------------------------------------------------
+|               A U T H O R   I D E N T I T Y
+|-----------------------------------------------------------------------------
+| Initials           Name                           Company
+| --------   -------------------     -----------------------------------------
+| LJY              LiJingyao         Polelink Information Technology Co., Ltd.
+|-----------------------------------------------------------------------------
+|               R E V I S I O N   H I S T O R Y
+|-----------------------------------------------------------------------------
+| Date         Ver  Author            Description
+| ----------   ---  ------            ----------------------------------------
+| 20200317     1.0  LJY               Creation
+|
+| 20200320     1.1  LJY               Fixed version
+|1.Change the struct of the diagReqTem struct
+|-----------------------------------------------------------------------------
+|               C O P Y R I G H T
+|-----------------------------------------------------------------------------
+| Copyright (c) 2010 - 2020 by Polelink Information Technology Co., Ltd.
+| All rights reserved.
+-----------------------------------------------------------------------------*/
+
+variables
+{
+  int gTestAnalysFlag = 0;
+  
+	const int ISSUE_LENTH = 3000;
+	const int QUESTION_NUM = 300;
+
+	char gNowTestCaseID[20];
+	char gTestIssueDescription[ISSUE_LENTH];
+	char gTestBranchDescription[ISSUE_LENTH];
+	char gTestStepDescription[ISSUE_LENTH];
+	char gDiagResultDescription[ISSUE_LENTH];
+	char gTestCaseAvliableDescription[ISSUE_LENTH];
+
+	char gTsetQuestion[QUESTION_NUM][ISSUE_LENTH];
+	int  gTestQuestionNum = 0;
+
+	struct diagReqTem
+	{
+		int   requirementGroup;
+		int   reqNumOfGroup;
+		char  reqDes[400];
+		int   faultFlag;
+		int   failTime;
+		float FirstTimeStamp;
+
+	};
+
+	int gNumOfDiagReq = 173;
+	struct diagReqTem diagReq[173]=
+	{
+		/*
+		requirementGroup
+		0 = IS014229-1:2013
+		1 = ISO15765-2:2016
+		2 = 
+		6 = Geely--Diagnostic Requirement Specification V4.3
+		7 = Geely--Software Download Specification V3.0
+		*/
+		{0,1,"Tester请求22服务支持的DID，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,6,"Tester请求支持的10服务01子功能，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,2,"Tester请求支持的10服务03子功能，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,5,"Tester请求支持的10服务02子功能，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+    {0,41,"Tester请求支持的10服务04子功能，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,13,"Tester请求支持的11服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+    {0,44,"Tester请求支持的14服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+    {0,43,"Tester请求支持的19服务02子功能，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,3,"Tester请求支持的85服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,4,"Tester请求支持的28服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,7,"Tester请求支持的27服务请求种子请求，ECU应当回复种子值::ISO14229-2:2013",0,0,0},
+		{0,8,"Tester请求支持的27服务发送密钥请求，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,9,"Tester请求支持的2E服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+    {0,42,"2E服务写入后读取的DID的值，应与写入值一致::ISO14229-2:2013",0,0,0},
+		{0,10,"Tester请求支持的34服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,11,"Tester请求支持的36服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,12,"Tester请求支持的37服务，ECU应当回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,14,"Tester请求DID不支持的22服务，ECU应当回复NRC31::ISO14229-2:2013",0,0,0},
+		{0,15,"Tester请求长度错误的10服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+    {0,45,"Tester请求子服务不支持的10服务，ECU应当回复NRC12::ISO14229-2:2013",0,0,0},
+    {0,46,"Tester请求当前会话下子服务不支持的10服务，ECU应当回复NRC7E::ISO14229-2:2013",0,0,0},
+		{0,16,"Tester请求长度错误的11服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,17,"Tester请求长度错误的22服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,18,"Tester请求长度错误的22服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,33,"Tester在不支持的会话模式下请求27服务，ECU应当回复NRC11或NRC7F::ISO14229-2:2013",0,0,0},
+		{0,19,"Tester请求长度错误的2E服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,31,"Tester未解锁便请求2E服务，ECU应当回复NRC33::ISO14229-2:2013",0,0,0},
+		{0,32,"Tester在不支持的会话模式下请求2E服务，ECU应当回复NRC11或NRC7F::ISO14229-2:2013",0,0,0},
+		{0,20,"Tester请求长度错误的31服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,34,"Tester在不支持的会话模式下请求31服务，ECU应当回复NRC11或NRC7F::ISO14229-2:2013",0,0,0},
+		{0,21,"Tester请求长度错误的3E服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,22,"Tester请求长度错误的34服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,35,"Tester在不支持的会话模式下请求34服务，ECU应当回复NRC11或NRC7F::ISO14229-2:2013",0,0,0},
+		{0,23,"Tester请求长度错误的37服务，ECU应当回复NRC13::ISO14229-2:2013",0,0,0},
+		{0,36,"Tester在不支持的会话模式下请求37服务，ECU应当回复NRC11或NRC7F::ISO14229-2:2013",0,0,0},
+		{0,24,"Tester请求数据无效的22服务，ECU应当回复NRC31::ISO14229-2:2013",0,0,0},
+		{0,25,"Tester请求数据无效的2E服务，ECU应当回复NRC31::ISO14229-2:2013",0,0,0},
+		{0,26,"Tester请求数据无效的31服务，ECU应当回复NRC31::ISO14229-2:2013",0,0,0},
+		{0,27,"Tester未请求种子便发送密钥，ECU应当回复NRC24::ISO14229-2:2013",0,0,0},
+		{0,28,"Tester请求种子后先发送密钥再发送正确密钥，ECU应当对正确密钥回复NRC24且无法解锁::ISO14229-2:2013",0,0,0},
+		{0,29,"Tester错误计数器达到最大值时，ECU回复NRC36且进入DelayTime::ISO14229-2:2013",0,0,0},
+		{0,30,"Tester发送错误的密钥，ECU回复NRC35且错误计数器增加::ISO14229-2:2013",0,0,0},
+		{0,37,"Tester连续两次发送相同数据块，ECU回复肯定响应::ISO14229-2:2013",0,0,0},
+		{0,38,"相邻两个36服务的counter值后一个比前一个增加1，且最大到0xFF后会重置为0::ISO14229-2:2013",0,0,0},
+		{0,39,"数据传输中第一个36服务的counter值为0::ISO14229-2:2013",0,0,0},
+    {0,40,"使用F1 86读取当前会话，ECU响应当前会话模式::ISO14229-2:2013",0,0,0},
+		{1,1,"Tester未发送完全部CF帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,2,"Tester发送首帧，ECU应在N_Bs超时时间内回复流控制帧::ISO15765-2:2016",0,0,0},
+		{1,3,"Tester收到流控制帧后未发送CF帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,4,"Tester收到流控制帧后发送CF帧时漏发中间一帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,5,"Tester收到流控制帧后发送CF帧时重复发送第一帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,6,"Tester收到流控制帧后发送CF帧时延时发送第一帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,7,"Tester收取多帧时收到首帧后不发送流控制帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,8,"ECU回复首帧时首个字节应当为0x10，DLC应当为8::ISO15765-2:2016",0,0,0},
+		{1,9,"Tester收取多帧时收到首帧延时发送流控制帧，ECU 不应有响应::ISO15765-2:2016",0,0,0},
+		{1,10,"Tester收到首帧时发送流控制帧，ECU应对应发送连续帧::ISO15765-2:2016",0,0,0},
+		{1,11,"Tester收取多帧时收到首帧后发送两帧流控制帧，ECU忽略第二帧流控制帧::ISO15765-2:2016",0,0,0},
+		{1,12,"Tester收取多帧时收到首帧后发送流控制帧，ECU发送连续帧的时间间隔小于N_Cr::ISO15765-2:2016",0,0,0},
+		{1,13,"Tester收取多帧时收到首帧后发送流控制帧，ECU发送连续帧的时间间隔大于STmin::ISO15765-2:2016",0,0,0},
+		{1,14,"DUT发送的单帧符合规范定义::ISO15765-2:2016",0,0,0},
+		{1,15,"DUT发送的首帧符合规范定义::ISO15765-2:2016",0,0,0},
+		{1,16,"DUT多帧发送被非预期单帧打断，忽略干扰单帧::ISO15765-2:2016",0,0,0},
+		{1,17,"DUT多帧发送被非预期首帧打断，忽略干扰首帧::ISO15765-2:2016",0,0,0},
+		{1,18,"DUT多帧发送被非预期连续帧打断，忽略干扰连续帧::ISO15765-2:2016",0,0,0},
+		{1,19,"DUT多帧发送被非预期流控制帧打断，忽略干流控制帧::ISO15765-2:2016",0,0,0},
+		{1,20,"DUT多帧发送被非预期未知帧打断，忽略干扰未知帧::ISO15765-2:2016",0,0,0},
+		{1,21,"DUT多帧接收被非预期单帧打断，响应干扰单帧::ISO15765-2:2016",0,0,0},
+		{1,22,"DUT多帧接收被非预期首帧打断，响应干扰首帧::ISO15765-2:2016",0,0,0},
+		{1,23,"DUT多帧接收被非预期流控制帧打断，忽略干扰流控制帧::ISO15765-2:2016",0,0,0},
+		{1,24,"DUT多帧接收被非预期未知帧打断，忽略干扰未知帧::ISO15765-2:2016",0,0,0},
+		{1,24,"DUT收到溢出状态流控制帧后，不再发送后续连续帧::ISO15765-2:2016",0,0,0},
+		{1,25,"FF_DL的值大于7小于4096::ISO15765-2:2016",0,0,0},
+		{1,26,"ECU可以按照DUT发送的流控制帧的BS参数发送对应数目的连续帧::ISO15765-2:2016",0,0,0},
+		{1,27,"发送无效的流控制帧，ECU不响应连续帧::ISO15765-2:2016",0,0,0},
+		{1,28,"发送流控制状态为等待的流控制帧，ECU不响应后续连续帧，再次发送继续流控制帧，ECU响应后续连续帧::ISO15765-2:2016",0,0,0},
+		{1,29,"发送长度不正确的流控制帧，ECU不响应后续连续帧::ISO15765-2:2016",0,0,0},
+		{1,30,"发送功能寻址的流控制帧，ECU不响应后续连续帧::ISO15765-2:2016",0,0,0},
+		{1,31,"发送SF_DL错误的单帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,32,"发送DLC错误的单帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,33,"发送FF_DL错误的首帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,34,"发送DLC错误的连续帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,35,"发送未知帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,36,"发送功能寻址的首帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,37,"只发送首帧，不发送后续连续帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,38,"只发送连续帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,39,"只发送流控制帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,40,"功能寻址的3E80报文不应影响ECU接收多帧数据::ISO15765-2:2016",0,0,0},
+		{1,41,"发送DLC错误的首帧，ECU不给出响应::ISO15765-2:2016",0,0,0},
+		{1,42,"发送STmin无效的流控制帧，ECU按照127ms设定值进行处理::ISO15765-2:2016",0,0,0},
+		{1,43,"ECU发送首帧时N_As超时，收到流控制帧后将不发送后续连续帧::ISO15765-2:2016",0,0,0},
+		{1,44,"ECU发送第一帧连续帧时N_As超时，将不发送后续连续帧::ISO15765-2:2016",0,0,0},
+    {1,45,"ECU发送流控制帧时N_Bs超时，将中断多帧接收::ISO15765-2:2016",0,0,0},
+		{6,1,"ECU响应流控制帧的参数BS = 0::Diagnostic Requirement Specification V4.3 Page16 Table2-5",0,0,0},
+		{6,2,"非编程模式下ECU响应流控制帧的参数STmin = 0x0A::Diagnostic Requirement Specification V4.3 Page16 Table2-5",0,0,0},
+		{6,3,"编程模式下ECU响应流控制帧的参数STmin = 0x00::Diagnostic Requirement Specification V4.3 Page16 Table2-5",0,0,0},
+		{6,4,"诊断帧内未使用位应填充0xAA::Diagnostic Requirement Specification V4.3 Page18 Table2-7",0,0,0},
+		{6,5,"每个连续帧的SN会在上一帧基础上加1，且到0x0F后会重置::Diagnostic Requirement Specification V4.3 2.4.4.2",0,0,0},
+		{6,6,"P2 Client = 150ms 且 P2* Client = 5000ms::Diagnostic Requirement Specification V4.3 2.5.1",0,0,0},
+		{6,16,"DID:DFEC，在APP下强制支持，PBL下可选支持，长度为64字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,17,"DID:DFED，在APP下强制支持，PBL下可选支持，长度为64字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,18,"DID:DFEE，在APP下强制支持，PBL下可选支持，长度为64字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,19,"DID:DFEF，在APP下强制支持，PBL下可选支持，长度为64字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,20,"DID:F100，在APP下强制支持，PBL下可选支持，长度为16字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,21,"DID:F101，在APP下强制支持，PBL下可选支持，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,22,"DID:F102，在APP下强制支持，PBL下可选支持，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,23,"DID:F110，在APP下强制支持，PBL下可选支持，长度为8字节，数据类型为Hex::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,24,"DID:F112，在APP下强制支持，PBL下可选支持，长度为8字节，数据类型为AscII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,25,"DID:F113，在APP下强制支持，PBL下可选支持，长度为4字节，数据类型为BCD::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,29,"DID:F182，在APP下强制支持，PBL下强制支持，长度为16字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,26,"DID:F190，在APP下强制支持，PBL下可选支持，长度为17字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,27,"DID:F197，在APP下强制支持，PBL下可选支持，长度为8字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,28,"DID:F19D，在APP下强制支持，PBL下可选支持，长度为4字节，数据类型为BCD::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,29,"DID:0200，在APP下强制支持，PBL下强制支持，长度为1字节，数据类型为Hex，每次完成完整刷写流程后增加1，直到255后不再变化::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,30,"DID:0201，在APP下强制支持，PBL下强制支持，长度为1字节，数据类型为Hex，每次擦除后增加1，每次完成正向刷写流程后清零::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,8,"DID:F193，在APP下强制支持，PBL下强制支持，长度为16字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,31,"DID:F195，在APP下强制支持，PBL下强制不支持，长度为16字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,9,"DID:F187，在APP下强制支持，PBL下可选支持，长度为10字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,10,"DID:F180，在APP下强制支持，PBL下强制支持，长度为16字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,11,"DID:F198，在APP下不支持，PBL下强制支持，长度为16字节，数据类型为ASCII::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,12,"DID:F199，在APP下不支持，PBL下强制支持，长度为4字节，数据类型为BCD::Diagnostic Requirement Specification V4.3 6.2",0,0,0},
+		{6,13,"27服务错误计数器达到3时触发DelayTime::Diagnostic Requirement Specification V4.3 3.8.3",0,0,0},
+		{6,14,"连续请求种子从第二次开始会使错误计数器增加1::Diagnostic Requirement Specification V4.3 3.8.3",0,0,0},
+		{6,15,"ECU上电时若错误计数器为3需启动DelayTime计时器::Diagnostic Requirement Specification V4.3 3.8.3",0,0,0},
+    {6,32,"ECU需要在回复肯定响应后的25ms内开启执行复位流程::Diagnostic Requirement Specification V4.3 ",0,0,0},
+    {6,33,"通过网络配置字将节点配置为不存在，则不会读到该节点通信丢失DTC::Diagnostic Requirement Specification V4.3 ",0,0,0},
+    {6,34,"通过F190写入VIN码，可以通过09服务读取到::Diagnostic Requirement Specification V4.3 ",0,0,0},
+    {6,35,"同时读取多个DID，超过10个DID的时候ECU将回复NRC14::Diagnostic Requirement Specification V4.3 ",0,0,0},
+		{7,1,"Reprogramming sequence : 请求22 F1 93,ECU回复肯定响应",0,0,0},
+		{7,2,"应用程序无效的情况下控制器不支持28服务及85服务",0,0,0},
+		{7,3,"Reprogramming sequence : 控制器可以正常完成刷写顺序1::Software Download Specification V3.0 5.1",0,0,0},
+		{7,4,"Reprogramming sequence : 发送正确的检查CRC请求，控制器回复肯定响应::Software Download Specification V3.0 5.3.3",0,0,0},
+		{7,6,"Reprogramming sequence : 发送正确的擦除请求，控制器回复肯定响应::Software Download Specification V3.0 5.3.2",0,0,0},
+		{7,7,"Reprogramming sequence : 发送正确的一致性完整性检查请求，控制器回复肯定响应::Software Download Specification V3.0 5.3.2",0,0,0},
+		{7,5,"Reprogramming sequence : 控制器可以正常完成刷写顺序2::Software Download Specification V3.0 5.1",0,0,0},
+		{7,8,"Reprogramming sequence : 控制器可以正常完成刷写顺序3::Software Download Specification V3.0 5.1",0,0,0},
+		{7,9,"Reprogramming sequence : 控制器可以正常完成刷写顺序4::Software Download Specification V3.0 5.1",0,0,0},
+		{7,15,"Reprogramming sequence : 控制器可以正常完成下载SBL::Software Download Specification V3.0 5.1",0,0,0},
+		{7,10,"控制器需在上电时预留20ms的窗口时间进入PBL::Software Download Specification V3.0 4.1",0,0,0},
+		{7,11,"控制器回复的最大块长度不得小于0x402::Software Download Specification V3.0 4.21",0,0,0},
+		{7,12,"控制器必须在9-16V的电压范围内可以刷写::Software Download Specification V3.0 4.3",0,0,0},
+		{7,13,"控制器刷写不应当影响用户数据及标定数据::Software Download Specification V3.0 4.17",0,0,0},
+		{7,14,"对于标定数据和应用程序分开的控制器应支持标定数据单独下载::Software Download Specification V3.0 4.15",0,0,0},
+		{7,16,"对于有多个应用程序文件的控制器应支持应用程序文件乱序下载::Software Download Specification V3.0 4.15",0,0,0},
+		{7,17,"刷写了错误数据时，发送一致性完整性检查请求，控制器应回复肯定响应，结果为0x05或者否定相应NRC22::Software Download Specification V3.0 5.3.2",0,0,0},
+		{7,18,"擦除前ECU断电，重新上电后应用程序应当有效::Software Download Specification V3.0 4.20",0,0,0},
+		{7,19,"擦除前ECU电压异常，重新上电后应用程序应当有效::Software Download Specification V3.0 4.20",0,0,0},
+		{7,20,"擦除中ECU断电，重新上电后应可以重新进行刷写::Software Download Specification V3.0 4.20",0,0,0},
+		{7,21,"擦除中ECU电压异常，重新上电后应可以重新进行刷写::Software Download Specification V3.0 4.20",0,0,0},
+		{7,22,"数据传输中ECU断电，重新上电后应可以重新进行刷写::Software Download Specification V3.0 4.20",0,0,0},
+		{7,23,"数据传输中ECU电压异常，重新上电后应可以重新进行刷写::Software Download Specification V3.0 4.20",0,0,0},
+		{7,24,"擦除前ECU通信异常，重新上电后应用程序应当有效::Software Download Specification V3.0 4.20",0,0,0},
+		{7,25,"擦除中ECU通信异常，重新上电后应可以重新进行刷写::Software Download Specification V3.0 4.20",0,0,0},
+		{7,26,"数据传输中ECU通信异常，重新上电后应可以重新进行刷写::Software Download Specification V3.0 5.3.2",0,0,0},
+		{7,27,"刷写时使用错误的CRC，ECU应回复肯定响应，响应结果为0x05或者响应NRC22::Software Download Specification V3.0 5.3.3",0,0,0},
+		{7,28,"不下载SBL便请求校验CRC或者擦除，ECU应回复NRC22::Software Download Specification V3.0 5.5",0,0,0},
+		{7,29,"不擦除请求下载应用程序，ECU应回复NRC70::Software Download Specification V3.0 5.5",0,0,0},
+		{7,30,"不请求下载便请求数据传输或退出传输，ECU应回复NRC24::Software Download Specification V3.0 5.5",0,0,0},
+		{7,31,"不进行数据传输便请求数据传输退出，ECU应回复NRC24::Software Download Specification V3.0 5.5",0,0,0},
+		{7,32,"擦除应用程序后直接请求检查编程依赖性，ECU应回复肯定响应，结果为0x05或者NRC22::Software Download Specification V3.0 5.3.4",0,0,0},
+		{7,33,"传输部分数据后直接请求检查编程依赖性，ECU应回复肯定响应，结果为0x05或者NRC22::Software Download Specification V3.0 5.3.4",0,0,0},
+		{7,34,"校验CRC失败后直接请求检查编程依赖性，ECU应回复肯定响应，结果为0x05或者NRC22::Software Download Specification V3.0 5.3.4",0,0,0},
+		{7,35,"多个刷写文件只完成一个刷写后直接请求检查编程依赖性，ECU应回复肯定响应，结果为0x05或者NRC22::Software Download Specification V3.0 5.3.4",0,0,0},
+		{7,36,"一个数据段全部数据传输完后再次发送36服务，ECU响应NRC31或NRC24或NRC71::Software Download Specification V3.0 5.3.4",0,0,0},
+		{7,37,"使用大于最大块长度的36服务进行数据传输，ECU回复NRC13或者溢出流控制帧::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,38,"使用小于最大块长度的36服务进行数据传输，若ECU无法正确接收，则需要可以使用最大块长度的数据重新传输并进行刷写::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,39,"ECU可以使用供应商提供支持的数据块长度进行刷写::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,40,"下载FBL时使用无效的地址，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,41,"下载FBL时使用无效的长度，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,42,"下载APP时使用无效的地址，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,43,"下载APP时使用无效的长度，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,44,"擦除时使用无效的地址，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,45,"擦除时使用无效的长度，ECU回复NRC31::Software Download Specification V3.0 5.5.2",0,0,0},
+		{7,46,"正常进入编程模式后可以正常切换编程会话模式::Software Download Specification V3.0 5.5.2",0,0,0}
+	};
+
+	enum e_DiagReqResult {RESULT_PASS,RESULT_FAIL,RESULT_WARNING};
+
+
+}
+
+void Diag_SetTestAnalys(enum DiagnosticSwitch D_Switch)
+{
+  if(D_Switch == Diag_On)
+  {
+    gTestAnalysFlag = 1;
+  }
+  else
+  {
+    gTestAnalysFlag = 0;
+  }
+}
+
+void Diag_SetReqCheckResult(int reqGroup,int reqNumOfGroup,enum e_DiagReqResult diagResult,char Description[])
+{
+	int i;
+	int CurrentReq;
+
+	switch (diagResult)
+	{
+	case (RESULT_PASS):
+		testStepPass("Pass",Description);
+		break;
+	case (RESULT_FAIL):
+      if((reqGroup != 0)||(reqNumOfGroup != 0))
+      {
+		for(i=0; i<gNumOfDiagReq; i++)
+		{
+			if((reqGroup == diagReq[i].requirementGroup)&&(reqNumOfGroup == diagReq[i].reqNumOfGroup))
+			{
+				CurrentReq = i;
+				break;
+			}
+
+		}
+		if(diagReq[CurrentReq].faultFlag != 1)
+		{
+			testStepFail("Fail",Description);
+			diagReq[CurrentReq].faultFlag = 1;
+			diagReq[CurrentReq].failTime = 1;
+			diagReq[CurrentReq].FirstTimeStamp = timeNowFloat()/100000.0;
+			strncat(gTestStepDescription,Description,ISSUE_LENTH);
+			snprintf(gTestIssueDescription,ISSUE_LENTH,gTestBranchDescription);
+			strncat(gTestIssueDescription,gTestStepDescription,ISSUE_LENTH);
+			strncat(gTestIssueDescription,"\nRequirement:",ISSUE_LENTH);
+			strncat(gTestIssueDescription,diagReq[CurrentReq].reqDes,ISSUE_LENTH);
+			snprintf(gTsetQuestion[gTestQuestionNum],ISSUE_LENTH,gTestIssueDescription);
+			gTestQuestionNum++;
+		}
+		else
+		{
+      if(gTestAnalysFlag == 1)
+      {
+			testStepWarning("Warning",Description);
+			diagReq[CurrentReq].failTime++;
+      }
+      else
+      {
+        testStepFail("Fail",Description);
+			  diagReq[CurrentReq].failTime++;
+      }
+		}
+    }
+      else
+      {
+        testStepFail("Fail",Description);
+      }
+		break;
+	case (RESULT_WARNING):
+		testStepWarning("Warning",Description);
+		break;
+	}
+
+
+}
+
+void Diag_SetReqCheckResult(int reqGroup,int reqNumOfGroup,enum e_DiagReqResult diagResult,char Description[],char Identifer[])
+{
+	int i;
+	int CurrentReq;
+
+	switch (diagResult)
+	{
+	case (RESULT_PASS):
+		testStepPass(Identifer,Description);
+		break;
+	case (RESULT_FAIL):
+      if((reqGroup != 0)||(reqNumOfGroup != 0))
+      {
+		for(i=0; i<gNumOfDiagReq; i++)
+		{
+			if((reqGroup == diagReq[i].requirementGroup)&&(reqNumOfGroup == diagReq[i].reqNumOfGroup))
+			{
+				CurrentReq = i;
+				break;
+			}
+
+		}
+		if(diagReq[CurrentReq].faultFlag != 1)
+		{
+			testStepFail(Identifer,Description);
+			diagReq[CurrentReq].faultFlag = 1;
+			diagReq[CurrentReq].failTime = 1;
+			diagReq[CurrentReq].FirstTimeStamp = timeNowFloat()/100000.0;
+			strncat(gTestStepDescription,Description,ISSUE_LENTH);
+			snprintf(gTestIssueDescription,ISSUE_LENTH,gTestBranchDescription);
+			strncat(gTestIssueDescription,gTestStepDescription,ISSUE_LENTH);
+			strncat(gTestIssueDescription,"\nRequirement:",ISSUE_LENTH);
+			strncat(gTestIssueDescription,diagReq[CurrentReq].reqDes,ISSUE_LENTH);
+			snprintf(gTsetQuestion[gTestQuestionNum],ISSUE_LENTH,gTestIssueDescription);
+			gTestQuestionNum++;
+		}
+		else
+		{
+      if(gTestAnalysFlag == 1)
+      {
+        diagReq[CurrentReq].failTime++;
+			  testStepWarning(Identifer,Description);
+        testStepWarning(Identifer,"This fault has appear %d time(s) in this test sequence",diagReq[CurrentReq].failTime);
+			
+      }
+      else
+      {
+        diagReq[CurrentReq].failTime++;
+        testStepFail(Identifer,Description);
+        testStepWarning(Identifer,"This fault has appear %d time(s) in this test sequence",diagReq[CurrentReq].failTime);
+      }
+		}
+      }
+      else
+      {
+        testStepFail(Identifer,Description);
+      }
+		break;
+	case (RESULT_WARNING):
+		testStepWarning(Identifer,Description);
+		break;
+	}
+
+
+}
+
+void Diag_SetTestStep(char StepDes[])
+{
+	testStep("Step",StepDes);
+	strncpy(gTestStepDescription,"When ",ISSUE_LENTH);
+	strncat(gTestStepDescription,StepDes,ISSUE_LENTH);
+	strncat(gTestStepDescription,"\n",ISSUE_LENTH);
+}
+
+void Diag_SetTestStepPass(char StepDes[])
+{
+	testStep("Step",StepDes);
+	strncpy(gTestStepDescription,",",ISSUE_LENTH);
+	strncat(gTestStepDescription,StepDes,ISSUE_LENTH);
+	strncat(gTestStepDescription,"\n",ISSUE_LENTH);
+}
+
+void Diag_SetTestBranch(char BranchDes[])
+{
+	testStep("Branch",BranchDes);
+	strncat(gTestBranchDescription,BranchDes,ISSUE_LENTH);
+	strncat(gTestBranchDescription,"\n",ISSUE_LENTH);
+	strncpy(gTestStepDescription,"|__",ISSUE_LENTH);
+}
+
+void Diag_SetTestCase(char TestCaseID[])
+{
+	strncpy(gNowTestCaseID,TestCaseID,20);
+	strncpy(gTestBranchDescription,gNowTestCaseID,ISSUE_LENTH);
+	strncat(gTestBranchDescription,":\n",ISSUE_LENTH);
+}
+
+void Diag_OutputTestQuestion()
+{
+	int i;
+	for(i=0; i<gTestQuestionNum; i++)
+	{
+		testStep("Question",gTsetQuestion[i]);
+	}
+}

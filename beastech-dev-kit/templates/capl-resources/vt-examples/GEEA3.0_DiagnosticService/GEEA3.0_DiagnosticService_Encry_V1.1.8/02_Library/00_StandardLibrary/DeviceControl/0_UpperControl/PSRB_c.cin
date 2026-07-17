@@ -1,0 +1,123 @@
+/*@!Encoding:936*/
+
+variables
+{
+  enum e_PSRB_Status{PSRB_Connect = 1, PSRB_DisConnect = 0};
+}
+
+void PSRB_InitConfig()
+{
+  @sysvar::DeviceControl::PSRB::PSRB_InitConfig=1;
+}
+
+void PSRB_Reset()
+{
+  @sysvar::DeviceControl::PSRB::PSRB_InitConfig=1;
+}
+
+//VH6501的KL30/KL31接入DRB
+void PSRB_VH6501_In()
+{
+//  PSRB_Relay07_Enable();
+//  PSRB_Relay08_Disable();
+}
+
+//VH6501的KL30/KL31断开DRB
+void PSRB_VH6501_Out()
+{
+//  PSRB_Relay07_Disable();
+//  PSRB_Relay08_Enable();
+}
+
+//环境配置板卡接入K30电
+void PSRB_ENV_KL30KL31_In()
+{
+  
+}
+
+//环境配置板卡接入31
+void PSRB_ENV_KL30KL31_Out()
+{
+  
+}
+
+//地漂电源切入
+void PSRB_GroundOffset_In()
+{
+  PSRB_Relay(10,PSRB_DisConnect);
+  testWaitForTimeout(100);
+  PSRB_Relay(11,PSRB_Connect);
+  testWaitForTimeout(100);
+  PSRB_Relay(9,PSRB_DisConnect);
+  testWaitForTimeout(100);
+}
+
+//地漂电源切出
+void PSRB_GroundOffset_Out()
+{
+  PSRB_Relay(10,PSRB_DisConnect);
+  testWaitForTimeout(100);
+  PSRB_Relay(11,PSRB_DisConnect);
+  testWaitForTimeout(100);
+  PSRB_Relay(9,PSRB_DisConnect);
+  testWaitForTimeout(100);
+}
+
+//KL31连接
+void PSRB_KL31_Connect()
+{
+  
+}
+
+//KL31断开
+void PSRB_KL31_DisConnect()
+{
+  
+}
+
+
+/*以下函数没有实际功能意义，供参考*/
+void PSRB_Relay(int relayNum, enum e_PSRB_Status status)
+{
+  switch(relayNum)
+  {
+    case 1:
+      @sysvar::DeviceControl::PSRB::Relay1 = status;
+      break;
+    case 2:
+      @sysvar::DeviceControl::PSRB::Relay2 = status;
+      break;
+    case 3:
+      @sysvar::DeviceControl::PSRB::Relay3 = status;
+      break;
+    case 4:
+      @sysvar::DeviceControl::PSRB::Relay4 = status;
+      break;
+    case 5:
+      @sysvar::DeviceControl::PSRB::Relay5 = status;
+      break;
+    case 6:
+      @sysvar::DeviceControl::PSRB::Relay1 = status;
+      break;
+    case 7:
+      @sysvar::DeviceControl::PSRB::Relay7 = status;
+      break;
+    case 8:
+      @sysvar::DeviceControl::PSRB::Relay8 = status;
+      break;
+    case 9:
+      @sysvar::DeviceControl::PSRB::Relay9 = status;
+      break;
+    case 10:
+      @sysvar::DeviceControl::PSRB::Relay10 = status;
+      break;
+    case 11:
+      @sysvar::DeviceControl::PSRB::Relay11 = status;
+      break;
+    case 12:
+      @sysvar::DeviceControl::PSRB::Relay12 = status;
+      break;
+    default:
+      break;
+  }
+}
